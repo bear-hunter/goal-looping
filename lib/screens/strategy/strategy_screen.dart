@@ -112,10 +112,10 @@ class StrategyScreen extends StatelessWidget {
               child: GlassCard(
                 child: Column(
                   children: [
-                    Text('🎯 Select up to 2 Factors to focus on', 
+                    Text('🎯 Select up to 2 Trees to focus on', 
                         style: TextStyle(color: AppColors.textMuted)),
                     const SizedBox(height: 8),
-                    Text('Only active Factors grow or decay',
+                    Text('Only active Trees grow or decay',
                         style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
                   ],
                 ),
@@ -127,28 +127,59 @@ class StrategyScreen extends StatelessWidget {
               child: Column(
                 children: state.activeFocusFactors.map((f) => Padding(
                   padding: const EdgeInsets.only(bottom: 8),
-                  child: FactorHealthTree(
-                    factor: f,
-                    onTap: () => Navigator.push(context, MaterialPageRoute(
-                      builder: (_) => FactorDetailScreen(factorId: f.id),
-                    )),
+                  child: Stack(
+                    children: [
+                      FactorHealthTree(
+                        factor: f,
+                        onTap: () => Navigator.push(context, MaterialPageRoute(
+                          builder: (_) => FactorDetailScreen(factorId: f.id),
+                        )),
+                      ),
+                      // Deactivate button in top-right corner
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: GestureDetector(
+                          onTap: () {
+                            state.setFactorDormant(f.id);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('${f.name} moved to Dissected Trees 💤')),
+                            );
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppColors.textMuted.withAlpha(30),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.pause_rounded, size: 14, color: AppColors.textMuted),
+                                const SizedBox(width: 4),
+                                Text('Pause', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 )).toList(),
               ),
             ),
           
-          // Dormant Factors
-          if (state.dormantFactors.isNotEmpty || state.factors.isEmpty)
-            _SectionHeader(
-              title: '💤 Dormant Factors',
-              icon: Icons.nightlight_round,
-              color: AppColors.textMuted,
-              onAdd: state.activeGoal != null 
-                  ? () => _showAddFactorDialog(context, state.activeGoal!.id)
-                  : null,
-            ),
+          // Dissected Trees - ALWAYS show section header
+          _SectionHeader(
+            title: '🌳 Dissected Trees',
+            icon: Icons.nightlight_round,
+            color: AppColors.textMuted,
+            onAdd: state.activeGoal != null 
+                ? () => _showAddFactorDialog(context, state.activeGoal!.id)
+                : null,
+          ),
           
-          if (state.dormantFactors.isEmpty && state.factors.isEmpty)
+          if (state.factors.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: GlassCard(
@@ -159,8 +190,33 @@ class StrategyScreen extends StatelessWidget {
                   children: [
                     Icon(Icons.add_circle_rounded, color: AppColors.textMuted),
                     const SizedBox(width: 12),
-                    Text('Add Factors from Goal Dissection', 
+                    Text('Add Trees from Goal Dissection', 
                         style: TextStyle(color: AppColors.textMuted)),
+                  ],
+                ),
+              ),
+            )
+          else if (state.dormantFactors.isEmpty)
+            // All factors are active - show empty state
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceLight.withAlpha(100),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.glassBorder),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.check_circle_rounded, color: AppColors.success, size: 20),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'All trees are in Active Focus! Tap "Pause" above to move one here.',
+                        style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -209,7 +265,7 @@ class StrategyScreen extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Select Factor to Activate', style: Theme.of(context).textTheme.titleLarge),
+            Text('Select Tree to Activate', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),
             Text('You can focus on up to 2 Factors at a time', 
                 style: TextStyle(color: AppColors.textMuted)),
@@ -231,10 +287,89 @@ class StrategyScreen extends StatelessWidget {
   }
 
   Widget _buildTimeSection(BuildContext context, AppState state) {
+    final availability = state.timeAvailability ?? TimeAvailability.some;
+    final hoursPerWeek = availability.hoursPerWeekMin;
+    final tasksCompleted = state.completedTasks.length;
+    final habitsLogged = state.habits.where((h) => h.isLoggedToday).length;
+    
     return SliverToBoxAdapter(
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _SectionHeader(title: 'Time Defense', icon: Icons.schedule_rounded, color: AppColors.warning),
+          
+          // Weekly Budget Card
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [AppColors.warning.withAlpha(30), AppColors.primary.withAlpha(20)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.warning.withAlpha(50)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppColors.warning.withAlpha(40),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(Icons.timer_rounded, color: AppColors.warning, size: 24),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Weekly Budget', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                            Text(
+                              hoursPerWeek == 0 ? 'No time set' : '$hoursPerWeek+ hours/week',
+                              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.warning),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text('This week', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                          Text('$tasksCompleted tasks', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                          Text('$habitsLogged habits', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    availability.description,
+                    style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                  ),
+                  if (hoursPerWeek > 0) ...[
+                    const SizedBox(height: 12),
+                    _TimeRecommendation(hoursPerWeek: hoursPerWeek),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          
+          const SizedBox(height: 16),
+          
+          // Time availability options
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text('Set your availability:', style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
+          ),
+          const SizedBox(height: 8),
           ...TimeAvailability.values.map((a) => GestureDetector(
             onTap: () => state.setTimeAvailability(a),
             child: Container(
@@ -523,5 +658,66 @@ class _SprintGoalCard extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+/// Time-based recommendations widget
+class _TimeRecommendation extends StatelessWidget {
+  final int hoursPerWeek;
+  
+  const _TimeRecommendation({required this.hoursPerWeek});
+  
+  @override
+  Widget build(BuildContext context) {
+    final (icon, text, color) = _getRecommendation();
+    
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withAlpha(20),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withAlpha(40)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 18),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(fontSize: 12, color: color),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  (IconData, String, Color) _getRecommendation() {
+    if (hoursPerWeek <= 2) {
+      return (
+        Icons.flash_on_rounded,
+        '💡 Focus only on Top 2 tasks. Skip reflections when busy.',
+        AppColors.warning,
+      );
+    } else if (hoursPerWeek <= 5) {
+      return (
+        Icons.balance_rounded,
+        '⚖️ Balance 2 priority tasks + 2-3 habits daily. One reflection weekly.',
+        AppColors.info,
+      );
+    } else if (hoursPerWeek <= 10) {
+      return (
+        Icons.trending_up_rounded,
+        '📈 Good capacity! Add experiments and more habits to accelerate growth.',
+        AppColors.success,
+      );
+    } else {
+      return (
+        Icons.rocket_launch_rounded,
+        '🚀 Full capacity mode! Maximize all modules for rapid progress.',
+        AppColors.primary,
+      );
+    }
   }
 }

@@ -139,7 +139,7 @@ class _FactorDetailScreenState extends State<FactorDetailScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  factor.isActiveFocus ? '⭐ Active Focus' : '💤 Dormant',
+                                  factor.isActiveFocus ? '⭐ Active Focus' : '💤 Dissected',
                                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
                                 ),
                                 const SizedBox(height: 4),

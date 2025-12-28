@@ -304,7 +304,7 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-/// Habit card with expandable calendar view
+/// Habit card with swipe-to-reveal actions and expandable calendar
 class _HabitCardWithCalendar extends StatefulWidget {
   final Habit habit;
   final bool isQuit;
@@ -315,8 +315,48 @@ class _HabitCardWithCalendar extends StatefulWidget {
   State<_HabitCardWithCalendar> createState() => _HabitCardWithCalendarState();
 }
 
-class _HabitCardWithCalendarState extends State<_HabitCardWithCalendar> {
+class _HabitCardWithCalendarState extends State<_HabitCardWithCalendar> 
+    with SingleTickerProviderStateMixin {
   bool _showCalendar = false;
+  late AnimationController _slideController;
+  late Animation<Offset> _slideAnimation;
+  bool _isRevealed = false;
+  static const double _revealWidth = 100.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _slideController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+    );
+    _slideAnimation = Tween<Offset>(
+      begin: Offset.zero,
+      end: const Offset(-0.22, 0), // Slide left to reveal buttons
+    ).animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOut));
+  }
+
+  @override
+  void dispose() {
+    _slideController.dispose();
+    super.dispose();
+  }
+
+  void _toggleReveal() {
+    if (_isRevealed) {
+      _slideController.reverse();
+    } else {
+      _slideController.forward();
+    }
+    setState(() => _isRevealed = !_isRevealed);
+  }
+
+  void _closeReveal() {
+    if (_isRevealed) {
+      _slideController.reverse();
+      setState(() => _isRevealed = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -326,82 +366,141 @@ class _HabitCardWithCalendarState extends State<_HabitCardWithCalendar> {
     return GlassCard(
       child: Column(
         children: [
-          // Main row
-          Row(
-            children: [
-              StreakIndicator(streak: habit.currentStreak, size: 50),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      isQuit ? 'No ${habit.name}' : habit.name,
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
-                    ),
-                    Row(
-                      children: [
-                        Text('Best: ${habit.bestStreak}d', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
-                        if (habit.targetFrequency > 1) ...[
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: AppColors.info.withAlpha(30),
-                              borderRadius: BorderRadius.circular(6),
+          // Swipeable row with action buttons behind
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Stack(
+              children: [
+                // Action buttons (revealed on swipe)
+                if (!habit.isLoggedToday)
+                  Positioned.fill(
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: Container(
+                        width: _revealWidth,
+                        padding: const EdgeInsets.only(left: 8),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            _SwipeActionButton(
+                              icon: Icons.check_rounded,
+                              color: AppColors.success,
+                              onTap: () {
+                                _closeReveal();
+                                _logWithMood(context, true);
+                              },
                             ),
-                            child: Text(
-                              '${_getCompletionsThisWeek()}/${habit.targetFrequency}/wk',
-                              style: TextStyle(fontSize: 10, color: AppColors.info, fontWeight: FontWeight.w600),
+                            const SizedBox(width: 8),
+                            _SwipeActionButton(
+                              icon: Icons.close_rounded,
+                              color: AppColors.danger,
+                              onTap: () {
+                                _closeReveal();
+                                _logWithMood(context, false);
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                
+                // Main content (slides left on swipe)
+                GestureDetector(
+                  onHorizontalDragEnd: habit.isLoggedToday ? null : (details) {
+                    if (details.primaryVelocity != null) {
+                      if (details.primaryVelocity! < -100) {
+                        // Swipe left - reveal actions
+                        if (!_isRevealed) _toggleReveal();
+                      } else if (details.primaryVelocity! > 100) {
+                        // Swipe right - hide actions
+                        if (_isRevealed) _toggleReveal();
+                      }
+                    }
+                  },
+                  onTap: _isRevealed ? _closeReveal : null,
+                  child: SlideTransition(
+                    position: _slideAnimation,
+                    child: Container(
+                      color: AppColors.surface, // Background to cover buttons
+                      child: Row(
+                        children: [
+                          StreakIndicator(streak: habit.currentStreak, size: 44),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  isQuit ? 'No ${habit.name}' : habit.name,
+                                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                Row(
+                                  children: [
+                                    Text('🔥 ${habit.currentStreak}d', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                                    Text(' • ', style: TextStyle(color: AppColors.textMuted)),
+                                    Text('Best: ${habit.bestStreak}d', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                                    if (habit.targetFrequency > 1) ...[
+                                      const SizedBox(width: 6),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.info.withAlpha(30),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          '${_getCompletionsThisWeek()}/${habit.targetFrequency}/wk',
+                                          style: TextStyle(fontSize: 9, color: AppColors.info, fontWeight: FontWeight.w600),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ],
                             ),
                           ),
+                          
+                          // Status or swipe hint
+                          if (habit.isLoggedToday)
+                            Icon(
+                              habit.todayLog?.completed == true ? Icons.check_circle_rounded : Icons.cancel_rounded,
+                              color: habit.todayLog?.completed == true ? AppColors.success : AppColors.danger,
+                              size: 22,
+                            )
+                          else if (!_isRevealed)
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.chevron_left_rounded, size: 16, color: AppColors.textMuted.withAlpha(100)),
+                                Text('swipe', style: TextStyle(fontSize: 10, color: AppColors.textMuted.withAlpha(100))),
+                              ],
+                            ),
+                          
+                          // Calendar toggle
+                          IconButton(
+                            icon: Icon(
+                              _showCalendar ? Icons.expand_less_rounded : Icons.calendar_month_rounded,
+                              color: AppColors.textMuted,
+                              size: 18,
+                            ),
+                            onPressed: () => setState(() => _showCalendar = !_showCalendar),
+                            padding: const EdgeInsets.all(4),
+                            constraints: const BoxConstraints(),
+                          ),
                         ],
-                      ],
+                      ),
                     ),
-                    if (habit.motivation.isNotEmpty)
-                      Text(habit.motivation, style: TextStyle(fontSize: 11, color: AppColors.textSecondary, fontStyle: FontStyle.italic)),
-                  ],
+                  ),
                 ),
-              ),
-              
-              // Actions
-              if (!habit.isLoggedToday)
-                Row(
-                  children: [
-                    _CheckButton(
-                      icon: Icons.check_rounded,
-                      color: AppColors.success,
-                      onTap: () => _logWithMood(context, true),
-                    ),
-                    const SizedBox(width: 8),
-                    _CheckButton(
-                      icon: Icons.close_rounded,
-                      color: AppColors.danger,
-                      onTap: () => _logWithMood(context, false),
-                    ),
-                  ],
-                )
-              else
-                Icon(
-                  habit.todayLog?.completed == true ? Icons.check_circle_rounded : Icons.cancel_rounded,
-                  color: habit.todayLog?.completed == true ? AppColors.success : AppColors.danger,
-                ),
-              
-              // Calendar toggle
-              IconButton(
-                icon: Icon(
-                  _showCalendar ? Icons.expand_less_rounded : Icons.calendar_month_rounded,
-                  color: AppColors.textMuted,
-                  size: 20,
-                ),
-                onPressed: () => setState(() => _showCalendar = !_showCalendar),
-              ),
-            ],
+              ],
+            ),
           ),
           
           // Expandable calendar
           if (_showCalendar) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             HabitCalendar(habit: habit),
           ],
         ],
@@ -446,6 +545,34 @@ class _CheckButton extends StatelessWidget {
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(color: color.withAlpha(25), borderRadius: BorderRadius.circular(10)),
         child: Icon(icon, color: color, size: 20),
+      ),
+    );
+  }
+}
+
+/// Swipe action button for habit cards (used in swipe-to-reveal pattern)
+class _SwipeActionButton extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _SwipeActionButton({required this.icon, required this.color, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 42,
+        height: 42,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(color: color.withAlpha(80), blurRadius: 8, offset: const Offset(0, 2)),
+          ],
+        ),
+        child: Icon(icon, color: Colors.white, size: 22),
       ),
     );
   }

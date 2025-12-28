@@ -10,6 +10,7 @@ import '../../services/storage_service.dart';
 import '../../widgets/glass_card.dart';
 import '../../widgets/task_card.dart';
 import '../../widgets/xp_bar.dart';
+import '../shop/shop_screen.dart';
 
 /// Module 2: Priority Task Engine (Home Screen)
 /// "What are the 2 most important tasks you need to do?"
@@ -50,6 +51,21 @@ class _HomeScreenState extends State<HomeScreen> {
                             ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.1, end: 0),
                           ),
                           XPBar(stats: state.userStats, compact: true),
+                          const SizedBox(width: 8),
+                          GestureDetector(
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const ShopScreen()),
+                            ),
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppColors.warning.withAlpha(30),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Text('🏪', style: TextStyle(fontSize: 20)),
+                            ),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 8),
