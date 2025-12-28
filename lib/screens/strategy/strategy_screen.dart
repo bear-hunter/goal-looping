@@ -153,25 +153,43 @@ class StrategyScreen extends StatelessWidget {
   }
 
   Widget _buildSprintSection(BuildContext context, AppState state) {
+    final thirtyDayGoals = state.sprintTargets.where((t) => t.duration == SprintDuration.thirtyDays).toList();
+    final fourteenDayGoals = state.sprintTargets.where((t) => t.duration == SprintDuration.fourteenDays).toList();
+    
     return SliverToBoxAdapter(
       child: Column(
         children: [
+          // 30-Day Performance Goals
           _SectionHeader(
-            title: 'Sprint Targets',
-            icon: Icons.rocket_launch_rounded,
+            title: '30-Day Performance Goals',
+            icon: Icons.calendar_month_rounded,
             color: AppColors.info,
-            onAdd: () => _showAddSprintDialog(context),
+            onAdd: () => _showAddSprintDialog(context, state, SprintDuration.thirtyDays),
           ),
-          ...state.sprintTargets.map((t) => GlassCard(
-            child: Row(
-              children: [
-                Icon(Icons.rocket_launch_rounded, color: AppColors.info),
-                const SizedBox(width: 12),
-                Expanded(child: Text(t.title, style: TextStyle(color: AppColors.textPrimary))),
-                Text('${t.daysRemaining}d', style: TextStyle(color: AppColors.textMuted)),
-              ],
-            ),
-          )),
+          if (thirtyDayGoals.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text('No 30-day goals set', style: TextStyle(color: AppColors.textMuted)),
+            )
+          else
+            ...thirtyDayGoals.map((t) => _SprintGoalCard(target: t, factors: state.factors)),
+          
+          const SizedBox(height: 8),
+          
+          // 14-Day Performance Goals
+          _SectionHeader(
+            title: '14-Day Performance Goals',
+            icon: Icons.bolt_rounded,
+            color: AppColors.warning,
+            onAdd: () => _showAddSprintDialog(context, state, SprintDuration.fourteenDays),
+          ),
+          if (fourteenDayGoals.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text('No 14-day goals set', style: TextStyle(color: AppColors.textMuted)),
+            )
+          else
+            ...fourteenDayGoals.map((t) => _SprintGoalCard(target: t, factors: state.factors)),
         ],
       ),
     );
@@ -240,32 +258,75 @@ class StrategyScreen extends StatelessWidget {
     );
   }
 
-  void _showAddSprintDialog(BuildContext context) {
+  void _showAddSprintDialog(BuildContext context, AppState state, SprintDuration duration) {
     final controller = TextEditingController();
+    List<String> selectedFactorIds = [];
+    
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.surface,
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: controller, decoration: const InputDecoration(hintText: 'Sprint target')),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () {
-                if (controller.text.isNotEmpty) {
-                  context.read<AppState>().addSprintTarget(SprintTarget(
-                    id: StorageService.generateId(),
-                    title: controller.text,
-                    duration: SprintDuration.thirtyDays,
-                  ));
-                  Navigator.pop(ctx);
-                }
-              },
-              child: const Text('Add'),
-            ),
-          ],
+      isScrollControlled: true,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => Padding(
+          padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                duration == SprintDuration.thirtyDays ? 'New 30-Day Goal' : 'New 14-Day Goal',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 16),
+              TextField(controller: controller, decoration: const InputDecoration(hintText: 'Performance goal')),
+              const SizedBox(height: 12),
+              Text('Link to Factors', style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: state.factors.map((f) {
+                  final isSelected = selectedFactorIds.contains(f.id);
+                  return GestureDetector(
+                    onTap: () => setDialogState(() {
+                      if (isSelected) {
+                        selectedFactorIds.remove(f.id);
+                      } else {
+                        selectedFactorIds.add(f.id);
+                      }
+                    }),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: isSelected ? AppColors.primary.withAlpha(30) : AppColors.surfaceLight,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: isSelected ? AppColors.primary : AppColors.glassBorder),
+                      ),
+                      child: Text(f.name, style: TextStyle(
+                        color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                      )),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  if (controller.text.isNotEmpty) {
+                    context.read<AppState>().addSprintTarget(SprintTarget(
+                      id: StorageService.generateId(),
+                      title: controller.text,
+                      duration: duration,
+                      linkedFactorIds: selectedFactorIds,
+                    ));
+                    Navigator.pop(ctx);
+                  }
+                },
+                child: const Text('Add Goal'),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -290,6 +351,67 @@ class _SectionHeader extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(child: Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary))),
           if (onAdd != null) IconButton(onPressed: onAdd, icon: Icon(Icons.add_rounded, color: color)),
+        ],
+      ),
+    );
+  }
+}
+
+class _SprintGoalCard extends StatelessWidget {
+  final SprintTarget target;
+  final List<Factor> factors;
+
+  const _SprintGoalCard({required this.target, required this.factors});
+
+  @override
+  Widget build(BuildContext context) {
+    final linkedFactors = factors.where((f) => target.linkedFactorIds.contains(f.id)).toList();
+    final isOverdue = target.isOverdue;
+    final daysLeft = target.daysRemaining;
+    
+    return GlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                target.duration == SprintDuration.thirtyDays ? Icons.calendar_month_rounded : Icons.bolt_rounded,
+                color: isOverdue ? AppColors.danger : (target.duration == SprintDuration.thirtyDays ? AppColors.info : AppColors.warning),
+                size: 20,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(target.title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isOverdue ? AppColors.danger.withAlpha(30) : AppColors.surfaceLight,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  isOverdue ? 'Overdue' : '${daysLeft}d left',
+                  style: TextStyle(fontSize: 12, color: isOverdue ? AppColors.danger : AppColors.textMuted),
+                ),
+              ),
+            ],
+          ),
+          if (linkedFactors.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              children: linkedFactors.map((f) => Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withAlpha(20),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(f.name, style: TextStyle(fontSize: 11, color: AppColors.primary)),
+              )).toList(),
+            ),
+          ],
         ],
       ),
     );

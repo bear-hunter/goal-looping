@@ -35,6 +35,12 @@ class Reflection extends HiveObject {
   @HiveField(9)
   String? rawMarkdown; // Original pasted content
 
+  @HiveField(10)
+  String? targetFactorId; // PRIMARY factor this reflection targets
+
+  @HiveField(11)
+  String? previousExperimentId; // Cycling from previous Kolb's experiment
+
   Reflection({
     required this.id,
     this.experience = '',
@@ -46,6 +52,8 @@ class Reflection extends HiveObject {
     this.previousReflectionId,
     DateTime? createdAt,
     this.rawMarkdown,
+    this.targetFactorId,
+    this.previousExperimentId,
   })  : experimentIds = experimentIds ?? [],
         linkedFactorIds = linkedFactorIds ?? [],
         createdAt = createdAt ?? DateTime.now();

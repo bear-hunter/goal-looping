@@ -39,10 +39,10 @@ class HabitsScreen extends StatelessWidget {
                 ),
               ),
 
-              // Quit Habits Section
+              // Limiting Habits Section
               SliverToBoxAdapter(
                 child: _SectionHeader(
-                  title: 'Quit Habits',
+                  title: 'Limiting Habits',
                   subtitle: 'Track the absence of bad habits',
                   icon: Icons.block_rounded,
                   color: AppColors.danger,
@@ -52,7 +52,7 @@ class HabitsScreen extends StatelessWidget {
 
               if (state.quitHabits.isEmpty)
                 SliverToBoxAdapter(child: _EmptyCard(
-                  text: 'Add habits to avoid',
+                  text: 'Add limiting habits to avoid',
                   onTap: () => _showAddHabitDialog(context, state, HabitType.quit),
                 ))
               else
@@ -66,12 +66,12 @@ class HabitsScreen extends StatelessWidget {
                   ),
                 ),
 
-              // Build Habits Section
+              // Scripted Actions Section
               SliverToBoxAdapter(
                 child: _SectionHeader(
-                  title: 'Build Habits',
-                  subtitle: 'Positive habits to develop',
-                  icon: Icons.trending_up_rounded,
+                  title: 'Scripted Actions',
+                  subtitle: 'If X happens → I will do Y',
+                  icon: Icons.code_rounded,
                   color: AppColors.success,
                   onAdd: () => _showAddHabitDialog(context, state, HabitType.build),
                 ),
@@ -79,7 +79,7 @@ class HabitsScreen extends StatelessWidget {
 
               if (state.buildHabits.isEmpty)
                 SliverToBoxAdapter(child: _EmptyCard(
-                  text: 'Add positive habits',
+                  text: 'Add scripted responses',
                   onTap: () => _showAddHabitDialog(context, state, HabitType.build),
                 ))
               else

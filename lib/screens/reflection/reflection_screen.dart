@@ -278,15 +278,22 @@ class _NewReflectionSheet extends StatefulWidget {
 }
 
 class _NewReflectionSheetState extends State<_NewReflectionSheet> {
-  int _step = 0;
+  int _step = 0; // Start at Step 0: Factor selection
   final _experienceController = TextEditingController();
   final _reflectionController = TextEditingController();
   final _abstractionController = TextEditingController();
   final _experimentsController = TextEditingController();
   final _markdownController = TextEditingController();
+  
+  // Phase 4: Factor linkage and cycling
+  String? _selectedFactorId;
+  String? _previousExperimentId;
+  bool _isCyclingFromExperiment = false;
 
   @override
   Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+    
     return Container(
       height: MediaQuery.of(context).size.height * 0.85,
       decoration: BoxDecoration(
@@ -307,11 +314,11 @@ class _NewReflectionSheetState extends State<_NewReflectionSheet> {
             ),
           ),
 
-          // Progress
+          // Progress (6 steps now: 0=Factor, 1=Experience, 2=Reflection, 3=Abstraction, 4=Experiments, 5=Markdown)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(
-              children: List.generate(5, (i) => Expanded(
+              children: List.generate(6, (i) => Expanded(
                 child: Container(
                   height: 4,
                   margin: const EdgeInsets.symmetric(horizontal: 2),
@@ -328,7 +335,7 @@ class _NewReflectionSheetState extends State<_NewReflectionSheet> {
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(20),
-              child: _buildStepContent(),
+              child: _buildStepContent(state),
             ),
           ),
 
@@ -341,8 +348,8 @@ class _NewReflectionSheetState extends State<_NewReflectionSheet> {
                   TextButton(onPressed: () => setState(() => _step--), child: const Text('Back')),
                 const Spacer(),
                 ElevatedButton(
-                  onPressed: _step < 4 ? () => setState(() => _step++) : _saveReflection,
-                  child: Text(_step < 4 ? 'Next' : 'Save'),
+                  onPressed: _step < 5 ? () => setState(() => _step++) : _saveReflection,
+                  child: Text(_step < 5 ? 'Next' : 'Save'),
                 ),
               ],
             ),
@@ -352,20 +359,111 @@ class _NewReflectionSheetState extends State<_NewReflectionSheet> {
     );
   }
 
-  Widget _buildStepContent() {
+  Widget _buildStepContent(AppState state) {
     switch (_step) {
-      case 0:
+      case 0: // NEW: Factor Selection + Cycling
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Step 0: Target Factor', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+            const SizedBox(height: 8),
+            Text('Which Factor from your dissected tree are you improving?', style: TextStyle(color: AppColors.textMuted)),
+            const SizedBox(height: 16),
+            
+            // Factor selection
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: state.factors.map((f) {
+                final isSelected = _selectedFactorId == f.id;
+                return GestureDetector(
+                  onTap: () => setState(() => _selectedFactorId = f.id),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: isSelected ? AppColors.primary.withAlpha(30) : AppColors.surfaceLight,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: isSelected ? AppColors.primary : AppColors.glassBorder, width: isSelected ? 2 : 1),
+                    ),
+                    child: Text(f.name, style: TextStyle(
+                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                      color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                    )),
+                  ),
+                );
+              }).toList(),
+            ),
+            
+            if (state.factors.isEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text('⚠️ Add Factors in Strategy first', style: TextStyle(color: AppColors.warning)),
+              ),
+            
+            const SizedBox(height: 24),
+            
+            // Cycling from previous experiment
+            Text('Cycling from previous?', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+            const SizedBox(height: 8),
+            Text('Always cycle experiments to ensure marginal gains compound', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+            const SizedBox(height: 12),
+            
+            if (state.pendingExperiments.isNotEmpty)
+              ...state.pendingExperiments.take(5).map((exp) {
+                final isSelected = _previousExperimentId == exp.id;
+                return GestureDetector(
+                  onTap: () => setState(() {
+                    _previousExperimentId = isSelected ? null : exp.id;
+                    _isCyclingFromExperiment = !isSelected;
+                    if (!isSelected) {
+                      _experienceController.text = 'Experiment: ${exp.description}';
+                    }
+                  }),
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: isSelected ? AppColors.warning.withAlpha(30) : AppColors.surfaceLight,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: isSelected ? AppColors.warning : AppColors.glassBorder),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.science_rounded, color: isSelected ? AppColors.warning : AppColors.textMuted, size: 18),
+                        const SizedBox(width: 10),
+                        Expanded(child: Text(exp.description, style: TextStyle(color: AppColors.textPrimary), maxLines: 2, overflow: TextOverflow.ellipsis)),
+                        if (isSelected) Icon(Icons.check_circle_rounded, color: AppColors.warning, size: 18),
+                      ],
+                    ),
+                  ),
+                );
+              }),
+            
+            if (state.pendingExperiments.isEmpty)
+              Text('No pending experiments to cycle from', style: TextStyle(color: AppColors.textMuted)),
+          ],
+        );
+      case 1:
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Step 1: Experience', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
             const SizedBox(height: 8),
             Text('What experience do you want to reflect on?', style: TextStyle(color: AppColors.textMuted)),
+            if (_isCyclingFromExperiment)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(color: AppColors.warning.withAlpha(20), borderRadius: BorderRadius.circular(8)),
+                  child: Text('♻️ Cycling from previous experiment', style: TextStyle(color: AppColors.warning, fontSize: 12)),
+                ),
+              ),
             const SizedBox(height: 16),
             TextField(controller: _experienceController, maxLines: 4, decoration: const InputDecoration(hintText: 'Describe the experience...')),
           ],
         );
-      case 1:
+      case 2:
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -376,7 +474,7 @@ class _NewReflectionSheetState extends State<_NewReflectionSheet> {
             TextField(controller: _reflectionController, maxLines: 6, decoration: const InputDecoration(hintText: 'Reflect on the experience...')),
           ],
         );
-      case 2:
+      case 3:
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -387,18 +485,23 @@ class _NewReflectionSheetState extends State<_NewReflectionSheet> {
             TextField(controller: _abstractionController, maxLines: 6, decoration: const InputDecoration(hintText: 'Identify patterns...')),
           ],
         );
-      case 3:
+      case 4:
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Step 4: Experiments', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
             const SizedBox(height: 8),
-            Text('List potential actions to experiment with (one per line)', style: TextStyle(color: AppColors.textMuted)),
-            const SizedBox(height: 16),
-            TextField(controller: _experimentsController, maxLines: 6, decoration: const InputDecoration(hintText: '- Start task with easy 5-min block\n- Set phone to DND mode\n- ...')),
+            Text('List 1-3 experiments (one per line)', style: TextStyle(color: AppColors.textMuted)),
+            Container(
+              margin: const EdgeInsets.symmetric(vertical: 8),
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(color: AppColors.info.withAlpha(20), borderRadius: BorderRadius.circular(8)),
+              child: Text('💡 Less than 3 experiments is ideal for focused progress', style: TextStyle(color: AppColors.info, fontSize: 12)),
+            ),
+            TextField(controller: _experimentsController, maxLines: 6, decoration: const InputDecoration(hintText: '- Experiment 1\n- Experiment 2\n- Experiment 3 (max)')),
           ],
         );
-      case 4:
+      case 5:
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -420,7 +523,6 @@ class _NewReflectionSheetState extends State<_NewReflectionSheet> {
   }
 
   void _parseMarkdown(String markdown) {
-    // Simple parsing for # Experience and # Experiments headers
     final expMatch = RegExp(r'#\s*Experience\s*\n(.*?)(?=#|$)', dotAll: true).firstMatch(markdown);
     if (expMatch != null) _experienceController.text = expMatch.group(1)?.trim() ?? '';
 
@@ -432,20 +534,25 @@ class _NewReflectionSheetState extends State<_NewReflectionSheet> {
     final state = context.read<AppState>();
     final reflectionId = StorageService.generateId();
 
-    // Create reflection
+    // Create reflection with Factor linkage
     final reflection = Reflection(
       id: reflectionId,
       experience: _experienceController.text,
       reflection: _reflectionController.text,
       abstraction: _abstractionController.text,
       rawMarkdown: _markdownController.text.isNotEmpty ? _markdownController.text : null,
+      targetFactorId: _selectedFactorId,
+      previousExperimentId: _previousExperimentId,
+      isFollowUp: _isCyclingFromExperiment,
+      linkedFactorIds: _selectedFactorId != null ? [_selectedFactorId!] : [],
     );
 
-    // Parse experiments (one per line, remove bullets)
+    // Parse experiments (limit to 3)
     final experimentLines = _experimentsController.text
         .split('\n')
         .map((l) => l.replaceFirst(RegExp(r'^[-*•]\s*'), '').trim())
         .where((l) => l.isNotEmpty)
+        .take(3) // Max 3 experiments
         .toList();
 
     final experimentIds = <String>[];
@@ -465,3 +572,4 @@ class _NewReflectionSheetState extends State<_NewReflectionSheet> {
     Navigator.pop(context);
   }
 }
+

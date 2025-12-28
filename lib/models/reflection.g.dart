@@ -27,13 +27,15 @@ class ReflectionAdapter extends TypeAdapter<Reflection> {
       previousReflectionId: fields[7] as String?,
       createdAt: fields[8] as DateTime?,
       rawMarkdown: fields[9] as String?,
+      targetFactorId: fields[10] as String?,
+      previousExperimentId: fields[11] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Reflection obj) {
     writer
-      ..writeByte(10)
+      ..writeByte(12)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -53,7 +55,11 @@ class ReflectionAdapter extends TypeAdapter<Reflection> {
       ..writeByte(8)
       ..write(obj.createdAt)
       ..writeByte(9)
-      ..write(obj.rawMarkdown);
+      ..write(obj.rawMarkdown)
+      ..writeByte(10)
+      ..write(obj.targetFactorId)
+      ..writeByte(11)
+      ..write(obj.previousExperimentId);
   }
 
   @override
