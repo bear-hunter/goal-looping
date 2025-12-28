@@ -26,6 +26,7 @@ class AppColors {
 
   // Glass effect colors
   static const Color glassBorder = Color(0x20FFFFFF);
+  static const Color divider = glassBorder;
   static const Color glassBackground = Color(0x10FFFFFF);
 
   // Gradients

@@ -92,21 +92,13 @@ class _FactorDetailScreenState extends State<FactorDetailScreen> {
                 // Tree Platform Visualization
                 TreePlatform(
                   factor: factor,
-                  dayNumber: factor.currentLevel * 10, // Approximate progress
-                  totalDays: 100, // Progress milestone
+                  effortUnits: effortUnits,
+                  tasksCompleted: linkedTasks.where((t) => t.isCompleted).length,
+                  habitsLogged: linkedHabits.where((h) => h.isLoggedToday).length,
+                  reflections: linkedReflections.length,
                 ).animate().fadeIn(duration: 500.ms),
 
                 const SizedBox(height: 24),
-                
-                // Effort summary row
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    _MiniStat(label: 'Effort', value: '$effortUnits', icon: Icons.bolt_rounded, color: AppColors.warning),
-                    _MiniStat(label: 'Level', value: '${factor.currentLevel}', icon: Icons.trending_up_rounded, color: AppColors.primary),
-                    _MiniStat(label: 'Health', value: '${factor.healthPercent.toInt()}%', icon: Icons.favorite_rounded, color: AppColors.danger),
-                  ],
-                ),
 
                 // Gap Analysis
                 _SectionHeader(title: 'Gap Analysis', icon: Icons.analytics_rounded, color: AppColors.info),

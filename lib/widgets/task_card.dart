@@ -3,7 +3,10 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../core/theme/theme.dart';
 import '../models/task.dart';
 
-/// Premium task card with subtask expansion
+/// Premium task card with smart features:
+/// - Effort/Impact tags
+/// - Staleness detection
+/// - Focus Mode entry
 class TaskCard extends StatelessWidget {
   final Task task;
   final VoidCallback? onTap;
@@ -11,6 +14,7 @@ class TaskCard extends StatelessWidget {
   final VoidCallback? onDelete;
   final VoidCallback? onPromote;
   final VoidCallback? onDemote;
+  final VoidCallback? onFocusMode; // NEW: Enter focus mode
   final int subtaskCount;
   final int subtaskCompleted;
   final bool showActions;
@@ -23,6 +27,7 @@ class TaskCard extends StatelessWidget {
     this.onDelete,
     this.onPromote,
     this.onDemote,
+    this.onFocusMode,
     this.subtaskCount = 0,
     this.subtaskCompleted = 0,
     this.showActions = true,
@@ -52,6 +57,8 @@ class TaskCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isStale = task.isStale;
+    
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: Material(
@@ -67,19 +74,25 @@ class TaskCard extends StatelessWidget {
                 end: Alignment.bottomRight,
                 colors: task.isPriority
                     ? [
-                        AppColors.primary.withOpacity(0.12),
-                        AppColors.primary.withOpacity(0.05),
+                        isStale
+                            ? AppColors.warning.withAlpha(30)
+                            : AppColors.primary.withAlpha(30),
+                        isStale
+                            ? AppColors.warning.withAlpha(12)
+                            : AppColors.primary.withAlpha(12),
                       ]
                     : [
                         AppColors.surface,
-                        AppColors.surface.withOpacity(0.8),
+                        AppColors.surface.withAlpha(200),
                       ],
               ),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: task.isPriority 
-                    ? AppColors.primary.withOpacity(0.4) 
-                    : AppColors.glassBorder,
+                color: isStale
+                    ? AppColors.warning.withAlpha(100)
+                    : task.isPriority 
+                        ? AppColors.primary.withAlpha(100) 
+                        : AppColors.glassBorder,
                 width: task.isPriority ? 1.5 : 1,
               ),
             ),
@@ -135,11 +148,26 @@ class TaskCard extends StatelessWidget {
                       ),
                     ),
 
+                    // Effort/Impact tags
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceLight,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        '${task.effortEmoji} ${task.impactEmoji}',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ),
+                    
+                    const SizedBox(width: 6),
+
                     // Source indicator
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: sourceColor.withOpacity(0.1),
+                        color: sourceColor.withAlpha(25),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Icon(
@@ -148,8 +176,52 @@ class TaskCard extends StatelessWidget {
                         color: sourceColor,
                       ),
                     ),
+
+                    if (task.customTag != null && task.customTag!.isNotEmpty) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withAlpha(20),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: AppColors.primary.withAlpha(50)),
+                        ),
+                        child: Text(
+                          task.customTag!,
+                          style: TextStyle(
+                            fontSize: 11, 
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
+
+                // Staleness warning
+                if (isStale && task.isPriority && !task.isCompleted) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.warning.withAlpha(30),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.warning.withAlpha(60)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.hourglass_bottom_rounded, size: 14, color: AppColors.warning),
+                        const SizedBox(width: 6),
+                        Text(
+                          '⚡ Stuck for ${task.hoursInPriority}h - Break it down?',
+                          style: TextStyle(fontSize: 11, color: AppColors.warning, fontWeight: FontWeight.w500),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
 
                 // Subtask progress
                 if (subtaskCount > 0) ...[
@@ -186,11 +258,70 @@ class TaskCard extends StatelessWidget {
                   ),
                 ],
 
+                // Deadline Indicator
+                if (task.deadline != null && !task.isCompleted) ...[
+                  const SizedBox(height: 12),
+                  Builder(
+                    builder: (context) {
+                      final now = DateTime.now();
+                      final today = DateTime(now.year, now.month, now.day);
+                      final deadlineDate = DateTime(task.deadline!.year, task.deadline!.month, task.deadline!.day);
+                      final daysRemaining = deadlineDate.difference(today).inDays;
+                      
+                      Color deadlineColor;
+                      if (daysRemaining < 0) {
+                        deadlineColor = AppColors.danger;
+                      } else if (daysRemaining <= 2) {
+                        deadlineColor = AppColors.warning;
+                      } else {
+                        deadlineColor = AppColors.info;
+                      }
+                      
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: deadlineColor.withAlpha(20),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: deadlineColor.withAlpha(40)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.event_note_rounded, size: 14, color: deadlineColor),
+                            const SizedBox(width: 6),
+                            Text(
+                              daysRemaining < 0 
+                                  ? 'Overdue (${daysRemaining.abs()}d)' 
+                                  : (daysRemaining == 0 ? 'Due Today' : '$daysRemaining days left'),
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: deadlineColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ],
+
                 // Action buttons
                 if (showActions && !task.isCompleted) ...[
                   const SizedBox(height: 12),
                   Row(
                     children: [
+                      // Focus Mode button (only for priority tasks)
+                      if (task.isPriority && onFocusMode != null)
+                        _ActionButton(
+                          icon: Icons.center_focus_strong_rounded,
+                          label: 'Focus',
+                          color: AppColors.success,
+                          onTap: onFocusMode,
+                        ),
+                      if (task.isPriority && onFocusMode != null)
+                        const SizedBox(width: 8),
+                      
                       if (!task.isPriority)
                         _ActionButton(
                           icon: Icons.arrow_upward_rounded,
@@ -244,7 +375,7 @@ class _ActionButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withAlpha(25),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(

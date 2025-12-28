@@ -28,13 +28,21 @@ class TaskAdapter extends TypeAdapter<Task> {
       linkedFactorIds: (fields[8] as List?)?.cast<String>(),
       experimentId: fields[9] as String?,
       sortOrder: fields[10] as int,
+      effort: fields[11] as TaskEffort,
+      impact: fields[12] as TaskImpact,
+      addedToPriorityAt: fields[13] as DateTime?,
+      abandonReason: fields[14] as TaskAbandonReason?,
+      blockedByTaskId: fields[15] as String?,
+      category: fields[16] as String,
+      deadline: fields[17] as DateTime?,
+      customTag: fields[18] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Task obj) {
     writer
-      ..writeByte(11)
+      ..writeByte(19)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -56,7 +64,23 @@ class TaskAdapter extends TypeAdapter<Task> {
       ..writeByte(9)
       ..write(obj.experimentId)
       ..writeByte(10)
-      ..write(obj.sortOrder);
+      ..write(obj.sortOrder)
+      ..writeByte(11)
+      ..write(obj.effort)
+      ..writeByte(12)
+      ..write(obj.impact)
+      ..writeByte(13)
+      ..write(obj.addedToPriorityAt)
+      ..writeByte(14)
+      ..write(obj.abandonReason)
+      ..writeByte(15)
+      ..write(obj.blockedByTaskId)
+      ..writeByte(16)
+      ..write(obj.category)
+      ..writeByte(17)
+      ..write(obj.deadline)
+      ..writeByte(18)
+      ..write(obj.customTag);
   }
 
   @override
@@ -110,6 +134,133 @@ class TaskSourceAdapter extends TypeAdapter<TaskSource> {
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is TaskSourceAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
+}
+
+class TaskEffortAdapter extends TypeAdapter<TaskEffort> {
+  @override
+  final int typeId = 20;
+
+  @override
+  TaskEffort read(BinaryReader reader) {
+    switch (reader.readByte()) {
+      case 0:
+        return TaskEffort.quick;
+      case 1:
+        return TaskEffort.deep;
+      default:
+        return TaskEffort.quick;
+    }
+  }
+
+  @override
+  void write(BinaryWriter writer, TaskEffort obj) {
+    switch (obj) {
+      case TaskEffort.quick:
+        writer.writeByte(0);
+        break;
+      case TaskEffort.deep:
+        writer.writeByte(1);
+        break;
+    }
+  }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is TaskEffortAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
+}
+
+class TaskImpactAdapter extends TypeAdapter<TaskImpact> {
+  @override
+  final int typeId = 21;
+
+  @override
+  TaskImpact read(BinaryReader reader) {
+    switch (reader.readByte()) {
+      case 0:
+        return TaskImpact.high;
+      case 1:
+        return TaskImpact.maintenance;
+      default:
+        return TaskImpact.high;
+    }
+  }
+
+  @override
+  void write(BinaryWriter writer, TaskImpact obj) {
+    switch (obj) {
+      case TaskImpact.high:
+        writer.writeByte(0);
+        break;
+      case TaskImpact.maintenance:
+        writer.writeByte(1);
+        break;
+    }
+  }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is TaskImpactAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
+}
+
+class TaskAbandonReasonAdapter extends TypeAdapter<TaskAbandonReason> {
+  @override
+  final int typeId = 22;
+
+  @override
+  TaskAbandonReason read(BinaryReader reader) {
+    switch (reader.readByte()) {
+      case 0:
+        return TaskAbandonReason.noTime;
+      case 1:
+        return TaskAbandonReason.tooHard;
+      case 2:
+        return TaskAbandonReason.notImportant;
+      case 3:
+        return TaskAbandonReason.completed;
+      default:
+        return TaskAbandonReason.noTime;
+    }
+  }
+
+  @override
+  void write(BinaryWriter writer, TaskAbandonReason obj) {
+    switch (obj) {
+      case TaskAbandonReason.noTime:
+        writer.writeByte(0);
+        break;
+      case TaskAbandonReason.tooHard:
+        writer.writeByte(1);
+        break;
+      case TaskAbandonReason.notImportant:
+        writer.writeByte(2);
+        break;
+      case TaskAbandonReason.completed:
+        writer.writeByte(3);
+        break;
+    }
+  }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is TaskAbandonReasonAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

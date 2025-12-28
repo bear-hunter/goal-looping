@@ -10,6 +10,7 @@ import '../models/experiment.dart';
 import '../models/time_availability.dart';
 import '../models/user_stats.dart';
 import '../models/achievement.dart';
+import '../models/focus_log.dart';
 import '../services/storage_service.dart';
 
 /// Main application state using ChangeNotifier
@@ -25,6 +26,8 @@ class AppState extends ChangeNotifier {
   List<BarrierEntry> _barriers = [];
   TimeAvailability? _timeAvailability;
   UserStats _userStats = UserStats();
+  List<FocusLog> _focusLogs = [];
+  List<String> _taskCategories = [];
   bool _isLoading = true;
 
   // ========== GETTERS ==========
@@ -38,21 +41,41 @@ class AppState extends ChangeNotifier {
   List<BarrierEntry> get barriers => _barriers;
   TimeAvailability? get timeAvailability => _timeAvailability;
   UserStats get userStats => _userStats;
+  List<FocusLog> get focusLogs => _focusLogs;
+  List<String> get taskCategories => _taskCategories;
   bool get isLoading => _isLoading;
 
   // Computed getters
   Goal? get activeGoal => _goals.isNotEmpty ? _goals.first : null;
-  
-  List<Task> get priorityTasks => 
+
+  List<Task> get priorityTasks =>
       _tasks.where((t) => t.isPriority && !t.isCompleted).toList()
         ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
-  
-  List<Task> get backlogTasks => 
-      _tasks.where((t) => !t.isPriority && !t.isCompleted).toList()
-        ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
 
-  List<Task> get completedTasks =>
-      _tasks.where((t) => t.isCompleted).toList();
+  List<Task> get backlogTasks =>
+      _tasks.where((t) => !t.isPriority && !t.isCompleted).toList()
+        ..sort((a, b) {
+          // Sort by deadline if available, then by sortOrder
+          if (a.deadline != null && b.deadline != null) {
+            return a.deadline!.compareTo(b.deadline!);
+          }
+          if (a.deadline != null) return -1;
+          if (b.deadline != null) return 1;
+          return a.sortOrder.compareTo(b.sortOrder);
+        });
+
+  Map<String, List<Task>> get categorizedBacklog {
+    final Map<String, List<Task>> groups = {};
+    for (final task in backlogTasks) {
+      if (!groups.containsKey(task.category)) {
+        groups[task.category] = [];
+      }
+      groups[task.category]!.add(task);
+    }
+    return groups;
+  }
+
+  List<Task> get completedTasks => _tasks.where((t) => t.isCompleted).toList();
 
   bool get canAddPriorityTask => priorityTasks.length < 2;
 
@@ -85,16 +108,87 @@ class AppState extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
 
-    _goals = StorageService.getAllGoals();
-    _factors = StorageService.getAllFactors();
-    _sprintTargets = StorageService.getAllSprintTargets();
-    _tasks = StorageService.getAllTasks();
-    _habits = StorageService.getAllHabits();
-    _reflections = StorageService.getAllReflections();
-    _experiments = StorageService.getAllExperiments();
-    _barriers = StorageService.getAllBarriers();
-    _timeAvailability = StorageService.getTimeAvailability();
-    _userStats = StorageService.getUserStats();
+    // Ensure boxes are open (handles hot reload scenarios)
+    if (!StorageService.isInitialized) {
+      try {
+        await StorageService.reopenBoxes();
+      } catch (e) {
+        debugPrint('Failed to reopen boxes during loadData: $e');
+      }
+    }
+
+    try {
+      _goals = StorageService.getAllGoals();
+    } catch (e) {
+      _goals = [];
+    }
+
+    try {
+      _factors = StorageService.getAllFactors();
+    } catch (e) {
+      _factors = [];
+    }
+
+    try {
+      _sprintTargets = StorageService.getAllSprintTargets();
+    } catch (e) {
+      _sprintTargets = [];
+    }
+
+    try {
+      _tasks = StorageService.getAllTasks();
+    } catch (e) {
+      _tasks = [];
+    }
+
+    try {
+      _habits = StorageService.getAllHabits();
+    } catch (e) {
+      _habits = [];
+    }
+
+    try {
+      _reflections = StorageService.getAllReflections();
+    } catch (e) {
+      _reflections = [];
+    }
+
+    try {
+      _experiments = StorageService.getAllExperiments();
+    } catch (e) {
+      _experiments = [];
+    }
+
+    try {
+      _barriers = StorageService.getAllBarriers();
+    } catch (e) {
+      _barriers = [];
+    }
+
+    try {
+      _timeAvailability = StorageService.getTimeAvailability();
+    } catch (e) {
+      _timeAvailability = null;
+    }
+
+    try {
+      _userStats = StorageService.getUserStats();
+    } catch (e) {
+      _userStats = UserStats();
+    }
+
+    try {
+      _focusLogs = StorageService.getAllFocusLogs();
+    } catch (e) {
+      _focusLogs = [];
+    }
+
+    try {
+      _taskCategories = StorageService.getTaskCategories();
+    } catch (e) {
+      _taskCategories =
+          []; // Will fallback to default in StorageService, but safely empty here
+    }
 
     _isLoading = false;
     notifyListeners();
@@ -118,10 +212,43 @@ class AppState extends ChangeNotifier {
     await StorageService.deleteGoal(id);
     _goals.removeWhere((g) => g.id == id);
     // Also remove associated factors
-    final factorIds = _factors.where((f) => f.goalId == id).map((f) => f.id).toList();
+    final factorIds = _factors
+        .where((f) => f.goalId == id)
+        .map((f) => f.id)
+        .toList();
     for (final factorId in factorIds) {
       await deleteFactor(factorId);
     }
+    notifyListeners();
+  }
+
+  // ========== CATEGORIES ==========
+  Future<void> addTaskCategory(String category) async {
+    if (_taskCategories.contains(category)) return;
+    _taskCategories.add(category);
+    await StorageService.saveTaskCategories(_taskCategories);
+    notifyListeners();
+  }
+
+  Future<void> deleteTaskCategory(String category) async {
+    _taskCategories.remove(category);
+    await StorageService.saveTaskCategories(_taskCategories);
+    notifyListeners();
+  }
+
+  Future<void> renameTaskCategory(String oldName, String newName) async {
+    final index = _taskCategories.indexOf(oldName);
+    if (index != -1) {
+      _taskCategories[index] = newName;
+      await StorageService.saveTaskCategories(_taskCategories);
+      notifyListeners();
+    }
+  }
+
+  Future<void> reorderTaskCategories(List<String> categories) async {
+    _taskCategories.clear();
+    _taskCategories.addAll(categories);
+    await StorageService.saveTaskCategories(_taskCategories);
     notifyListeners();
   }
 
@@ -146,12 +273,12 @@ class AppState extends ChangeNotifier {
   }
 
   // Phase 5: Focus Factor System
-  List<Factor> get activeFocusFactors => 
+  List<Factor> get activeFocusFactors =>
       _factors.where((f) => f.isActiveFocus).toList();
-  
-  List<Factor> get dormantFactors => 
+
+  List<Factor> get dormantFactors =>
       _factors.where((f) => !f.isActiveFocus).toList();
-  
+
   bool get canAddActiveFocus => activeFocusFactors.length < 2;
 
   Future<void> setFactorActive(String id) async {
@@ -219,9 +346,25 @@ class AppState extends ChangeNotifier {
     if (task.isPriority && !canAddPriorityTask) {
       throw Exception('Cannot add more than 2 priority tasks');
     }
-    await StorageService.saveTask(task);
+
+    // Add to local state first (optimistic update)
     _tasks.add(task);
     notifyListeners();
+
+    // Then persist to storage with error handling
+    try {
+      await StorageService.saveTask(task);
+    } catch (e) {
+      debugPrint('Failed to save task: $e');
+      // Try to recover by reopening boxes
+      try {
+        await StorageService.reopenBoxes();
+        await StorageService.saveTask(task);
+      } catch (e2) {
+        debugPrint('Retry save also failed: $e2');
+        // Task is still in local state, will persist on next app restart
+      }
+    }
   }
 
   Future<void> updateTask(Task task) async {
@@ -237,13 +380,19 @@ class AppState extends ChangeNotifier {
     task.isCompleted = !task.isCompleted;
     task.completedAt = task.isCompleted ? DateTime.now() : null;
     await StorageService.saveTask(task);
-    
+
     // Award XP if completing (not uncompleting)
     if (task.isCompleted && !wasCompleted) {
       if (task.isPriority) {
-        _userStats.earnReward(xp: XPRewards.completePriorityTask, coinReward: XPRewards.coinsPriorityTask);
+        _userStats.earnReward(
+          xp: XPRewards.completePriorityTask,
+          coinReward: XPRewards.coinsPriorityTask,
+        );
       } else {
-        _userStats.earnReward(xp: XPRewards.completeBacklogTask, coinReward: XPRewards.coinsBacklogTask);
+        _userStats.earnReward(
+          xp: XPRewards.completeBacklogTask,
+          coinReward: XPRewards.coinsBacklogTask,
+        );
       }
     }
     notifyListeners();
@@ -255,6 +404,7 @@ class AppState extends ChangeNotifier {
     }
     final task = _tasks.firstWhere((t) => t.id == id);
     task.isPriority = true;
+    task.addedToPriorityAt = DateTime.now();
     await StorageService.saveTask(task);
     notifyListeners();
   }
@@ -262,6 +412,7 @@ class AppState extends ChangeNotifier {
   Future<void> demoteTaskToBacklog(String id) async {
     final task = _tasks.firstWhere((t) => t.id == id);
     task.isPriority = false;
+    task.addedToPriorityAt = null;
     await StorageService.saveTask(task);
     notifyListeners();
   }
@@ -269,6 +420,19 @@ class AppState extends ChangeNotifier {
   Future<void> deleteTask(String id) async {
     await StorageService.deleteTask(id);
     _tasks.removeWhere((t) => t.id == id);
+    notifyListeners();
+  }
+
+  // --- Focus Session Logs ---
+  Future<void> saveFocusSession(FocusLog log) async {
+    await StorageService.saveFocusLog(log);
+    _focusLogs.add(log);
+
+    // Award XP for focusing
+    _userStats.earnReward(
+      xp: log.duration.inMinutes * 2,
+      coinReward: log.duration.inMinutes ~/ 5,
+    );
     notifyListeners();
   }
 
@@ -310,14 +474,28 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> logHabit(String id, {required bool completed, String? note, int? mood, String? barrier}) async {
+  Future<void> logHabit(
+    String id, {
+    required bool completed,
+    String? note,
+    int? mood,
+    String? barrier,
+  }) async {
     final habit = _habits.firstWhere((h) => h.id == id);
-    habit.logToday(completed: completed, note: note, mood: mood, barrier: barrier);
+    habit.logToday(
+      completed: completed,
+      note: note,
+      mood: mood,
+      barrier: barrier,
+    );
     await StorageService.saveHabit(habit);
-    
+
     // Award XP for logging habits
     if (completed) {
-      _userStats.earnReward(xp: XPRewards.logHabitCompleted, coinReward: XPRewards.coinsHabitCompleted);
+      _userStats.earnReward(
+        xp: XPRewards.logHabitCompleted,
+        coinReward: XPRewards.coinsHabitCompleted,
+      );
     } else {
       _userStats.earnReward(xp: XPRewards.logHabitFailed, coinReward: 0);
     }
@@ -348,9 +526,12 @@ class AppState extends ChangeNotifier {
   Future<void> addReflection(Reflection reflection) async {
     await StorageService.saveReflection(reflection);
     _reflections.add(reflection);
-    
+
     // Award XP for completing reflection
-    _userStats.earnReward(xp: XPRewards.completeReflection, coinReward: XPRewards.coinsReflection);
+    _userStats.earnReward(
+      xp: XPRewards.completeReflection,
+      coinReward: XPRewards.coinsReflection,
+    );
     notifyListeners();
   }
 
@@ -374,9 +555,12 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> promoteExperimentToTask(String experimentId, {required bool toPriority}) async {
+  Future<void> promoteExperimentToTask(
+    String experimentId, {
+    required bool toPriority,
+  }) async {
     final experiment = _experiments.firstWhere((e) => e.id == experimentId);
-    
+
     if (toPriority && !canAddPriorityTask) {
       throw Exception('Cannot add more than 2 priority tasks');
     }
@@ -426,9 +610,12 @@ class AppState extends ChangeNotifier {
 
   /// Get total effort units for a Factor (Work Volume metric)
   int getEffortUnitsForFactor(String factorId) {
-    final taskCount = getTasksForFactor(factorId).where((t) => t.isCompleted).length;
-    final habitLogs = getHabitsForFactor(factorId)
-        .fold<int>(0, (sum, h) => sum + h.logs.where((l) => l.completed).length);
+    final taskCount = getTasksForFactor(
+      factorId,
+    ).where((t) => t.isCompleted).length;
+    final habitLogs = getHabitsForFactor(
+      factorId,
+    ).fold<int>(0, (sum, h) => sum + h.logs.where((l) => l.completed).length);
     final reflectionCount = getReflectionsForFactor(factorId).length;
     return taskCount + habitLogs + reflectionCount;
   }
@@ -457,9 +644,10 @@ class AppState extends ChangeNotifier {
 
   // ========== PHASE 5: ACHIEVEMENTS ==========
   final List<String> _pendingAchievementNotifications = [];
-  
-  List<String> get pendingAchievementNotifications => _pendingAchievementNotifications;
-  
+
+  List<String> get pendingAchievementNotifications =>
+      _pendingAchievementNotifications;
+
   void clearAchievementNotification(String achievementId) {
     _pendingAchievementNotifications.remove(achievementId);
     notifyListeners();
@@ -468,77 +656,93 @@ class AppState extends ChangeNotifier {
   /// Check and unlock achievements based on current state
   void checkAchievements() {
     // first_reflection: Complete first reflection
-    if (_reflections.isNotEmpty && !_userStats.unlockedBadgeIds.contains('first_reflection')) {
+    if (_reflections.isNotEmpty &&
+        !_userStats.unlockedBadgeIds.contains('first_reflection')) {
       _unlockAchievement('first_reflection');
     }
 
     // reflection_10: Complete 10 reflections
-    if (_reflections.length >= 10 && !_userStats.unlockedBadgeIds.contains('reflection_10')) {
+    if (_reflections.length >= 10 &&
+        !_userStats.unlockedBadgeIds.contains('reflection_10')) {
       _unlockAchievement('reflection_10');
     }
 
     // experiments_100: Create 100 experiments
-    if (_experiments.length >= 100 && !_userStats.unlockedBadgeIds.contains('experiments_100')) {
+    if (_experiments.length >= 100 &&
+        !_userStats.unlockedBadgeIds.contains('experiments_100')) {
       _unlockAchievement('experiments_100');
     }
 
     // streak_7: 7-day streak
-    if (_userStats.currentStreak >= 7 && !_userStats.unlockedBadgeIds.contains('streak_7')) {
+    if (_userStats.currentStreak >= 7 &&
+        !_userStats.unlockedBadgeIds.contains('streak_7')) {
       _unlockAchievement('streak_7');
     }
 
     // streak_30: 30-day streak
-    if (_userStats.currentStreak >= 30 && !_userStats.unlockedBadgeIds.contains('streak_30')) {
+    if (_userStats.currentStreak >= 30 &&
+        !_userStats.unlockedBadgeIds.contains('streak_30')) {
       _unlockAchievement('streak_30');
     }
 
     // streak_100: 100-day streak
-    if (_userStats.currentStreak >= 100 && !_userStats.unlockedBadgeIds.contains('streak_100')) {
+    if (_userStats.currentStreak >= 100 &&
+        !_userStats.unlockedBadgeIds.contains('streak_100')) {
       _unlockAchievement('streak_100');
     }
 
     // barrier_buster: Log 10 barriers
-    if (_barriers.length >= 10 && !_userStats.unlockedBadgeIds.contains('barrier_buster')) {
+    if (_barriers.length >= 10 &&
+        !_userStats.unlockedBadgeIds.contains('barrier_buster')) {
       _unlockAchievement('barrier_buster');
     }
 
     // first_top2: Complete first priority task
-    if (_tasks.any((t) => t.isPriority && t.isCompleted) && !_userStats.unlockedBadgeIds.contains('first_top2')) {
+    if (_tasks.any((t) => t.isPriority && t.isCompleted) &&
+        !_userStats.unlockedBadgeIds.contains('first_top2')) {
       _unlockAchievement('first_top2');
     }
 
     // tasks_50: Complete 50 tasks
-    if (_tasks.where((t) => t.isCompleted).length >= 50 && !_userStats.unlockedBadgeIds.contains('tasks_50')) {
+    if (_tasks.where((t) => t.isCompleted).length >= 50 &&
+        !_userStats.unlockedBadgeIds.contains('tasks_50')) {
       _unlockAchievement('tasks_50');
     }
 
     // zero_backlog: Clear entire backlog (no incomplete backlog tasks)
-    if (backlogTasks.isEmpty && _tasks.isNotEmpty && !_userStats.unlockedBadgeIds.contains('zero_backlog')) {
+    if (backlogTasks.isEmpty &&
+        _tasks.isNotEmpty &&
+        !_userStats.unlockedBadgeIds.contains('zero_backlog')) {
       _unlockAchievement('zero_backlog');
     }
 
     // first_goal: Set first goal
-    if (_goals.isNotEmpty && !_userStats.unlockedBadgeIds.contains('first_goal')) {
+    if (_goals.isNotEmpty &&
+        !_userStats.unlockedBadgeIds.contains('first_goal')) {
       _unlockAchievement('first_goal');
     }
 
     // factor_master: Create 5 Factors
-    if (_factors.length >= 5 && !_userStats.unlockedBadgeIds.contains('factor_master')) {
+    if (_factors.length >= 5 &&
+        !_userStats.unlockedBadgeIds.contains('factor_master')) {
       _unlockAchievement('factor_master');
     }
 
     // level_10: Reach Level 10 on any Factor
-    if (_factors.any((f) => f.currentLevel >= 10) && !_userStats.unlockedBadgeIds.contains('level_10')) {
+    if (_factors.any((f) => f.currentLevel >= 10) &&
+        !_userStats.unlockedBadgeIds.contains('level_10')) {
       _unlockAchievement('level_10');
     }
 
     // xp_1000: Earn 1000 XP
-    if (_userStats.totalXP >= 1000 && !_userStats.unlockedBadgeIds.contains('xp_1000')) {
+    if (_userStats.totalXP >= 1000 &&
+        !_userStats.unlockedBadgeIds.contains('xp_1000')) {
       _unlockAchievement('xp_1000');
     }
 
     // xp_10000: Earn 10000 XP
-    if (_userStats.totalXP >= 10000 && !_userStats.unlockedBadgeIds.contains('xp_10000')) {
+    if (_userStats.totalXP >= 10000 &&
+        !_userStats.unlockedBadgeIds.contains('xp_10000')) {
       _unlockAchievement('xp_10000');
     }
   }
@@ -549,13 +753,16 @@ class AppState extends ChangeNotifier {
 
     // Mark as unlocked
     _userStats.unlockBadge(id);
-    
+
     // Award XP and coins
-    _userStats.earnReward(xp: achievement.xpReward, coinReward: achievement.coinReward);
-    
+    _userStats.earnReward(
+      xp: achievement.xpReward,
+      coinReward: achievement.coinReward,
+    );
+
     // Queue notification
     _pendingAchievementNotifications.add(id);
-    
+
     notifyListeners();
   }
 

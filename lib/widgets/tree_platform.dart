@@ -6,21 +6,21 @@ import '../models/growth_area.dart';
 import 'forest_platform.dart';
 
 /// Individual tree on a wooden platform
-/// Used in Factor Detail screens - inspired by the reference image
+/// Used in Factor Detail screens - shows level progress and effort invested
 class TreePlatform extends StatelessWidget {
   final Factor factor;
-  final int dayNumber;
-  final int totalDays;
-  final VoidCallback? onWater;
-  final VoidCallback? onPrune;
+  final int effortUnits;
+  final int tasksCompleted;
+  final int habitsLogged;
+  final int reflections;
 
   const TreePlatform({
     super.key,
     required this.factor,
-    this.dayNumber = 0,
-    this.totalDays = 100,
-    this.onWater,
-    this.onPrune,
+    this.effortUnits = 0,
+    this.tasksCompleted = 0,
+    this.habitsLogged = 0,
+    this.reflections = 0,
   });
 
   @override
@@ -31,6 +31,9 @@ class TreePlatform extends StatelessWidget {
       factor.healthPercent <= 0,
     );
     
+    // Calculate progress to next level (each level needs ~10 effort units)
+    final progressToNextLevel = (effortUnits % 10) / 10;
+    
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -39,7 +42,7 @@ class TreePlatform extends StatelessWidget {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            const Color(0xFFE8F5E9), // Light green sky
+            const Color(0xFFE8F5E9),
             const Color(0xFFC8E6C9),
             const Color(0xFFA5D6A7),
           ],
@@ -49,53 +52,69 @@ class TreePlatform extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Day counter
-          if (dayNumber > 0 || totalDays > 0)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'Day ',
-                  style: TextStyle(fontSize: 14, color: AppColors.textMuted),
+          // Level Progress Header
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'Level ',
+                style: TextStyle(fontSize: 14, color: AppColors.textMuted),
+              ),
+              Text(
+                '${factor.currentLevel}',
+                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.primary),
+              ),
+              if (factor.currentLevel < factor.targetLevel) ...[
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Icon(Icons.arrow_forward_rounded, size: 18, color: AppColors.textMuted),
                 ),
                 Text(
-                  '$dayNumber',
-                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
-                ),
-                Text(
-                  '/$totalDays',
-                  style: TextStyle(fontSize: 14, color: AppColors.textMuted),
+                  '${factor.currentLevel + 1}',
+                  style: TextStyle(fontSize: 18, color: AppColors.textMuted),
                 ),
               ],
-            ).animate().fadeIn(duration: 400.ms),
+            ],
+          ).animate().fadeIn(duration: 400.ms),
           
           const SizedBox(height: 8),
           
-          // Progress bar
+          // Progress bar to next level
           Container(
-            height: 8,
-            width: 200,
+            height: 10,
+            width: 220,
             decoration: BoxDecoration(
-              color: Colors.white.withAlpha(150),
-              borderRadius: BorderRadius.circular(4),
+              color: Colors.white.withAlpha(180),
+              borderRadius: BorderRadius.circular(5),
             ),
-            child: FractionallySizedBox(
-              alignment: Alignment.centerLeft,
-              widthFactor: totalDays > 0 ? (dayNumber / totalDays).clamp(0, 1) : 0,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: AppColors.success,
-                  borderRadius: BorderRadius.circular(4),
+            child: Stack(
+              children: [
+                FractionallySizedBox(
+                  alignment: Alignment.centerLeft,
+                  widthFactor: progressToNextLevel.clamp(0.0, 1.0),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [AppColors.primary, AppColors.success],
+                      ),
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
           ),
           
-          const SizedBox(height: 24),
+          Text(
+            '${(progressToNextLevel * 100).toInt()}% to next level',
+            style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+          ),
+          
+          const SizedBox(height: 20),
           
           // Tree on wooden platform
           SizedBox(
-            height: 220,
+            height: 200,
             child: Stack(
               alignment: Alignment.bottomCenter,
               children: [
@@ -113,7 +132,7 @@ class TreePlatform extends StatelessWidget {
                   bottom: 45,
                   child: SizedBox(
                     width: 140,
-                    height: 160,
+                    height: 140,
                     child: CustomPaint(
                       painter: _DetailedTreePainter(
                         stage: stage,
@@ -144,61 +163,50 @@ class TreePlatform extends StatelessWidget {
                   ),
                 ),
                 
-                // Decorative grass
-                Positioned(
-                  bottom: 42,
-                  left: 20,
-                  child: Text('🌿', style: TextStyle(fontSize: 16)),
-                ),
-                Positioned(
-                  bottom: 42,
-                  right: 25,
-                  child: Text('🌱', style: TextStyle(fontSize: 14)),
-                ),
+                // Decorative elements
+                Positioned(bottom: 42, left: 30, child: Text('🌿', style: TextStyle(fontSize: 14))),
+                Positioned(bottom: 42, right: 35, child: Text('🌱', style: TextStyle(fontSize: 12))),
               ],
             ),
           ),
           
           const SizedBox(height: 16),
           
-          // Action buttons (optional)
-          if (onWater != null || onPrune != null)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (onWater != null)
-                  _ActionButton(
-                    label: 'Water',
-                    icon: Icons.water_drop_rounded,
-                    color: AppColors.info,
-                    onTap: onWater!,
-                  ),
-                if (onWater != null && onPrune != null)
-                  const SizedBox(width: 16),
-                if (onPrune != null)
-                  _ActionButton(
-                    label: 'Prune',
-                    icon: Icons.content_cut_rounded,
-                    color: AppColors.warning,
-                    onTap: onPrune!,
-                  ),
-              ],
-            ),
-          
-          const SizedBox(height: 16),
-          
-          // Inspirational quote
+          // Effort Stats Row
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.white.withAlpha(180),
+              color: Colors.white.withAlpha(200),
               borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _EffortStat(icon: Icons.bolt_rounded, value: '$effortUnits', label: 'Effort', color: AppColors.warning),
+                Container(width: 1, height: 30, color: AppColors.glassBorder),
+                _EffortStat(icon: Icons.task_alt_rounded, value: '$tasksCompleted', label: 'Tasks', color: AppColors.info),
+                Container(width: 1, height: 30, color: AppColors.glassBorder),
+                _EffortStat(icon: Icons.repeat_rounded, value: '$habitsLogged', label: 'Habits', color: AppColors.success),
+                Container(width: 1, height: 30, color: AppColors.glassBorder),
+                _EffortStat(icon: Icons.psychology_rounded, value: '$reflections', label: 'Reflect', color: AppColors.primary),
+              ],
+            ),
+          ),
+          
+          const SizedBox(height: 12),
+          
+          // Inspirational quote
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white.withAlpha(150),
+              borderRadius: BorderRadius.circular(10),
             ),
             child: Text(
               _getQuote(stage),
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 12,
+                fontSize: 11,
                 fontStyle: FontStyle.italic,
                 color: AppColors.textSecondary,
               ),
@@ -242,51 +250,35 @@ class TreePlatform extends StatelessWidget {
       case TreeLifeStage.seedling:
         return '"Patience is the companion of wisdom."';
       case TreeLifeStage.sapling:
-        return '"Growth is never by mere chance; it is the result of forces working together."';
+        return '"Growth is never by mere chance."';
       case TreeLifeStage.mature:
         return '"The strongest trees have the deepest roots."';
       case TreeLifeStage.decline:
         return '"Even in decline, we provide shelter to others."';
       case TreeLifeStage.snag:
-        return '"In the end, we give back to the earth that nurtured us."';
+        return '"In the end, we give back to the earth."';
     }
   }
 }
 
-class _ActionButton extends StatelessWidget {
-  final String label;
+class _EffortStat extends StatelessWidget {
   final IconData icon;
+  final String value;
+  final String label;
   final Color color;
-  final VoidCallback onTap;
 
-  const _ActionButton({
-    required this.label,
-    required this.icon,
-    required this.color,
-    required this.onTap,
-  });
+  const _EffortStat({required this.icon, required this.value, required this.label, required this.color});
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(25),
-          boxShadow: [
-            BoxShadow(color: color.withAlpha(100), blurRadius: 8, offset: const Offset(0, 4)),
-          ],
-        ),
-        child: Row(
-          children: [
-            Icon(icon, color: Colors.white, size: 18),
-            const SizedBox(width: 8),
-            Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-          ],
-        ),
-      ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 16, color: color),
+        const SizedBox(height: 2),
+        Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: color)),
+        Text(label, style: TextStyle(fontSize: 9, color: AppColors.textMuted)),
+      ],
     );
   }
 }
@@ -295,7 +287,6 @@ class _ActionButton extends StatelessWidget {
 class _WoodenDeckPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    // Deck top
     final topPath = Path();
     topPath.moveTo(size.width * 0.5, 0);
     topPath.lineTo(size.width, size.height * 0.4);
@@ -303,11 +294,9 @@ class _WoodenDeckPainter extends CustomPainter {
     topPath.lineTo(0, size.height * 0.4);
     topPath.close();
     
-    // Wood plank effect
     final plankPaint = Paint()..color = const Color(0xFFA1887F)..style = PaintingStyle.fill;
     canvas.drawPath(topPath, plankPaint);
     
-    // Plank lines
     final linePaint = Paint()
       ..color = const Color(0xFF8D6E63)
       ..strokeWidth = 1
@@ -359,9 +348,6 @@ class _DetailedTreePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final centerX = size.width / 2;
-    final bottom = size.height;
-    
     final trunkColor = const Color(0xFF5D4037);
     final leafColor = isActive
         ? (healthPercent >= 60 ? const Color(0xFF4CAF50) : 
@@ -370,116 +356,83 @@ class _DetailedTreePainter extends CustomPainter {
 
     switch (stage) {
       case TreeLifeStage.seed:
-        _drawDetailedSeed(canvas, size);
+        _drawSeed(canvas, size);
         break;
       case TreeLifeStage.sprout:
-        _drawDetailedSprout(canvas, size, trunkColor, leafColor);
+        _drawSprout(canvas, size, trunkColor, leafColor);
         break;
       case TreeLifeStage.seedling:
-        _drawDetailedSeedling(canvas, size, trunkColor, leafColor);
+        _drawSeedling(canvas, size, trunkColor, leafColor);
         break;
       case TreeLifeStage.sapling:
-        _drawDetailedSapling(canvas, size, trunkColor, leafColor);
+        _drawSapling(canvas, size, trunkColor, leafColor);
         break;
       case TreeLifeStage.mature:
-        _drawDetailedMature(canvas, size, trunkColor, leafColor);
+        _drawMature(canvas, size, trunkColor, leafColor);
         break;
       case TreeLifeStage.decline:
-        _drawDetailedDecline(canvas, size, trunkColor, leafColor);
+        _drawDecline(canvas, size, trunkColor, leafColor);
         break;
       case TreeLifeStage.snag:
-        _drawDetailedSnag(canvas, size, trunkColor);
+        _drawSnag(canvas, size, trunkColor);
         break;
     }
   }
 
-  void _drawDetailedSeed(Canvas canvas, Size size) {
+  void _drawSeed(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height * 0.8);
-    
     canvas.drawOval(
       Rect.fromCenter(center: center, width: size.width * 0.2, height: size.height * 0.1),
       Paint()..color = const Color(0xFF8D6E63),
     );
     
-    // Tiny sprout
     final sproutPath = Path();
     sproutPath.moveTo(center.dx, center.dy - size.height * 0.05);
-    sproutPath.quadraticBezierTo(
-      center.dx + 5, center.dy - size.height * 0.12,
-      center.dx, center.dy - size.height * 0.15,
-    );
-    canvas.drawPath(
-      sproutPath,
-      Paint()..color = const Color(0xFF81C784)..strokeWidth = 2..style = PaintingStyle.stroke,
-    );
+    sproutPath.quadraticBezierTo(center.dx + 5, center.dy - size.height * 0.12, center.dx, center.dy - size.height * 0.15);
+    canvas.drawPath(sproutPath, Paint()..color = const Color(0xFF81C784)..strokeWidth = 2..style = PaintingStyle.stroke);
   }
 
-  void _drawDetailedSprout(Canvas canvas, Size size, Color trunk, Color leaf) {
+  void _drawSprout(Canvas canvas, Size size, Color trunk, Color leaf) {
     final centerX = size.width / 2;
     final bottom = size.height * 0.85;
     
-    // Stem
-    canvas.drawLine(
-      Offset(centerX, bottom),
-      Offset(centerX, bottom - size.height * 0.25),
-      Paint()..color = trunk..strokeWidth = 3..strokeCap = StrokeCap.round,
-    );
+    canvas.drawLine(Offset(centerX, bottom), Offset(centerX, bottom - size.height * 0.25),
+      Paint()..color = trunk..strokeWidth = 3..strokeCap = StrokeCap.round);
     
-    // Leaves
-    _drawLeaf(canvas, Offset(centerX, bottom - size.height * 0.25), -30, size.width * 0.15, leaf);
-    _drawLeaf(canvas, Offset(centerX, bottom - size.height * 0.25), 30, size.width * 0.15, leaf);
-    _drawLeaf(canvas, Offset(centerX, bottom - size.height * 0.2), 0, size.width * 0.12, leaf);
+    canvas.drawCircle(Offset(centerX - 8, bottom - size.height * 0.28), 8, Paint()..color = leaf);
+    canvas.drawCircle(Offset(centerX + 8, bottom - size.height * 0.28), 8, Paint()..color = leaf);
+    canvas.drawCircle(Offset(centerX, bottom - size.height * 0.32), 10, Paint()..color = leaf);
   }
 
-  void _drawDetailedSeedling(Canvas canvas, Size size, Color trunk, Color leaf) {
+  void _drawSeedling(Canvas canvas, Size size, Color trunk, Color leaf) {
     final centerX = size.width / 2;
     final bottom = size.height * 0.9;
     
-    // Thin trunk
-    canvas.drawLine(
-      Offset(centerX, bottom),
-      Offset(centerX, bottom - size.height * 0.4),
-      Paint()..color = trunk..strokeWidth = 4..strokeCap = StrokeCap.round,
-    );
+    canvas.drawLine(Offset(centerX, bottom), Offset(centerX, bottom - size.height * 0.4),
+      Paint()..color = trunk..strokeWidth = 4..strokeCap = StrokeCap.round);
     
-    // Small branches
-    canvas.drawLine(
-      Offset(centerX, bottom - size.height * 0.25),
-      Offset(centerX - 15, bottom - size.height * 0.35),
-      Paint()..color = trunk..strokeWidth = 2,
-    );
-    canvas.drawLine(
-      Offset(centerX, bottom - size.height * 0.3),
-      Offset(centerX + 12, bottom - size.height * 0.38),
-      Paint()..color = trunk..strokeWidth = 2,
-    );
-    
-    // Leaf clusters
     canvas.drawCircle(Offset(centerX, bottom - size.height * 0.45), 15, Paint()..color = leaf);
-    canvas.drawCircle(Offset(centerX - 18, bottom - size.height * 0.38), 10, Paint()..color = leaf);
-    canvas.drawCircle(Offset(centerX + 15, bottom - size.height * 0.4), 12, Paint()..color = leaf);
+    canvas.drawCircle(Offset(centerX - 12, bottom - size.height * 0.38), 10, Paint()..color = leaf);
+    canvas.drawCircle(Offset(centerX + 12, bottom - size.height * 0.40), 12, Paint()..color = leaf);
   }
 
-  void _drawDetailedSapling(Canvas canvas, Size size, Color trunk, Color leaf) {
+  void _drawSapling(Canvas canvas, Size size, Color trunk, Color leaf) {
     final centerX = size.width / 2;
     final bottom = size.height * 0.95;
     
-    // Trunk
     final trunkPath = Path();
-    trunkPath.moveTo(centerX - 6, bottom);
-    trunkPath.lineTo(centerX - 4, bottom - size.height * 0.4);
-    trunkPath.lineTo(centerX + 4, bottom - size.height * 0.4);
-    trunkPath.lineTo(centerX + 6, bottom);
+    trunkPath.moveTo(centerX - 5, bottom);
+    trunkPath.lineTo(centerX - 3, bottom - size.height * 0.4);
+    trunkPath.lineTo(centerX + 3, bottom - size.height * 0.4);
+    trunkPath.lineTo(centerX + 5, bottom);
     trunkPath.close();
     canvas.drawPath(trunkPath, Paint()..color = trunk);
     
-    // Multiple branch/leaf tiers
     for (int i = 0; i < 3; i++) {
-      final tierY = bottom - size.height * (0.4 + i * 0.15);
-      final tierWidth = size.width * (0.4 - i * 0.08);
-      
+      final tierY = bottom - size.height * (0.4 + i * 0.12);
+      final tierWidth = size.width * (0.35 - i * 0.07);
       final tierPath = Path();
-      tierPath.moveTo(centerX, tierY - size.height * 0.12);
+      tierPath.moveTo(centerX, tierY - size.height * 0.1);
       tierPath.lineTo(centerX - tierWidth, tierY);
       tierPath.lineTo(centerX + tierWidth, tierY);
       tierPath.close();
@@ -487,143 +440,63 @@ class _DetailedTreePainter extends CustomPainter {
     }
   }
 
-  void _drawDetailedMature(Canvas canvas, Size size, Color trunk, Color leaf) {
+  void _drawMature(Canvas canvas, Size size, Color trunk, Color leaf) {
     final centerX = size.width / 2;
     final bottom = size.height;
     
-    // Thick trunk with texture
-    final trunkPath = Path();
-    trunkPath.moveTo(centerX - 10, bottom);
-    trunkPath.lineTo(centerX - 6, bottom - size.height * 0.35);
-    trunkPath.lineTo(centerX + 6, bottom - size.height * 0.35);
-    trunkPath.lineTo(centerX + 10, bottom);
-    trunkPath.close();
-    canvas.drawPath(trunkPath, Paint()..color = trunk);
-    
-    // Main branches
-    canvas.drawLine(
-      Offset(centerX, bottom - size.height * 0.35),
-      Offset(centerX - 25, bottom - size.height * 0.5),
-      Paint()..color = trunk..strokeWidth = 4,
-    );
-    canvas.drawLine(
-      Offset(centerX, bottom - size.height * 0.35),
-      Offset(centerX + 20, bottom - size.height * 0.55),
-      Paint()..color = trunk..strokeWidth = 3,
-    );
-    
-    // Full leafy canopy
-    canvas.drawOval(
-      Rect.fromCenter(center: Offset(centerX, bottom - size.height * 0.55), width: size.width * 0.85, height: size.height * 0.35),
-      Paint()..color = leaf,
-    );
-    canvas.drawOval(
-      Rect.fromCenter(center: Offset(centerX - 10, bottom - size.height * 0.65), width: size.width * 0.5, height: size.height * 0.25),
-      Paint()..color = Color.lerp(leaf, Colors.black, 0.15)!,
-    );
-    canvas.drawOval(
-      Rect.fromCenter(center: Offset(centerX + 15, bottom - size.height * 0.72), width: size.width * 0.4, height: size.height * 0.2),
-      Paint()..color = leaf,
-    );
-  }
-
-  void _drawDetailedDecline(Canvas canvas, Size size, Color trunk, Color leaf) {
-    final centerX = size.width / 2;
-    final bottom = size.height;
-    
-    // Gnarled trunk
     final trunkPath = Path();
     trunkPath.moveTo(centerX - 8, bottom);
-    trunkPath.quadraticBezierTo(centerX - 10, bottom - size.height * 0.2, centerX - 5, bottom - size.height * 0.4);
-    trunkPath.lineTo(centerX + 5, bottom - size.height * 0.4);
-    trunkPath.quadraticBezierTo(centerX + 8, bottom - size.height * 0.2, centerX + 8, bottom);
+    trunkPath.lineTo(centerX - 5, bottom - size.height * 0.35);
+    trunkPath.lineTo(centerX + 5, bottom - size.height * 0.35);
+    trunkPath.lineTo(centerX + 8, bottom);
     trunkPath.close();
     canvas.drawPath(trunkPath, Paint()..color = trunk);
     
-    // Bare branches
-    canvas.drawLine(
-      Offset(centerX, bottom - size.height * 0.4),
-      Offset(centerX - 30, bottom - size.height * 0.6),
-      Paint()..color = trunk..strokeWidth = 3,
-    );
-    canvas.drawLine(
-      Offset(centerX, bottom - size.height * 0.4),
-      Offset(centerX + 25, bottom - size.height * 0.55),
-      Paint()..color = trunk..strokeWidth = 2,
-    );
-    canvas.drawLine(
-      Offset(centerX, bottom - size.height * 0.45),
-      Offset(centerX - 10, bottom - size.height * 0.65),
-      Paint()..color = trunk..strokeWidth = 2,
-    );
+    canvas.drawOval(Rect.fromCenter(center: Offset(centerX, bottom - size.height * 0.55), width: size.width * 0.8, height: size.height * 0.35), Paint()..color = leaf);
+    canvas.drawOval(Rect.fromCenter(center: Offset(centerX - 8, bottom - size.height * 0.65), width: size.width * 0.45, height: size.height * 0.22), Paint()..color = Color.lerp(leaf, Colors.black, 0.1)!);
+    canvas.drawOval(Rect.fromCenter(center: Offset(centerX + 10, bottom - size.height * 0.7), width: size.width * 0.35, height: size.height * 0.18), Paint()..color = leaf);
+  }
+
+  void _drawDecline(Canvas canvas, Size size, Color trunk, Color leaf) {
+    final centerX = size.width / 2;
+    final bottom = size.height;
     
-    // Sparse autumn leaves
+    final trunkPath = Path();
+    trunkPath.moveTo(centerX - 6, bottom);
+    trunkPath.quadraticBezierTo(centerX - 8, bottom - size.height * 0.2, centerX - 4, bottom - size.height * 0.4);
+    trunkPath.lineTo(centerX + 4, bottom - size.height * 0.4);
+    trunkPath.quadraticBezierTo(centerX + 6, bottom - size.height * 0.2, centerX + 6, bottom);
+    trunkPath.close();
+    canvas.drawPath(trunkPath, Paint()..color = trunk);
+    
+    canvas.drawLine(Offset(centerX, bottom - size.height * 0.4), Offset(centerX - 20, bottom - size.height * 0.55), Paint()..color = trunk..strokeWidth = 2);
+    canvas.drawLine(Offset(centerX, bottom - size.height * 0.4), Offset(centerX + 15, bottom - size.height * 0.52), Paint()..color = trunk..strokeWidth = 2);
+    
     final autumnColors = [const Color(0xFFFF8A65), const Color(0xFFFFCA28), leaf];
-    for (int i = 0; i < 5; i++) {
-      final x = centerX + (i - 2) * 15.0;
-      final y = bottom - size.height * (0.5 + i * 0.05);
-      canvas.drawCircle(Offset(x, y), 8, Paint()..color = autumnColors[i % 3]);
+    for (int i = 0; i < 4; i++) {
+      final x = centerX + (i - 2) * 12.0;
+      final y = bottom - size.height * (0.48 + i * 0.04);
+      canvas.drawCircle(Offset(x, y), 6, Paint()..color = autumnColors[i % 3]);
     }
   }
 
-  void _drawDetailedSnag(Canvas canvas, Size size, Color trunk) {
+  void _drawSnag(Canvas canvas, Size size, Color trunk) {
     final centerX = size.width / 2;
     final bottom = size.height;
     
-    // Dead trunk
     final trunkPath = Path();
-    trunkPath.moveTo(centerX - 8, bottom);
-    trunkPath.lineTo(centerX - 6, bottom - size.height * 0.55);
-    trunkPath.lineTo(centerX + 6, bottom - size.height * 0.55);
-    trunkPath.lineTo(centerX + 8, bottom);
+    trunkPath.moveTo(centerX - 6, bottom);
+    trunkPath.lineTo(centerX - 4, bottom - size.height * 0.5);
+    trunkPath.lineTo(centerX + 4, bottom - size.height * 0.5);
+    trunkPath.lineTo(centerX + 6, bottom);
     trunkPath.close();
     canvas.drawPath(trunkPath, Paint()..color = const Color(0xFF6D4C41));
     
-    // Broken branches
-    final branchPaint = Paint()..color = const Color(0xFF5D4037)..strokeWidth = 3..strokeCap = StrokeCap.round;
-    canvas.drawLine(
-      Offset(centerX, bottom - size.height * 0.45),
-      Offset(centerX - 25, bottom - size.height * 0.6),
-      branchPaint,
-    );
-    canvas.drawLine(
-      Offset(centerX, bottom - size.height * 0.5),
-      Offset(centerX + 20, bottom - size.height * 0.65),
-      branchPaint,
-    );
-    canvas.drawLine(
-      Offset(centerX, bottom - size.height * 0.55),
-      Offset(centerX - 8, bottom - size.height * 0.7),
-      Paint()..color = const Color(0xFF5D4037)..strokeWidth = 2,
-    );
+    final branchPaint = Paint()..color = const Color(0xFF5D4037)..strokeWidth = 2..strokeCap = StrokeCap.round;
+    canvas.drawLine(Offset(centerX, bottom - size.height * 0.4), Offset(centerX - 18, bottom - size.height * 0.55), branchPaint);
+    canvas.drawLine(Offset(centerX, bottom - size.height * 0.45), Offset(centerX + 15, bottom - size.height * 0.58), branchPaint);
     
-    // Woodpecker hole
-    canvas.drawOval(
-      Rect.fromCenter(center: Offset(centerX + 3, bottom - size.height * 0.35), width: 8, height: 12),
-      Paint()..color = const Color(0xFF3E2723),
-    );
-  }
-
-  void _drawLeaf(Canvas canvas, Offset base, double angle, double length, Color color) {
-    final radians = angle * 3.14159 / 180;
-    final endX = base.dx + length * -0.5;
-    final endY = base.dy - length;
-    
-    final path = Path();
-    path.moveTo(base.dx, base.dy);
-    path.quadraticBezierTo(
-      base.dx + length * 0.3 * (angle > 0 ? 1 : -1),
-      base.dy - length * 0.5,
-      endX + (angle > 0 ? -5 : 5),
-      endY,
-    );
-    path.quadraticBezierTo(
-      base.dx - length * 0.2 * (angle > 0 ? 1 : -1),
-      base.dy - length * 0.3,
-      base.dx,
-      base.dy,
-    );
-    canvas.drawPath(path, Paint()..color = color);
+    canvas.drawOval(Rect.fromCenter(center: Offset(centerX + 2, bottom - size.height * 0.3), width: 6, height: 10), Paint()..color = const Color(0xFF3E2723));
   }
 
   @override

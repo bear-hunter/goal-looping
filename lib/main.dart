@@ -8,16 +8,39 @@ import 'services/storage_service.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/strategy/strategy_screen.dart';
 import 'screens/habits/habits_screen.dart';
-import 'screens/audit/audit_screen.dart';
 import 'screens/reflection/reflection_screen.dart';
 import 'models/achievement.dart';
 import 'widgets/achievement_notification.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await StorageService.initialize();
+  
+  try {
+    await StorageService.initialize();
+  } catch (e) {
+    // If Hive fails (corrupted data), try to clear and reinitialize
+    debugPrint('Hive init failed: $e');
+    try {
+      await StorageService.clearAllData();
+      await StorageService.initialize();
+    } catch (e2) {
+      debugPrint('Hive reset also failed: $e2');
+      // Continue anyway - app will work without persistence
+    }
+  }
+  
+  // Ensure boxes are open (handles hot restart scenarios)
+  if (!StorageService.isInitialized) {
+    try {
+      await StorageService.reopenBoxes();
+    } catch (e) {
+      debugPrint('Failed to reopen boxes: $e');
+    }
+  }
+  
   runApp(const MarginalGainsApp());
 }
+
 
 class MarginalGainsApp extends StatelessWidget {
   const MarginalGainsApp({super.key});
@@ -51,7 +74,6 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
     HomeScreen(),
     StrategyScreen(),
     HabitsScreen(),
-    AuditScreen(),
     ReflectionScreen(),
   ];
 
@@ -70,11 +92,6 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
       icon: Icon(Icons.shield_outlined),
       selectedIcon: Icon(Icons.shield_rounded),
       label: 'Habits',
-    ),
-    NavigationDestination(
-      icon: Icon(Icons.analytics_outlined),
-      selectedIcon: Icon(Icons.analytics_rounded),
-      label: 'Audit',
     ),
     NavigationDestination(
       icon: Icon(Icons.psychology_outlined),

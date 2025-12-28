@@ -110,15 +110,22 @@ class HabitsScreen extends StatelessWidget {
                   (context, index) {
                     final barrier = state.barriers[index];
                     return GlassCard(
+                      onTap: () => _showEditBarrierDialog(context, barrier),
                       child: Row(
                         children: [
-                          Icon(Icons.flash_on_rounded, color: AppColors.warning, size: 20),
+                          Icon(
+                            barrier.wasHandled ? Icons.check_circle_rounded : Icons.flash_on_rounded, 
+                            color: barrier.wasHandled ? AppColors.success : AppColors.warning, 
+                            size: 20
+                          ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(barrier.description, style: TextStyle(color: AppColors.textPrimary)),
+                                if (barrier.response != null && barrier.response!.isNotEmpty)
+                                  Text('Response: ${barrier.response}', style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontStyle: FontStyle.italic)),
                                 Text(_formatDate(barrier.occurredAt), style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
                               ],
                             ),
@@ -144,7 +151,8 @@ class HabitsScreen extends StatelessWidget {
   }
 
   void _showAddHabitDialog(BuildContext context, AppState state, HabitType type) {
-    final nameController = TextEditingController();
+    final nameController = TextEditingController(); // Action (I will Y)
+    final triggerController = TextEditingController(); // Trigger (If X)
     final motivationController = TextEditingController();
     String? selectedFactorId;
 
@@ -155,82 +163,99 @@ class HabitsScreen extends StatelessWidget {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => Padding(
           padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(type == HabitType.quit ? 'Add Quit Habit' : 'Add Build Habit',
-                  style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: 16),
-              TextField(
-                controller: nameController,
-                decoration: InputDecoration(
-                  hintText: type == HabitType.quit ? 'e.g., Doom scrolling' : 'e.g., Morning exercise',
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: motivationController,
-                decoration: const InputDecoration(hintText: 'Why? (motivation)'),
-              ),
-              const SizedBox(height: 12),
-              
-              // Factor dropdown (mandatory linking)
-              Text('Link to Factor', style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceLight,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.glassBorder),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    isExpanded: true,
-                    hint: Text('Select Factor', style: TextStyle(color: AppColors.textMuted)),
-                    value: selectedFactorId,
-                    dropdownColor: AppColors.surface,
-                    items: [
-                      DropdownMenuItem<String>(value: null, child: Text('None', style: TextStyle(color: AppColors.textMuted))),
-                      ...state.factors.map((f) => DropdownMenuItem<String>(
-                        value: f.id,
-                        child: Text(f.name, style: TextStyle(color: AppColors.textPrimary)),
-                      )),
-                    ],
-                    onChanged: (v) => setDialogState(() => selectedFactorId = v),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(type == HabitType.quit ? 'Add Quit Habit' : 'Add Build Habit',
+                    style: Theme.of(context).textTheme.titleLarge),
+                const SizedBox(height: 16),
+                if (type == HabitType.build) ...[
+                  Text('Trigger:', style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
+                  const SizedBox(height: 4),
+                  TextField(
+                    controller: triggerController,
+                    decoration: const InputDecoration(hintText: 'If [this happens]... (e.g., I feel stressed)'),
                   ),
-                ),
-              ),
-              
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  if (selectedFactorId == null)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: Icon(Icons.info_outline, color: AppColors.warning, size: 16),
+                  const SizedBox(height: 12),
+                  Text('Action:', style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
+                  const SizedBox(height: 4),
+                  TextField(
+                    controller: nameController,
+                    decoration: const InputDecoration(hintText: 'I will [do this]... (e.g., breathe for 1 min)'),
+                  ),
+                ] else ...[
+                  TextField(
+                    controller: nameController,
+                    decoration: InputDecoration(
+                      hintText: type == HabitType.quit ? 'e.g., Doom scrolling' : 'e.g., Morning exercise',
                     ),
-                  if (selectedFactorId == null)
-                    Expanded(child: Text('Linking to a Factor helps track effort', style: TextStyle(fontSize: 12, color: AppColors.warning))),
-                  ElevatedButton(
-                    onPressed: () {
-                      if (nameController.text.isNotEmpty) {
-                        context.read<AppState>().addHabit(Habit(
-                          id: StorageService.generateId(),
-                          name: nameController.text,
-                          type: type,
-                          motivation: motivationController.text,
-                          factorId: selectedFactorId,
-                        ));
-                        Navigator.pop(ctx);
-                      }
-                    },
-                    child: const Text('Add'),
                   ),
                 ],
-              ),
-            ],
+                const SizedBox(height: 16),
+                TextField(
+                  controller: motivationController,
+                  decoration: const InputDecoration(hintText: 'Why? (motivation)'),
+                ),
+                const SizedBox(height: 12),
+                
+                // Factor dropdown
+                Text('Link to Factor', style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceLight,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.glassBorder),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      isExpanded: true,
+                      hint: Text('Select Factor', style: TextStyle(color: AppColors.textMuted)),
+                      value: selectedFactorId,
+                      dropdownColor: AppColors.surface,
+                      items: [
+                        DropdownMenuItem<String>(value: null, child: Text('None', style: TextStyle(color: AppColors.textMuted))),
+                        ...state.factors.map((f) => DropdownMenuItem<String>(
+                          value: f.id,
+                          child: Text(f.name, style: TextStyle(color: AppColors.textPrimary)),
+                        )),
+                      ],
+                      onChanged: (v) => setDialogState(() => selectedFactorId = v),
+                    ),
+                  ),
+                ),
+                
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: (selectedFactorId == null) 
+                        ? Text('Linking to a Factor helps track effort', style: TextStyle(fontSize: 12, color: AppColors.warning))
+                        : const SizedBox(),
+                    ),
+                    ElevatedButton(
+                      onPressed: () {
+                        if (nameController.text.isNotEmpty) {
+                          context.read<AppState>().addHabit(Habit(
+                            id: StorageService.generateId(),
+                            name: nameController.text.trim(),
+                            type: type,
+                            triggerResponse: type == HabitType.build ? triggerController.text.trim() : null,
+                            motivation: motivationController.text.trim(),
+                            factorId: selectedFactorId,
+                          ));
+                          Navigator.pop(ctx);
+                        }
+                      },
+                      child: const Text('Add'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -242,12 +267,19 @@ class HabitsScreen extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.surface,
+      isScrollControlled: true,
       builder: (ctx) => Padding(
         padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(controller: controller, decoration: const InputDecoration(hintText: 'What barrier did you encounter?')),
+            Text('Log Barrier', style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller, 
+              autofocus: true,
+              decoration: const InputDecoration(hintText: 'What barrier did you encounter?'),
+            ),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () {
@@ -262,6 +294,69 @@ class HabitsScreen extends StatelessWidget {
               child: const Text('Log Barrier'),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  void _showEditBarrierDialog(BuildContext context, BarrierEntry barrier) {
+    final controller = TextEditingController(text: barrier.description);
+    final responseController = TextEditingController(text: barrier.response);
+    bool handled = barrier.wasHandled;
+    
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      isScrollControlled: true,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => Padding(
+          padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Edit Barrier', style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 16),
+              TextField(
+                controller: controller,
+                decoration: const InputDecoration(labelText: 'Description'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: responseController,
+                decoration: const InputDecoration(labelText: 'How did you handle it?'),
+              ),
+              const SizedBox(height: 16),
+              SwitchListTile(
+                title: const Text('Handled successfully?'),
+                value: handled,
+                onChanged: (v) => setModalState(() => handled = v),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () {
+                      context.read<AppState>().updateBarrier(barrier); // Placeholder for delete if needed
+                      Navigator.pop(ctx);
+                    },
+                    child: const Text('Cancel'),
+                  ),
+                  const SizedBox(width: 12),
+                  ElevatedButton(
+                    onPressed: () {
+                      barrier.description = controller.text.trim();
+                      barrier.response = responseController.text.trim();
+                      barrier.wasHandled = handled;
+                      context.read<AppState>().updateBarrier(barrier);
+                      Navigator.pop(ctx);
+                    },
+                    child: const Text('Save'),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -1,56 +1,50 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'tree_design.dart';
+part of 'focus_log.dart';
 
 // **************************************************************************
 // TypeAdapterGenerator
 // **************************************************************************
 
-class TreeDesignAdapter extends TypeAdapter<TreeDesign> {
+class FocusLogAdapter extends TypeAdapter<FocusLog> {
   @override
-  final int typeId = 22;
+  final int typeId = 23;
 
   @override
-  TreeDesign read(BinaryReader reader) {
+  FocusLog read(BinaryReader reader) {
     final numOfFields = reader.readByte();
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return TreeDesign(
+    return FocusLog(
       id: fields[0] as String,
-      name: fields[1] as String,
-      emoji: fields[2] as String,
-      cost: fields[3] as int,
-      isUnlocked: fields[4] as bool,
-      colorHex: fields[5] as String,
-      trunkColorHex: fields[7] as String,
-      description: fields[6] as String,
-      matureDescription: fields[8] as String,
+      taskId: fields[1] as String,
+      taskTitle: fields[2] as String,
+      startTime: fields[3] as DateTime,
+      duration: fields[4] as Duration,
+      completedPomodoros: fields[5] as int,
+      distractions: (fields[6] as List?)?.cast<String>(),
     );
   }
 
   @override
-  void write(BinaryWriter writer, TreeDesign obj) {
+  void write(BinaryWriter writer, FocusLog obj) {
     writer
-      ..writeByte(9)
+      ..writeByte(7)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
-      ..write(obj.name)
+      ..write(obj.taskId)
       ..writeByte(2)
-      ..write(obj.emoji)
+      ..write(obj.taskTitle)
       ..writeByte(3)
-      ..write(obj.cost)
+      ..write(obj.startTime)
       ..writeByte(4)
-      ..write(obj.isUnlocked)
+      ..write(obj.duration)
       ..writeByte(5)
-      ..write(obj.colorHex)
+      ..write(obj.completedPomodoros)
       ..writeByte(6)
-      ..write(obj.description)
-      ..writeByte(7)
-      ..write(obj.trunkColorHex)
-      ..writeByte(8)
-      ..write(obj.matureDescription);
+      ..write(obj.distractions);
   }
 
   @override
@@ -59,7 +53,7 @@ class TreeDesignAdapter extends TypeAdapter<TreeDesign> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is TreeDesignAdapter &&
+      other is FocusLogAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

@@ -15,6 +15,42 @@ enum TaskSource {
   backlog, // Promoted from Less Important
 }
 
+/// Effort level for a task
+@HiveType(typeId: 20)
+enum TaskEffort {
+  @HiveField(0)
+  quick,  // ⚡ Low effort, quick win
+
+  @HiveField(1)
+  deep,   // 🐘 Deep work, heavy effort
+}
+
+/// Impact level for a task
+@HiveType(typeId: 21)
+enum TaskImpact {
+  @HiveField(0)
+  high,        // ⭐ High value outcome
+
+  @HiveField(1)
+  maintenance, // 🧹 Routine/maintenance
+}
+
+/// Reason for abandoning/demoting a task
+@HiveType(typeId: 22)
+enum TaskAbandonReason {
+  @HiveField(0)
+  noTime,       // 🕐 Ran out of time
+
+  @HiveField(1) 
+  tooHard,      // 🧗 Too difficult
+
+  @HiveField(2)
+  notImportant, // ❌ Not important anymore
+
+  @HiveField(3)
+  completed,    // ✅ Actually completed
+}
+
 /// Task - Top 2 priority tasks or backlog items
 @HiveType(typeId: 3)
 class Task extends HiveObject {
@@ -51,6 +87,32 @@ class Task extends HiveObject {
   @HiveField(10)
   int sortOrder;
 
+  // New fields for smart task management
+  
+  @HiveField(11)
+  TaskEffort effort;
+
+  @HiveField(12)
+  TaskImpact impact;
+
+  @HiveField(13)
+  DateTime? addedToPriorityAt; // When task was promoted to Top 2
+
+  @HiveField(14)
+  TaskAbandonReason? abandonReason; // Why task was demoted/deleted
+
+  @HiveField(15)
+  String? blockedByTaskId; // Task dependency
+
+  @HiveField(16)
+  String category;
+
+  @HiveField(17)
+  DateTime? deadline;
+
+  @HiveField(18)
+  String? customTag;
+
   Task({
     required this.id,
     required this.title,
@@ -63,6 +125,14 @@ class Task extends HiveObject {
     List<String>? linkedFactorIds,
     this.experimentId,
     this.sortOrder = 0,
+    this.effort = TaskEffort.quick,
+    this.impact = TaskImpact.high,
+    this.addedToPriorityAt,
+    this.abandonReason,
+    this.blockedByTaskId,
+    this.category = 'General',
+    this.deadline,
+    this.customTag,
   })  : createdAt = createdAt ?? DateTime.now(),
         linkedFactorIds = linkedFactorIds ?? [];
 
@@ -70,15 +140,41 @@ class Task extends HiveObject {
   void complete() {
     isCompleted = true;
     completedAt = DateTime.now();
+    abandonReason = TaskAbandonReason.completed;
   }
 
   /// Promote task to priority (Top 2)
   void promoteToPriority() {
     isPriority = true;
+    addedToPriorityAt = DateTime.now();
   }
 
   /// Demote task to backlog
-  void demoteToBacklog() {
+  void demoteToBacklog({TaskAbandonReason? reason}) {
     isPriority = false;
+    if (reason != null) {
+      abandonReason = reason;
+    }
   }
+
+  /// Check if task is stale (in Top 2 for >24 hours)
+  bool get isStale {
+    if (!isPriority || addedToPriorityAt == null) return false;
+    return DateTime.now().difference(addedToPriorityAt!).inHours >= 24;
+  }
+
+  /// Check if task is blocked by another task
+  bool get isBlocked => blockedByTaskId != null;
+
+  /// Hours since added to priority
+  int get hoursInPriority {
+    if (addedToPriorityAt == null) return 0;
+    return DateTime.now().difference(addedToPriorityAt!).inHours;
+  }
+
+  /// Effort emoji
+  String get effortEmoji => effort == TaskEffort.quick ? '⚡' : '🐘';
+
+  /// Impact emoji  
+  String get impactEmoji => impact == TaskImpact.high ? '⭐' : '🧹';
 }
