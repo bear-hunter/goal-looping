@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/goal.dart';
-import '../models/factor.dart';
+import '../models/growth_area.dart';
 import '../models/sprint_target.dart';
 import '../models/task.dart';
 import '../models/subtask.dart';
@@ -8,6 +8,8 @@ import '../models/habit.dart';
 import '../models/reflection.dart';
 import '../models/experiment.dart';
 import '../models/time_availability.dart';
+import '../models/user_stats.dart';
+import '../models/achievement.dart';
 import '../services/storage_service.dart';
 
 /// Main application state using ChangeNotifier
@@ -22,6 +24,7 @@ class AppState extends ChangeNotifier {
   List<Experiment> _experiments = [];
   List<BarrierEntry> _barriers = [];
   TimeAvailability? _timeAvailability;
+  UserStats _userStats = UserStats();
   bool _isLoading = true;
 
   // ========== GETTERS ==========
@@ -34,6 +37,7 @@ class AppState extends ChangeNotifier {
   List<Experiment> get experiments => _experiments;
   List<BarrierEntry> get barriers => _barriers;
   TimeAvailability? get timeAvailability => _timeAvailability;
+  UserStats get userStats => _userStats;
   bool get isLoading => _isLoading;
 
   // Computed getters
@@ -90,6 +94,7 @@ class AppState extends ChangeNotifier {
     _experiments = StorageService.getAllExperiments();
     _barriers = StorageService.getAllBarriers();
     _timeAvailability = StorageService.getTimeAvailability();
+    _userStats = StorageService.getUserStats();
 
     _isLoading = false;
     notifyListeners();
@@ -140,6 +145,52 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Phase 5: Focus Factor System
+  List<Factor> get activeFocusFactors => 
+      _factors.where((f) => f.isActiveFocus).toList();
+  
+  List<Factor> get dormantFactors => 
+      _factors.where((f) => !f.isActiveFocus).toList();
+  
+  bool get canAddActiveFocus => activeFocusFactors.length < 2;
+
+  Future<void> setFactorActive(String id) async {
+    if (!canAddActiveFocus) {
+      throw Exception('Cannot have more than 2 active focus Factors');
+    }
+    final factor = _factors.firstWhere((f) => f.id == id);
+    factor.isActiveFocus = true;
+    factor.lastWorkedOn = DateTime.now();
+    factor.healthPercent = 100.0; // Start fresh
+    await StorageService.saveFactor(factor);
+    notifyListeners();
+  }
+
+  Future<void> setFactorDormant(String id) async {
+    final factor = _factors.firstWhere((f) => f.id == id);
+    factor.isActiveFocus = false;
+    // Health is preserved but frozen
+    await StorageService.saveFactor(factor);
+    notifyListeners();
+  }
+
+  Future<void> logWorkOnFactor(String factorId) async {
+    final factor = _factors.firstWhere((f) => f.id == factorId);
+    factor.logWork();
+    await StorageService.saveFactor(factor);
+    notifyListeners();
+  }
+
+  Future<void> resurrectFactor(String id) async {
+    if (!_userStats.spendCoins(50)) {
+      throw Exception('Not enough coins to resurrect (need 50)');
+    }
+    final factor = _factors.firstWhere((f) => f.id == id);
+    factor.resurrect();
+    await StorageService.saveFactor(factor);
+    notifyListeners();
+  }
+
   List<Factor> getFactorsForGoal(String goalId) =>
       _factors.where((f) => f.goalId == goalId).toList();
 
@@ -182,9 +233,19 @@ class AppState extends ChangeNotifier {
 
   Future<void> toggleTaskComplete(String id) async {
     final task = _tasks.firstWhere((t) => t.id == id);
+    final wasCompleted = task.isCompleted;
     task.isCompleted = !task.isCompleted;
     task.completedAt = task.isCompleted ? DateTime.now() : null;
     await StorageService.saveTask(task);
+    
+    // Award XP if completing (not uncompleting)
+    if (task.isCompleted && !wasCompleted) {
+      if (task.isPriority) {
+        _userStats.earnReward(xp: XPRewards.completePriorityTask, coinReward: XPRewards.coinsPriorityTask);
+      } else {
+        _userStats.earnReward(xp: XPRewards.completeBacklogTask, coinReward: XPRewards.coinsBacklogTask);
+      }
+    }
     notifyListeners();
   }
 
@@ -253,6 +314,13 @@ class AppState extends ChangeNotifier {
     final habit = _habits.firstWhere((h) => h.id == id);
     habit.logToday(completed: completed, note: note, mood: mood, barrier: barrier);
     await StorageService.saveHabit(habit);
+    
+    // Award XP for logging habits
+    if (completed) {
+      _userStats.earnReward(xp: XPRewards.logHabitCompleted, coinReward: XPRewards.coinsHabitCompleted);
+    } else {
+      _userStats.earnReward(xp: XPRewards.logHabitFailed, coinReward: 0);
+    }
     notifyListeners();
   }
 
@@ -280,6 +348,9 @@ class AppState extends ChangeNotifier {
   Future<void> addReflection(Reflection reflection) async {
     await StorageService.saveReflection(reflection);
     _reflections.add(reflection);
+    
+    // Award XP for completing reflection
+    _userStats.earnReward(xp: XPRewards.completeReflection, coinReward: XPRewards.coinsReflection);
     notifyListeners();
   }
 
@@ -383,4 +454,115 @@ class AppState extends ChangeNotifier {
   /// Get experiments for a reflection
   List<Experiment> getExperimentsForReflection(String reflectionId) =>
       _experiments.where((e) => e.reflectionId == reflectionId).toList();
+
+  // ========== PHASE 5: ACHIEVEMENTS ==========
+  final List<String> _pendingAchievementNotifications = [];
+  
+  List<String> get pendingAchievementNotifications => _pendingAchievementNotifications;
+  
+  void clearAchievementNotification(String achievementId) {
+    _pendingAchievementNotifications.remove(achievementId);
+    notifyListeners();
+  }
+
+  /// Check and unlock achievements based on current state
+  void checkAchievements() {
+    // first_reflection: Complete first reflection
+    if (_reflections.isNotEmpty && !_userStats.unlockedBadgeIds.contains('first_reflection')) {
+      _unlockAchievement('first_reflection');
+    }
+
+    // reflection_10: Complete 10 reflections
+    if (_reflections.length >= 10 && !_userStats.unlockedBadgeIds.contains('reflection_10')) {
+      _unlockAchievement('reflection_10');
+    }
+
+    // experiments_100: Create 100 experiments
+    if (_experiments.length >= 100 && !_userStats.unlockedBadgeIds.contains('experiments_100')) {
+      _unlockAchievement('experiments_100');
+    }
+
+    // streak_7: 7-day streak
+    if (_userStats.currentStreak >= 7 && !_userStats.unlockedBadgeIds.contains('streak_7')) {
+      _unlockAchievement('streak_7');
+    }
+
+    // streak_30: 30-day streak
+    if (_userStats.currentStreak >= 30 && !_userStats.unlockedBadgeIds.contains('streak_30')) {
+      _unlockAchievement('streak_30');
+    }
+
+    // streak_100: 100-day streak
+    if (_userStats.currentStreak >= 100 && !_userStats.unlockedBadgeIds.contains('streak_100')) {
+      _unlockAchievement('streak_100');
+    }
+
+    // barrier_buster: Log 10 barriers
+    if (_barriers.length >= 10 && !_userStats.unlockedBadgeIds.contains('barrier_buster')) {
+      _unlockAchievement('barrier_buster');
+    }
+
+    // first_top2: Complete first priority task
+    if (_tasks.any((t) => t.isPriority && t.isCompleted) && !_userStats.unlockedBadgeIds.contains('first_top2')) {
+      _unlockAchievement('first_top2');
+    }
+
+    // tasks_50: Complete 50 tasks
+    if (_tasks.where((t) => t.isCompleted).length >= 50 && !_userStats.unlockedBadgeIds.contains('tasks_50')) {
+      _unlockAchievement('tasks_50');
+    }
+
+    // zero_backlog: Clear entire backlog (no incomplete backlog tasks)
+    if (backlogTasks.isEmpty && _tasks.isNotEmpty && !_userStats.unlockedBadgeIds.contains('zero_backlog')) {
+      _unlockAchievement('zero_backlog');
+    }
+
+    // first_goal: Set first goal
+    if (_goals.isNotEmpty && !_userStats.unlockedBadgeIds.contains('first_goal')) {
+      _unlockAchievement('first_goal');
+    }
+
+    // factor_master: Create 5 Factors
+    if (_factors.length >= 5 && !_userStats.unlockedBadgeIds.contains('factor_master')) {
+      _unlockAchievement('factor_master');
+    }
+
+    // level_10: Reach Level 10 on any Factor
+    if (_factors.any((f) => f.currentLevel >= 10) && !_userStats.unlockedBadgeIds.contains('level_10')) {
+      _unlockAchievement('level_10');
+    }
+
+    // xp_1000: Earn 1000 XP
+    if (_userStats.totalXP >= 1000 && !_userStats.unlockedBadgeIds.contains('xp_1000')) {
+      _unlockAchievement('xp_1000');
+    }
+
+    // xp_10000: Earn 10000 XP
+    if (_userStats.totalXP >= 10000 && !_userStats.unlockedBadgeIds.contains('xp_10000')) {
+      _unlockAchievement('xp_10000');
+    }
+  }
+
+  void _unlockAchievement(String id) {
+    final achievement = Achievements.getById(id);
+    if (achievement == null) return;
+
+    // Mark as unlocked
+    _userStats.unlockBadge(id);
+    
+    // Award XP and coins
+    _userStats.earnReward(xp: achievement.xpReward, coinReward: achievement.coinReward);
+    
+    // Queue notification
+    _pendingAchievementNotifications.add(id);
+    
+    notifyListeners();
+  }
+
+  /// Manually trigger achievement check (call resurrection)
+  void triggerResurrectionAchievement() {
+    if (!_userStats.unlockedBadgeIds.contains('resurrection')) {
+      _unlockAchievement('resurrection');
+    }
+  }
 }

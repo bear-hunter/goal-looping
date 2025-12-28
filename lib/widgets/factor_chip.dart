@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/theme/theme.dart';
-import '../models/factor.dart';
+import '../models/growth_area.dart';
 
 /// Selectable chip for factors (Knowledge, Skills, Attributes)
 class FactorChip extends StatelessWidget {

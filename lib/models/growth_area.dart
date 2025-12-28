@@ -1,10 +1,10 @@
 import 'package:hive/hive.dart';
 
-part 'factor.g.dart';
+part 'growth_area.g.dart';
 
-/// Type of factor for goal dissection
+/// Type of growth area for goal dissection
 @HiveType(typeId: 10)
-enum FactorType {
+enum GrowthAreaType {
   @HiveField(0)
   knowledge,
 
@@ -21,10 +21,10 @@ enum FactorType {
   resource,
 }
 
-/// Factor - Goal dissection element (Knowledge, Skills, Attributes, etc.)
+/// GrowthArea - Goal dissection element (Knowledge, Skills, Attributes, etc.)
 /// These serve as master tags for tasks and reflections
 @HiveType(typeId: 1)
-class Factor extends HiveObject {
+class GrowthArea extends HiveObject {
   @HiveField(0)
   String id;
 
@@ -32,7 +32,7 @@ class Factor extends HiveObject {
   String name;
 
   @HiveField(2)
-  FactorType type;
+  GrowthAreaType type;
 
   @HiveField(3)
   int targetLevel; // 1-10
@@ -58,11 +58,11 @@ class Factor extends HiveObject {
 
   // Phase 2: Effort Tracking
   @HiveField(10)
-  List<String> linkedHabitIds; // All habits linked to this Factor
+  List<String> linkedHabitIds; // All habits linked to this GrowthArea
 
-  // Phase 5: Focus Factor System
+  // Phase 5: Focus System
   @HiveField(11)
-  bool isActiveFocus; // Is this one of the user's 2 focus Factors?
+  bool isActiveFocus; // Is this one of the user's 2 focus areas?
 
   @HiveField(12)
   DateTime? lastWorkedOn; // For decay calculation (active only)
@@ -70,7 +70,11 @@ class Factor extends HiveObject {
   @HiveField(13)
   double healthPercent; // 0-100, only decays when active
 
-  Factor({
+  // Phase 6: Tree Design
+  @HiveField(14)
+  String treeDesignId; // Which tree design to use
+
+  GrowthArea({
     required this.id,
     required this.name,
     required this.type,
@@ -85,6 +89,7 @@ class Factor extends HiveObject {
     this.isActiveFocus = false,
     this.lastWorkedOn,
     this.healthPercent = 100.0,
+    this.treeDesignId = 'oak',
   }) : lastUpdated = lastUpdated ?? DateTime.now(),
        linkedHabitIds = linkedHabitIds ?? [];
 
@@ -95,55 +100,66 @@ class Factor extends HiveObject {
   double get progressPercent => 
       targetLevel > 0 ? (currentLevel / targetLevel).clamp(0.0, 1.0) : 0.0;
 
-  /// Check if this factor is the biggest gap (for focus suggestion)
+  /// Check if this area needs focus (biggest gap)
   bool get needsFocus => gap > 3;
+
+  /// Growth stage based on current level (0-5)
+  int get growthStage {
+    if (currentLevel <= 1) return 0; // Seed
+    if (currentLevel <= 3) return 1; // Sprout
+    if (currentLevel <= 5) return 2; // Sapling
+    if (currentLevel <= 7) return 3; // Growing
+    if (currentLevel <= 9) return 4; // Mature
+    return 5; // Mastered
+  }
 
   /// Health status for tree visualization
   String get healthStatus {
     if (!isActiveFocus) return 'dormant'; // 💤
-    if (healthPercent >= 75) return 'flourishing'; // 🌳
-    if (healthPercent >= 50) return 'healthy'; // 🌲
-    if (healthPercent >= 25) return 'wilting'; // 🥀
-    return 'dead'; // 💀
+    if (healthPercent >= 75) return 'flourishing';
+    if (healthPercent >= 50) return 'healthy';
+    if (healthPercent >= 25) return 'wilting';
+    return 'dead';
   }
 
-  /// Tree emoji based on health
+  /// Tree emoji based on growth stage
   String get treeEmoji {
-    switch (healthStatus) {
-      case 'dormant': return '💤';
-      case 'flourishing': return '🌳';
-      case 'healthy': return '🌲';
-      case 'wilting': return '🥀';
-      case 'dead': return '💀';
+    if (!isActiveFocus) return '💤';
+    if (healthStatus == 'dead') return '💀';
+    switch (growthStage) {
+      case 0: return '🌱';
+      case 1: return '🌿';
+      case 2: return '🌲';
+      case 3: return '🌳';
+      case 4: return '🌳';
+      case 5: return '👑';
       default: return '🌱';
     }
   }
 
-  /// Days since last work (for active Factors)
+  /// Days since last work
   int get daysSinceWork {
     if (lastWorkedOn == null) return 0;
     return DateTime.now().difference(lastWorkedOn!).inDays;
   }
 
-  /// Calculate decayed health (call daily for active Factors)
+  /// Calculate decayed health (call daily for active areas)
   double calculateDecayedHealth() {
-    if (!isActiveFocus) return healthPercent; // No decay for dormant
+    if (!isActiveFocus) return healthPercent;
     if (lastWorkedOn == null) return healthPercent;
     
-    // -10% per day of inactivity, minimum 0
     final decay = daysSinceWork * 10.0;
     return (healthPercent - decay).clamp(0.0, 100.0);
   }
 
-  /// Log work done on this Factor
+  /// Log work done on this area
   void logWork() {
     lastWorkedOn = DateTime.now();
-    // Restore some health when work is done
     healthPercent = (healthPercent + 20.0).clamp(0.0, 100.0);
     save();
   }
 
-  /// Resurrect a dead Factor (costs coins)
+  /// Resurrect a dead area (costs coins)
   void resurrect() {
     healthPercent = 50.0;
     lastWorkedOn = DateTime.now();
@@ -153,17 +169,20 @@ class Factor extends HiveObject {
   /// Get human-readable type name
   String get typeName {
     switch (type) {
-      case FactorType.knowledge:
+      case GrowthAreaType.knowledge:
         return 'Knowledge';
-      case FactorType.skill:
+      case GrowthAreaType.skill:
         return 'Skill';
-      case FactorType.attribute:
+      case GrowthAreaType.attribute:
         return 'Attribute';
-      case FactorType.process:
+      case GrowthAreaType.process:
         return 'Process';
-      case FactorType.resource:
+      case GrowthAreaType.resource:
         return 'Resource';
     }
   }
 }
 
+// Alias for backward compatibility during migration
+typedef Factor = GrowthArea;
+typedef FactorType = GrowthAreaType;

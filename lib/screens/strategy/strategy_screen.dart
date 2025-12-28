@@ -4,13 +4,14 @@ import 'package:provider/provider.dart';
 
 import '../../core/theme/theme.dart';
 import '../../models/goal.dart';
-import '../../models/factor.dart';
+import '../../models/growth_area.dart';
 import '../../models/sprint_target.dart';
 import '../../models/time_availability.dart';
 import '../../providers/app_state.dart';
 import '../../services/storage_service.dart';
 import '../../widgets/glass_card.dart';
 import '../../widgets/factor_chip.dart';
+import '../../widgets/factor_health_tree.dart';
 import 'factor_detail_screen.dart';
 
 /// Module 1: Strategy & Setup Screen
@@ -93,31 +94,138 @@ class StrategyScreen extends StatelessWidget {
   Widget _buildFactorsSection(BuildContext context, AppState state) {
     return SliverToBoxAdapter(
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Active Focus Factors (max 2)
           _SectionHeader(
-            title: 'Dissection Tree',
-            icon: Icons.account_tree_rounded,
+            title: 'Active Focus (${state.activeFocusFactors.length}/2)',
+            icon: Icons.local_fire_department_rounded,
             color: AppColors.success,
-            onAdd: () => _showAddFactorDialog(context, state.activeGoal!.id),
+            onAdd: state.canAddActiveFocus && state.dormantFactors.isNotEmpty 
+                ? () => _showSelectFactorToActivate(context, state)
+                : null,
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: state.factors.map((f) => FactorChip(
-                factor: f,
-                showGap: true,
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => FactorDetailScreen(factorId: f.id),
-                  ),
+          
+          if (state.activeFocusFactors.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: GlassCard(
+                child: Column(
+                  children: [
+                    Text('🎯 Select up to 2 Factors to focus on', 
+                        style: TextStyle(color: AppColors.textMuted)),
+                    const SizedBox(height: 8),
+                    Text('Only active Factors grow or decay',
+                        style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                  ],
                 ),
-              )).toList(),
+              ),
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                children: state.activeFocusFactors.map((f) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: FactorHealthTree(
+                    factor: f,
+                    onTap: () => Navigator.push(context, MaterialPageRoute(
+                      builder: (_) => FactorDetailScreen(factorId: f.id),
+                    )),
+                  ),
+                )).toList(),
+              ),
             ),
-          ),
+          
+          // Dormant Factors
+          if (state.dormantFactors.isNotEmpty || state.factors.isEmpty)
+            _SectionHeader(
+              title: '💤 Dormant Factors',
+              icon: Icons.nightlight_round,
+              color: AppColors.textMuted,
+              onAdd: state.activeGoal != null 
+                  ? () => _showAddFactorDialog(context, state.activeGoal!.id)
+                  : null,
+            ),
+          
+          if (state.dormantFactors.isEmpty && state.factors.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: GlassCard(
+                onTap: state.activeGoal != null 
+                    ? () => _showAddFactorDialog(context, state.activeGoal!.id)
+                    : null,
+                child: Row(
+                  children: [
+                    Icon(Icons.add_circle_rounded, color: AppColors.textMuted),
+                    const SizedBox(width: 12),
+                    Text('Add Factors from Goal Dissection', 
+                        style: TextStyle(color: AppColors.textMuted)),
+                  ],
+                ),
+              ),
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: state.dormantFactors.map((f) => GestureDetector(
+                  onTap: () => Navigator.push(context, MaterialPageRoute(
+                    builder: (_) => FactorDetailScreen(factorId: f.id),
+                  )),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceLight,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: AppColors.glassBorder),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(f.treeEmoji, style: const TextStyle(fontSize: 16)),
+                        const SizedBox(width: 8),
+                        Text(f.name, style: TextStyle(color: AppColors.textSecondary)),
+                      ],
+                    ),
+                  ),
+                )).toList(),
+              ),
+            ),
         ],
+      ),
+    );
+  }
+
+  void _showSelectFactorToActivate(BuildContext context, AppState state) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Select Factor to Activate', style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 8),
+            Text('You can focus on up to 2 Factors at a time', 
+                style: TextStyle(color: AppColors.textMuted)),
+            const SizedBox(height: 16),
+            ...state.dormantFactors.map((f) => ListTile(
+              leading: Text(f.treeEmoji, style: const TextStyle(fontSize: 24)),
+              title: Text(f.name),
+              subtitle: Text(f.typeName),
+              trailing: Icon(Icons.add_circle_rounded, color: AppColors.primary),
+              onTap: () {
+                state.setFactorActive(f.id);
+                Navigator.pop(ctx);
+              },
+            )),
+          ],
+        ),
       ),
     );
   }

@@ -1,25 +1,25 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'factor.dart';
+part of 'growth_area.dart';
 
 // **************************************************************************
 // TypeAdapterGenerator
 // **************************************************************************
 
-class FactorAdapter extends TypeAdapter<Factor> {
+class GrowthAreaAdapter extends TypeAdapter<GrowthArea> {
   @override
   final int typeId = 1;
 
   @override
-  Factor read(BinaryReader reader) {
+  GrowthArea read(BinaryReader reader) {
     final numOfFields = reader.readByte();
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return Factor(
+    return GrowthArea(
       id: fields[0] as String,
       name: fields[1] as String,
-      type: fields[2] as FactorType,
+      type: fields[2] as GrowthAreaType,
       targetLevel: fields[3] as int,
       currentLevel: fields[4] as int,
       description: fields[5] as String,
@@ -31,13 +31,14 @@ class FactorAdapter extends TypeAdapter<Factor> {
       isActiveFocus: fields[11] as bool,
       lastWorkedOn: fields[12] as DateTime?,
       healthPercent: fields[13] as double,
+      treeDesignId: fields[14] as String,
     );
   }
 
   @override
-  void write(BinaryWriter writer, Factor obj) {
+  void write(BinaryWriter writer, GrowthArea obj) {
     writer
-      ..writeByte(14)
+      ..writeByte(15)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -65,7 +66,9 @@ class FactorAdapter extends TypeAdapter<Factor> {
       ..writeByte(12)
       ..write(obj.lastWorkedOn)
       ..writeByte(13)
-      ..write(obj.healthPercent);
+      ..write(obj.healthPercent)
+      ..writeByte(14)
+      ..write(obj.treeDesignId);
   }
 
   @override
@@ -74,49 +77,49 @@ class FactorAdapter extends TypeAdapter<Factor> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is FactorAdapter &&
+      other is GrowthAreaAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }
 
-class FactorTypeAdapter extends TypeAdapter<FactorType> {
+class GrowthAreaTypeAdapter extends TypeAdapter<GrowthAreaType> {
   @override
   final int typeId = 10;
 
   @override
-  FactorType read(BinaryReader reader) {
+  GrowthAreaType read(BinaryReader reader) {
     switch (reader.readByte()) {
       case 0:
-        return FactorType.knowledge;
+        return GrowthAreaType.knowledge;
       case 1:
-        return FactorType.skill;
+        return GrowthAreaType.skill;
       case 2:
-        return FactorType.attribute;
+        return GrowthAreaType.attribute;
       case 3:
-        return FactorType.process;
+        return GrowthAreaType.process;
       case 4:
-        return FactorType.resource;
+        return GrowthAreaType.resource;
       default:
-        return FactorType.knowledge;
+        return GrowthAreaType.knowledge;
     }
   }
 
   @override
-  void write(BinaryWriter writer, FactorType obj) {
+  void write(BinaryWriter writer, GrowthAreaType obj) {
     switch (obj) {
-      case FactorType.knowledge:
+      case GrowthAreaType.knowledge:
         writer.writeByte(0);
         break;
-      case FactorType.skill:
+      case GrowthAreaType.skill:
         writer.writeByte(1);
         break;
-      case FactorType.attribute:
+      case GrowthAreaType.attribute:
         writer.writeByte(2);
         break;
-      case FactorType.process:
+      case GrowthAreaType.process:
         writer.writeByte(3);
         break;
-      case FactorType.resource:
+      case GrowthAreaType.resource:
         writer.writeByte(4);
         break;
     }
@@ -128,7 +131,7 @@ class FactorTypeAdapter extends TypeAdapter<FactorType> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is FactorTypeAdapter &&
+      other is GrowthAreaTypeAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

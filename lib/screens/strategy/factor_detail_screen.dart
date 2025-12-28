@@ -3,7 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme/theme.dart';
-import '../../models/factor.dart';
+import '../../models/growth_area.dart';
 import '../../providers/app_state.dart';
 import '../../widgets/glass_card.dart';
 import '../../widgets/progress_ring.dart';
@@ -124,7 +124,94 @@ class _FactorDetailScreenState extends State<FactorDetailScreen> {
 
                 const SizedBox(height: 24),
 
-                // Level Descriptions (User Agency)
+                // Focus Status (Activate/Deactivate)
+                _SectionHeader(title: 'Focus Status', icon: Icons.local_fire_department_rounded, color: factor.isActiveFocus ? AppColors.success : AppColors.textMuted),
+                GlassCard(
+                  highlighted: factor.isActiveFocus,
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Text(factor.treeEmoji, style: const TextStyle(fontSize: 32)),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  factor.isActiveFocus ? '⭐ Active Focus' : '💤 Dormant',
+                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  factor.isActiveFocus 
+                                      ? 'Health: ${factor.healthPercent.toInt()}%'
+                                      : 'Frozen - no decay penalty',
+                                  style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      if (factor.isActiveFocus)
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              state.setFactorDormant(factor.id);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('${factor.name} is now dormant 💤')),
+                              );
+                            },
+                            icon: const Icon(Icons.pause_rounded),
+                            label: const Text('Set Dormant'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.textMuted,
+                              side: BorderSide(color: AppColors.glassBorder),
+                            ),
+                          ),
+                        )
+                      else if (state.canAddActiveFocus)
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              state.setFactorActive(factor.id);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('${factor.name} is now active! 🔥'), backgroundColor: AppColors.success),
+                              );
+                            },
+                            icon: const Icon(Icons.local_fire_department_rounded),
+                            label: const Text('Activate Focus'),
+                          ),
+                        )
+                      else
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppColors.warning.withAlpha(20),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.info_rounded, color: AppColors.warning, size: 18),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Max 2 active focus areas. Deactivate one to activate this.',
+                                  style: TextStyle(fontSize: 12, color: AppColors.warning),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 24),
                 _SectionHeader(title: 'Level Criteria', icon: Icons.description_rounded, color: AppColors.warning),
                 
                 // Target Description

@@ -10,6 +10,8 @@ import 'screens/strategy/strategy_screen.dart';
 import 'screens/habits/habits_screen.dart';
 import 'screens/audit/audit_screen.dart';
 import 'screens/reflection/reflection_screen.dart';
+import 'models/achievement.dart';
+import 'widgets/achievement_notification.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -82,34 +84,63 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    // Check achievements when state changes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final state = context.read<AppState>();
+      state.addListener(() => state.checkAchievements());
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 200),
-        child: _screens[_currentIndex],
-      ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          border: Border(
-            top: BorderSide(
-              color: AppColors.glassBorder,
-              width: 1,
+    return Consumer<AppState>(
+      builder: (context, state, _) {
+        return Stack(
+          children: [
+            Scaffold(
+              body: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                child: _screens[_currentIndex],
+              ),
+              bottomNavigationBar: Container(
+                decoration: BoxDecoration(
+                  border: Border(
+                    top: BorderSide(
+                      color: AppColors.glassBorder,
+                      width: 1,
+                    ),
+                  ),
+                ),
+                child: NavigationBar(
+                  selectedIndex: _currentIndex,
+                  onDestinationSelected: (index) {
+                    setState(() {
+                      _currentIndex = index;
+                    });
+                  },
+                  backgroundColor: AppColors.surface,
+                  indicatorColor: AppColors.primary.withAlpha(50),
+                  destinations: _destinations,
+                  labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+                ),
+              ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.1, end: 0),
             ),
-          ),
-        ),
-        child: NavigationBar(
-          selectedIndex: _currentIndex,
-          onDestinationSelected: (index) {
-            setState(() {
-              _currentIndex = index;
-            });
-          },
-          backgroundColor: AppColors.surface,
-          indicatorColor: AppColors.primary.withOpacity(0.2),
-          destinations: _destinations,
-          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-        ),
-      ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.1, end: 0),
+            // Achievement notification overlay
+            if (state.pendingAchievementNotifications.isNotEmpty)
+              Container(
+                color: Colors.black.withAlpha(180),
+                child: AchievementNotification(
+                  achievementId: state.pendingAchievementNotifications.first,
+                  onDismiss: () => state.clearAchievementNotification(
+                    state.pendingAchievementNotifications.first,
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }

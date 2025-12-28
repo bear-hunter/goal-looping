@@ -9,6 +9,7 @@ import '../../providers/app_state.dart';
 import '../../services/storage_service.dart';
 import '../../widgets/glass_card.dart';
 import '../../widgets/task_card.dart';
+import '../../widgets/xp_bar.dart';
 
 /// Module 2: Priority Task Engine (Home Screen)
 /// "What are the 2 most important tasks you need to do?"
@@ -33,17 +34,24 @@ class _HomeScreenState extends State<HomeScreen> {
         return SafeArea(
           child: CustomScrollView(
             slivers: [
-              // Header
+              // Header with XP bar
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Today\'s Focus',
-                        style: Theme.of(context).textTheme.displayMedium,
-                      ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.1, end: 0),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Today\'s Focus',
+                              style: Theme.of(context).textTheme.displayMedium,
+                            ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.1, end: 0),
+                          ),
+                          XPBar(stats: state.userStats, compact: true),
+                        ],
+                      ),
                       const SizedBox(height: 8),
                       Text(
                         'What are the 2 most important tasks you need to do?',

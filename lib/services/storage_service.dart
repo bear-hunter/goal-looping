@@ -2,7 +2,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 import '../models/goal.dart';
-import '../models/factor.dart';
+import '../models/growth_area.dart';
 import '../models/sprint_target.dart';
 import '../models/task.dart';
 import '../models/subtask.dart';
@@ -10,6 +10,8 @@ import '../models/habit.dart';
 import '../models/reflection.dart';
 import '../models/experiment.dart';
 import '../models/time_availability.dart';
+import '../models/user_stats.dart';
+import '../models/achievement.dart';
 
 /// Storage service for all app data using Hive
 class StorageService {
@@ -23,6 +25,8 @@ class StorageService {
   static const String experimentsBox = 'experiments';
   static const String barriersBox = 'barriers';
   static const String settingsBox = 'settings';
+  static const String userStatsBox = 'userStats';
+  static const String achievementsBox = 'achievements';
 
   static final Uuid _uuid = const Uuid();
 
@@ -35,8 +39,8 @@ class StorageService {
 
     // Register adapters
     Hive.registerAdapter(GoalAdapter());
-    Hive.registerAdapter(FactorAdapter());
-    Hive.registerAdapter(FactorTypeAdapter());
+    Hive.registerAdapter(GrowthAreaAdapter());
+    Hive.registerAdapter(GrowthAreaTypeAdapter());
     Hive.registerAdapter(SprintTargetAdapter());
     Hive.registerAdapter(SprintDurationAdapter());
     Hive.registerAdapter(TaskAdapter());
@@ -50,6 +54,8 @@ class StorageService {
     Hive.registerAdapter(ExperimentAdapter());
     Hive.registerAdapter(ExperimentStatusAdapter());
     Hive.registerAdapter(TimeAvailabilityAdapter());
+    Hive.registerAdapter(UserStatsAdapter());
+    Hive.registerAdapter(AchievementAdapter());
 
     // Open all boxes
     await Hive.openBox<Goal>(goalsBox);
@@ -62,6 +68,8 @@ class StorageService {
     await Hive.openBox<Experiment>(experimentsBox);
     await Hive.openBox<BarrierEntry>(barriersBox);
     await Hive.openBox(settingsBox);
+    await Hive.openBox<UserStats>(userStatsBox);
+    await Hive.openBox<Achievement>(achievementsBox);
   }
 
   // ========== GOALS ==========
@@ -285,5 +293,34 @@ class StorageService {
 
   static Future<void> setOnboardingComplete(bool value) async {
     await _settingsBox.put('onboardingComplete', value);
+  }
+
+  // ========== USER STATS (Gamification) ==========
+
+  static Box<UserStats> get _userStatsBox => Hive.box<UserStats>(userStatsBox);
+
+  static UserStats getUserStats() {
+    final stats = _userStatsBox.get('main');
+    if (stats != null) return stats;
+    // Create default stats
+    final newStats = UserStats();
+    _userStatsBox.put('main', newStats);
+    return newStats;
+  }
+
+  static Future<void> saveUserStats(UserStats stats) async {
+    await _userStatsBox.put('main', stats);
+  }
+
+  // ========== ACHIEVEMENTS ==========
+
+  static Box<Achievement> get _achievementsBox => Hive.box<Achievement>(achievementsBox);
+
+  static List<Achievement> getAllAchievements() => _achievementsBox.values.toList();
+
+  static Achievement? getAchievement(String id) => _achievementsBox.get(id);
+
+  static Future<void> saveAchievement(Achievement achievement) async {
+    await _achievementsBox.put(achievement.id, achievement);
   }
 }
