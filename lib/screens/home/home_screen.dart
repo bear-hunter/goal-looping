@@ -143,6 +143,15 @@ class _HomeScreenState extends State<HomeScreen> {
                 ).animate().fadeIn(delay: 200.ms, duration: 400.ms),
               ),
 
+              // Reflection Reminder Banner
+              if (state.userStats.isReflectionOverdue)
+                SliverToBoxAdapter(
+                  child: _ReflectionReminderBanner(
+                    isCritical: state.userStats.isReflectionCriticallyOverdue,
+                    hoursSince: state.userStats.hoursSinceLastReflection,
+                  ),
+                ),
+
               // Priority Tasks (Top 2)
               if (state.priorityTasks.isEmpty)
                 SliverToBoxAdapter(
@@ -1904,6 +1913,108 @@ class _FilterChip extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Reflection reminder banner when overdue
+class _ReflectionReminderBanner extends StatelessWidget {
+  final bool isCritical;
+  final int hoursSince;
+
+  const _ReflectionReminderBanner({
+    required this.isCritical,
+    required this.hoursSince,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isCritical ? AppColors.danger : AppColors.warning;
+    final daysSince = hoursSince ~/ 24;
+    
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+      child: GestureDetector(
+        onTap: () {
+          // Navigate to Reflect tab (index 3)
+          final navState = context.findAncestorStateOfType<NavigatorState>();
+          if (navState != null) {
+            // Just show a snackbar directing them to the Reflect tab
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text('Tap the Reflect tab to start a reflection!'),
+                backgroundColor: AppColors.primary,
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          }
+        },
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                color.withAlpha(40),
+                color.withAlpha(20),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color.withAlpha(80)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: color.withAlpha(50),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  isCritical ? Icons.warning_rounded : Icons.psychology_rounded,
+                  color: color,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isCritical 
+                          ? '⚠️ Reflection Critical!'
+                          : '🔔 Time to Reflect',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: color,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      isCritical
+                          ? '$daysSince+ days without reflection - never go a week!'
+                          : 'It\'s been ${daysSince > 0 ? "$daysSince days" : "$hoursSince hours"} since your last reflection',
+                      style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.arrow_forward_rounded,
+                color: color,
+                size: 20,
+              ),
+            ],
+          ),
+        ),
+      ),
+    ).animate().fadeIn(duration: 300.ms).shimmer(
+      delay: 500.ms,
+      duration: 1500.ms,
+      color: color.withAlpha(30),
     );
   }
 }

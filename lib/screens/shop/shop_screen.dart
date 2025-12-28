@@ -209,7 +209,6 @@ class _SpeciesCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final leafColor = Color(int.parse('FF${design.colorHex}', radix: 16));
     
     return GestureDetector(
       onTap: isUnlocked ? null : onPurchase,
@@ -234,9 +233,15 @@ class _SpeciesCard extends StatelessWidget {
             Stack(
               alignment: Alignment.center,
               children: [
-                CustomPaint(
-                  size: const Size(60, 70),
-                  painter: _MatureTreePreviewPainter(leafColor: leafColor),
+                Image.asset(
+                  design.getAssetPath(5), // Mature stage for preview
+                  width: 60,
+                  height: 70,
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) {
+                    // Fallback to emoji
+                    return Text(design.emoji, style: const TextStyle(fontSize: 40));
+                  },
                 ),
                 if (!isUnlocked)
                   Container(
@@ -297,49 +302,3 @@ class _SpeciesCard extends StatelessWidget {
   }
 }
 
-/// Preview of mature tree silhouette
-class _MatureTreePreviewPainter extends CustomPainter {
-  final Color leafColor;
-
-  _MatureTreePreviewPainter({required this.leafColor});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final centerX = size.width / 2;
-    final bottom = size.height;
-    
-    // Trunk
-    final trunkPaint = Paint()..color = const Color(0xFF5D4037)..style = PaintingStyle.fill;
-    final trunkPath = Path();
-    trunkPath.moveTo(centerX - 5, bottom);
-    trunkPath.lineTo(centerX - 3, bottom - size.height * 0.35);
-    trunkPath.lineTo(centerX + 3, bottom - size.height * 0.35);
-    trunkPath.lineTo(centerX + 5, bottom);
-    trunkPath.close();
-    canvas.drawPath(trunkPath, trunkPaint);
-    
-    // Foliage
-    final leafPaint = Paint()..color = leafColor;
-    
-    canvas.drawOval(
-      Rect.fromCenter(
-        center: Offset(centerX, bottom - size.height * 0.5),
-        width: size.width * 0.8,
-        height: size.height * 0.4,
-      ),
-      leafPaint,
-    );
-    
-    canvas.drawOval(
-      Rect.fromCenter(
-        center: Offset(centerX, bottom - size.height * 0.7),
-        width: size.width * 0.5,
-        height: size.height * 0.25,
-      ),
-      Paint()..color = Color.lerp(leafColor, Colors.black, 0.1)!,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _MatureTreePreviewPainter old) => leafColor != old.leafColor;
-}

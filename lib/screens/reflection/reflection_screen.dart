@@ -8,7 +8,10 @@ import '../../models/experiment.dart';
 import '../../providers/app_state.dart';
 import '../../services/storage_service.dart';
 import '../../widgets/glass_card.dart';
+import '../../widgets/manual_reflection_form.dart';
 import 'reflection_detail_screen.dart';
+import 'reflection_archive_screen.dart';
+import '../experiment/experiment_screen.dart';
 
 /// Module 5: Reflection Forge - Kolb's Cycles with Markdown parsing
 class ReflectionScreen extends StatelessWidget {
@@ -28,8 +31,64 @@ class ReflectionScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Reflection Forge', style: Theme.of(context).textTheme.displayMedium)
-                          .animate().fadeIn(duration: 400.ms),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text('Reflection Forge', style: Theme.of(context).textTheme.displayMedium)
+                                .animate().fadeIn(duration: 400.ms),
+                          ),
+                          // Experiments button
+                          GestureDetector(
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const ExperimentScreen()),
+                            ),
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppColors.warning.withAlpha(30),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.science_rounded, size: 20, color: AppColors.warning),
+                                  if (state.pendingExperiments.isNotEmpty) ...[
+                                    const SizedBox(width: 4),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.warning,
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Text(
+                                        '${state.pendingExperiments.length}',
+                                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          // Archive button
+                          GestureDetector(
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const ReflectionArchiveScreen()),
+                            ),
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppColors.textMuted.withAlpha(30),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(Icons.archive_outlined, size: 20, color: AppColors.textMuted),
+                            ),
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 8),
                       Text('Transform reflections into actions',
                           style: TextStyle(color: AppColors.textSecondary)),
@@ -49,7 +108,7 @@ class ReflectionScreen extends StatelessWidget {
                       decoration: BoxDecoration(
                         gradient: AppColors.primaryGradient,
                         borderRadius: BorderRadius.circular(16),
-                        boxShadow: [BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 4))],
+                        boxShadow: [BoxShadow(color: AppColors.primary.withAlpha(76), blurRadius: 12, offset: const Offset(0, 4))],
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -64,21 +123,21 @@ class ReflectionScreen extends StatelessWidget {
                 ),
               ),
 
-              // Pending Experiments
-              if (state.pendingExperiments.isNotEmpty) ...[
+              // Active Cycle Chains (grouped reflections)
+              if (state.activeReflectionGroups.isNotEmpty) ...[
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
                     child: Row(
                       children: [
-                        Icon(Icons.science_rounded, color: AppColors.warning, size: 20),
+                        Icon(Icons.replay_circle_filled_rounded, color: AppColors.primary, size: 20),
                         const SizedBox(width: 12),
-                        Text('Pending Experiments', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.warning)),
+                        Text('Active Cycle Chains', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
                         const Spacer(),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(color: AppColors.warning.withOpacity(0.2), borderRadius: BorderRadius.circular(12)),
-                          child: Text('${state.pendingExperiments.length}', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.warning)),
+                          decoration: BoxDecoration(color: AppColors.primary.withAlpha(51), borderRadius: BorderRadius.circular(12)),
+                          child: Text('${state.activeReflectionGroups.length}', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary)),
                         ),
                       ],
                     ),
@@ -87,39 +146,27 @@ class ReflectionScreen extends StatelessWidget {
                 SliverList(
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
-                      final exp = state.pendingExperiments[index];
-                      return GlassCard(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(exp.description, style: TextStyle(color: AppColors.textPrimary)),
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                _ActionChip(
-                                  label: 'Add to Top 2',
-                                  color: AppColors.primary,
-                                  enabled: state.canAddPriorityTask,
-                                  onTap: () => state.promoteExperimentToTask(exp.id, toPriority: true),
-                                ),
-                                const SizedBox(width: 8),
-                                _ActionChip(
-                                  label: 'Add to Backlog',
-                                  color: AppColors.textMuted,
-                                  onTap: () => state.promoteExperimentToTask(exp.id, toPriority: false),
-                                ),
-                              ],
-                            ),
-                          ],
+                      final group = state.activeReflectionGroups[index];
+                      return _CycleChainCard(
+                        group: group,
+                        reflections: group.reflectionIds
+                            .map((id) => state.getReflectionById(id))
+                            .where((r) => r != null)
+                            .toList(),
+                        onViewReflection: (reflectionId) => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ReflectionDetailScreen(reflectionId: reflectionId),
+                          ),
                         ),
                       );
                     },
-                    childCount: state.pendingExperiments.length,
+                    childCount: state.activeReflectionGroups.length,
                   ),
                 ),
               ],
 
-              // Recent Reflections
+              // Recent Reflections (ungrouped)
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
@@ -141,7 +188,7 @@ class ReflectionScreen extends StatelessWidget {
                         padding: const EdgeInsets.all(20),
                         child: Column(
                           children: [
-                            Icon(Icons.psychology_rounded, size: 48, color: AppColors.textMuted.withOpacity(0.5)),
+                            Icon(Icons.psychology_rounded, size: 48, color: AppColors.textMuted.withAlpha(127)),
                             const SizedBox(height: 12),
                             Text('Start your first reflection cycle', style: TextStyle(color: AppColors.textMuted)),
                           ],
@@ -157,6 +204,9 @@ class ReflectionScreen extends StatelessWidget {
                       final reflection = state.reflections[index];
                       return _ReflectionCard(
                         reflection: reflection,
+                        cycleNumber: reflection.groupId != null 
+                            ? state.getReflectionGroup(reflection.groupId!)?.reflectionIds.indexOf(reflection.id) ?? 0 + 1
+                            : null,
                         onTap: () => Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -183,6 +233,117 @@ class ReflectionScreen extends StatelessWidget {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => const _NewReflectionSheet(),
+    );
+  }
+}
+
+/// Cycle chain card showing timeline
+class _CycleChainCard extends StatelessWidget {
+  final dynamic group;
+  final List<dynamic> reflections;
+  final Function(String) onViewReflection;
+
+  const _CycleChainCard({
+    required this.group,
+    required this.reflections,
+    required this.onViewReflection,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassCard(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withAlpha(30),
+                  shape: BoxShape.circle,
+                ),
+                child: const Text('🔁', style: TextStyle(fontSize: 16)),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      group.title ?? 'Reflection Cycle',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                    ),
+                    Text(
+                      '${reflections.length} cycles',
+                      style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Timeline
+          SizedBox(
+            height: 50,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: reflections.length,
+              itemBuilder: (ctx, i) {
+                final r = reflections[i];
+                return Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    GestureDetector(
+                      onTap: () => onViewReflection(r.id),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: i == reflections.length - 1 
+                              ? AppColors.primary.withAlpha(30) 
+                              : AppColors.surfaceLight,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: i == reflections.length - 1 
+                                ? AppColors.primary 
+                                : AppColors.glassBorder,
+                          ),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '${i + 1}',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: i == reflections.length - 1 
+                                    ? AppColors.primary 
+                                    : AppColors.textSecondary,
+                              ),
+                            ),
+                            Text(
+                              'cycle',
+                              style: TextStyle(fontSize: 9, color: AppColors.textMuted),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    if (i < reflections.length - 1)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: Icon(Icons.arrow_forward_rounded, size: 14, color: AppColors.textMuted),
+                      ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -215,8 +376,9 @@ class _ActionChip extends StatelessWidget {
 class _ReflectionCard extends StatelessWidget {
   final Reflection reflection;
   final VoidCallback? onTap;
+  final int? cycleNumber;
 
-  const _ReflectionCard({required this.reflection, this.onTap});
+  const _ReflectionCard({required this.reflection, this.onTap, this.cycleNumber});
 
   @override
   Widget build(BuildContext context) {
@@ -237,6 +399,20 @@ class _ReflectionCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
+              if (cycleNumber != null) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withAlpha(30),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '🔁 $cycleNumber',
+                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.primary),
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
               Text(
                 _formatDate(reflection.createdAt),
                 style: TextStyle(fontSize: 12, color: AppColors.textMuted),
@@ -277,8 +453,11 @@ class _NewReflectionSheet extends StatefulWidget {
   State<_NewReflectionSheet> createState() => _NewReflectionSheetState();
 }
 
+enum _EntryMode { guided, manual }
+
 class _NewReflectionSheetState extends State<_NewReflectionSheet> {
   int _step = 0; // Start at Step 0: Factor selection
+  _EntryMode _entryMode = _EntryMode.guided;
   final _experienceController = TextEditingController();
   final _reflectionController = TextEditingController();
   final _abstractionController = TextEditingController();
@@ -314,49 +493,194 @@ class _NewReflectionSheetState extends State<_NewReflectionSheet> {
             ),
           ),
 
-          // Progress (6 steps now: 0=Factor, 1=Experience, 2=Reflection, 3=Abstraction, 4=Experiments, 5=Markdown)
+          // Entry Mode Toggle
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(
-              children: List.generate(6, (i) => Expanded(
-                child: Container(
-                  height: 4,
-                  margin: const EdgeInsets.symmetric(horizontal: 2),
-                  decoration: BoxDecoration(
-                    color: i <= _step ? AppColors.primary : AppColors.surfaceLight,
-                    borderRadius: BorderRadius.circular(2),
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => setState(() => _entryMode = _EntryMode.guided),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: _entryMode == _EntryMode.guided 
+                            ? AppColors.primary.withAlpha(30) 
+                            : AppColors.surfaceLight,
+                        borderRadius: const BorderRadius.horizontal(left: Radius.circular(12)),
+                        border: Border.all(
+                          color: _entryMode == _EntryMode.guided 
+                              ? AppColors.primary 
+                              : AppColors.glassBorder,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.paste_rounded, 
+                            size: 18,
+                            color: _entryMode == _EntryMode.guided ? AppColors.primary : AppColors.textMuted,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Paste from Gemini',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: _entryMode == _EntryMode.guided ? FontWeight.w600 : FontWeight.normal,
+                              color: _entryMode == _EntryMode.guided ? AppColors.primary : AppColors.textMuted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-              )),
-            ),
-          ),
-
-          // Content
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: _buildStepContent(state),
-            ),
-          ),
-
-          // Actions
-          Padding(
-            padding: EdgeInsets.fromLTRB(20, 12, 20, MediaQuery.of(context).viewInsets.bottom + 20),
-            child: Row(
-              children: [
-                if (_step > 0)
-                  TextButton(onPressed: () => setState(() => _step--), child: const Text('Back')),
-                const Spacer(),
-                ElevatedButton(
-                  onPressed: _step < 5 ? () => setState(() => _step++) : _saveReflection,
-                  child: Text(_step < 5 ? 'Next' : 'Save'),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => setState(() => _entryMode = _EntryMode.manual),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: _entryMode == _EntryMode.manual 
+                            ? AppColors.primary.withAlpha(30) 
+                            : AppColors.surfaceLight,
+                        borderRadius: const BorderRadius.horizontal(right: Radius.circular(12)),
+                        border: Border.all(
+                          color: _entryMode == _EntryMode.manual 
+                              ? AppColors.primary 
+                              : AppColors.glassBorder,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.edit_note_rounded, 
+                            size: 18,
+                            color: _entryMode == _EntryMode.manual ? AppColors.primary : AppColors.textMuted,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Manual Entry',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: _entryMode == _EntryMode.manual ? FontWeight.w600 : FontWeight.normal,
+                              color: _entryMode == _EntryMode.manual ? AppColors.primary : AppColors.textMuted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
+
+          const SizedBox(height: 12),
+
+          // Progress (6 steps for guided mode)
+          if (_entryMode == _EntryMode.guided)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                children: List.generate(6, (i) => Expanded(
+                  child: Container(
+                    height: 4,
+                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                    decoration: BoxDecoration(
+                      color: i <= _step ? AppColors.primary : AppColors.surfaceLight,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                )),
+              ),
+            ),
+
+          // Content
+          Expanded(
+            child: _entryMode == _EntryMode.manual
+                ? _ManualEntryContent(
+                    targetFactorId: _selectedFactorId,
+                    previousExperimentId: _previousExperimentId,
+                    onSave: (reflection) {
+                      _saveManualReflection(state, reflection);
+                    },
+                  )
+                : SingleChildScrollView(
+                    padding: const EdgeInsets.all(20),
+                    child: _buildStepContent(state),
+                  ),
+          ),
+
+          // Actions (only for guided mode)
+          if (_entryMode == _EntryMode.guided)
+            Padding(
+              padding: EdgeInsets.fromLTRB(20, 12, 20, MediaQuery.of(context).viewInsets.bottom + 20),
+              child: Row(
+                children: [
+                  if (_step > 0)
+                    TextButton(onPressed: () => setState(() => _step--), child: const Text('Back')),
+                  const Spacer(),
+                  ElevatedButton(
+                    onPressed: _step < 5 ? () => setState(() => _step++) : _saveReflection,
+                    child: Text(_step < 5 ? 'Next' : 'Save'),
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );
+  }
+
+  void _saveManualReflection(AppState state, Reflection reflection) async {
+    final reflectionId = StorageService.generateId();
+    
+    // Parse experiments from rawMarkdown (temporary storage)
+    final experimentLines = (reflection.rawMarkdown ?? '')
+        .split('\n')
+        .map((l) => l.replaceFirst(RegExp(r'^[-*•]\s*'), '').trim())
+        .where((l) => l.isNotEmpty)
+        .take(3)
+        .toList();
+
+    final experimentIds = <String>[];
+    for (final line in experimentLines) {
+      final exp = Experiment(
+        id: StorageService.generateId(),
+        description: line,
+        reflectionId: reflectionId,
+      );
+      await state.addExperiment(exp);
+      experimentIds.add(exp.id);
+    }
+    
+    // Copy reflection with generated ID and experiment IDs
+    final savedReflection = Reflection(
+      id: reflectionId,
+      experience: reflection.experience,
+      reflection: reflection.reflection,
+      abstraction: reflection.abstraction,
+      isFollowUp: reflection.isFollowUp,
+      previousExperimentId: reflection.previousExperimentId,
+      targetFactorId: reflection.targetFactorId,
+      linkedFactorIds: reflection.linkedFactorIds,
+      isManualEntry: true,
+      marginalGainDescription: reflection.marginalGainDescription,
+      eventSequence: reflection.eventSequence,
+      feelings: reflection.feelings,
+      difficulties: reflection.difficulties,
+      challengeResponse: reflection.challengeResponse,
+      triggers: reflection.triggers,
+      whyBehavior: reflection.whyBehavior,
+      crossLifePatterns: reflection.crossLifePatterns,
+      experimentIds: experimentIds,
+    );
+    
+    state.addReflection(savedReflection);
+    Navigator.pop(context);
   }
 
   Widget _buildStepContent(AppState state) {
@@ -530,7 +854,7 @@ class _NewReflectionSheetState extends State<_NewReflectionSheet> {
     if (expsMatch != null) _experimentsController.text = expsMatch.group(1)?.trim() ?? '';
   }
 
-  void _saveReflection() {
+  void _saveReflection() async {
     final state = context.read<AppState>();
     final reflectionId = StorageService.generateId();
 
@@ -562,7 +886,7 @@ class _NewReflectionSheetState extends State<_NewReflectionSheet> {
         description: line,
         reflectionId: reflectionId,
       );
-      state.addExperiment(exp);
+      await state.addExperiment(exp);
       experimentIds.add(exp.id);
     }
 
@@ -570,6 +894,28 @@ class _NewReflectionSheetState extends State<_NewReflectionSheet> {
     state.addReflection(reflection);
 
     Navigator.pop(context);
+  }
+}
+
+/// Wrapper for manual entry content using the ManualReflectionForm
+class _ManualEntryContent extends StatelessWidget {
+  final String? targetFactorId;
+  final String? previousExperimentId;
+  final Function(Reflection) onSave;
+
+  const _ManualEntryContent({
+    this.targetFactorId,
+    this.previousExperimentId,
+    required this.onSave,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ManualReflectionForm(
+      targetFactorId: targetFactorId,
+      previousExperimentId: previousExperimentId,
+      onSave: onSave,
+    );
   }
 }
 

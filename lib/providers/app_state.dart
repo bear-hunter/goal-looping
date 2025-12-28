@@ -6,6 +6,7 @@ import '../models/task.dart';
 import '../models/subtask.dart';
 import '../models/habit.dart';
 import '../models/reflection.dart';
+import '../models/reflection_group.dart';
 import '../models/experiment.dart';
 import '../models/time_availability.dart';
 import '../models/user_stats.dart';
@@ -28,6 +29,7 @@ class AppState extends ChangeNotifier {
   UserStats _userStats = UserStats();
   List<FocusLog> _focusLogs = [];
   List<String> _taskCategories = [];
+  List<ReflectionGroup> _reflectionGroups = [];
   bool _isLoading = true;
 
   // ========== GETTERS ==========
@@ -43,6 +45,7 @@ class AppState extends ChangeNotifier {
   UserStats get userStats => _userStats;
   List<FocusLog> get focusLogs => _focusLogs;
   List<String> get taskCategories => _taskCategories;
+  List<ReflectionGroup> get reflectionGroups => _reflectionGroups;
   bool get isLoading => _isLoading;
 
   // Computed getters
@@ -188,6 +191,12 @@ class AppState extends ChangeNotifier {
     } catch (e) {
       _taskCategories =
           []; // Will fallback to default in StorageService, but safely empty here
+    }
+
+    try {
+      _reflectionGroups = StorageService.getAllReflectionGroups();
+    } catch (e) {
+      _reflectionGroups = [];
     }
 
     _isLoading = false;
@@ -548,6 +557,81 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ========== REFLECTION GROUPS ==========
+  List<ReflectionGroup> get activeReflectionGroups =>
+      _reflectionGroups.where((g) => !g.isArchived).toList();
+
+  List<ReflectionGroup> get archivedReflectionGroups =>
+      _reflectionGroups.where((g) => g.isArchived).toList();
+
+  ReflectionGroup? getReflectionGroup(String id) {
+    try {
+      return _reflectionGroups.firstWhere((g) => g.id == id);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Create a new reflection as a cycle of an existing one
+  Future<Reflection> cycleReflection(String reflectionId) async {
+    final original = _reflections.firstWhere((r) => r.id == reflectionId);
+    
+    // Get or create the group
+    ReflectionGroup group;
+    if (original.groupId != null) {
+      group = _reflectionGroups.firstWhere((g) => g.id == original.groupId);
+    } else {
+      // Create new group for this chain
+      group = ReflectionGroup(
+        id: StorageService.generateId(),
+        title: 'Reflection Cycle',
+        targetFactorId: original.targetFactorId,
+      );
+      group.addReflection(original.id);
+      original.groupId = group.id;
+      await StorageService.saveReflection(original);
+      await StorageService.saveReflectionGroup(group);
+      _reflectionGroups.add(group);
+    }
+
+    // Create new reflection in the same group
+    final newReflection = Reflection(
+      id: StorageService.generateId(),
+      isFollowUp: true,
+      previousReflectionId: original.id,
+      groupId: group.id,
+      targetFactorId: original.targetFactorId,
+      linkedFactorIds: List.from(original.linkedFactorIds),
+    );
+
+    group.addReflection(newReflection.id);
+    await StorageService.saveReflectionGroup(group);
+    await StorageService.saveReflection(newReflection);
+    _reflections.add(newReflection);
+
+    // Record reflection for reminder tracking
+    _userStats.recordReflection();
+
+    notifyListeners();
+    return newReflection;
+  }
+
+  /// Archive a reflection group (finish the cycle chain)
+  Future<void> archiveReflectionGroup(String groupId) async {
+    final group = _reflectionGroups.firstWhere((g) => g.id == groupId);
+    group.archive();
+    await StorageService.saveReflectionGroup(group);
+    notifyListeners();
+  }
+
+  /// Restore an archived reflection group
+  Future<void> restoreReflectionGroup(String groupId) async {
+    final group = _reflectionGroups.firstWhere((g) => g.id == groupId);
+    group.restore();
+    await StorageService.saveReflectionGroup(group);
+    notifyListeners();
+  }
+
   // ========== EXPERIMENTS ==========
   Future<void> addExperiment(Experiment experiment) async {
     await StorageService.saveExperiment(experiment);
@@ -555,37 +639,49 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Start working on an experiment (pending -> inProgress)
+  Future<void> startExperiment(String experimentId) async {
+    final experiment = _experiments.firstWhere((e) => e.id == experimentId);
+    experiment.start();
+    await StorageService.saveExperiment(experiment);
+    notifyListeners();
+  }
+
+  /// Complete an experiment successfully
+  Future<void> completeExperiment(String experimentId) async {
+    final experiment = _experiments.firstWhere((e) => e.id == experimentId);
+    experiment.complete();
+    await StorageService.saveExperiment(experiment);
+    
+    // Award XP for completing experiment
+    _userStats.earnReward(xp: 30, coinReward: 10);
+    notifyListeners();
+  }
+
+  /// Cycle an experiment to the next reflection
+  Future<void> cycleExperiment(String experimentId) async {
+    final experiment = _experiments.firstWhere((e) => e.id == experimentId);
+    experiment.cycle();
+    await StorageService.saveExperiment(experiment);
+    notifyListeners();
+  }
+
+  /// Archive an experiment (done or abandoned)
+  Future<void> archiveExperiment(String experimentId) async {
+    final experiment = _experiments.firstWhere((e) => e.id == experimentId);
+    experiment.archive();
+    await StorageService.saveExperiment(experiment);
+    notifyListeners();
+  }
+
+  /// Legacy method - now just starts the experiment (for backward compat)
+  @Deprecated('Use startExperiment instead')
   Future<void> promoteExperimentToTask(
     String experimentId, {
     required bool toPriority,
   }) async {
-    final experiment = _experiments.firstWhere((e) => e.id == experimentId);
-
-    if (toPriority && !canAddPriorityTask) {
-      throw Exception('Cannot add more than 2 priority tasks');
-    }
-
-    // Create task from experiment
-    final task = Task(
-      id: StorageService.generateId(),
-      title: experiment.description,
-      isPriority: toPriority,
-      source: TaskSource.experiment,
-      experimentId: experimentId,
-    );
-
-    await StorageService.saveTask(task);
-    _tasks.add(task);
-
-    // Update experiment status
-    if (toPriority) {
-      experiment.promoteToTop2(task.id);
-    } else {
-      experiment.promoteToBacklog(task.id);
-    }
-    await StorageService.saveExperiment(experiment);
-
-    notifyListeners();
+    // Now we just start the experiment instead of creating a task
+    await startExperiment(experimentId);
   }
 
   // ========== SETTINGS ==========

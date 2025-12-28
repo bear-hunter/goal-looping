@@ -29,13 +29,15 @@ class UserStatsAdapter extends TypeAdapter<UserStats> {
       coinsEarnedToday: fields[9] as int,
       actionsToday: fields[10] as int,
       lastResetDate: fields[11] as DateTime?,
+      lastReflectionAt: fields[12] as DateTime?,
+      reminderFrequency: fields[13] as ReflectionReminderFrequency,
     );
   }
 
   @override
   void write(BinaryWriter writer, UserStats obj) {
     writer
-      ..writeByte(12)
+      ..writeByte(14)
       ..writeByte(0)
       ..write(obj.totalXP)
       ..writeByte(1)
@@ -59,7 +61,11 @@ class UserStatsAdapter extends TypeAdapter<UserStats> {
       ..writeByte(10)
       ..write(obj.actionsToday)
       ..writeByte(11)
-      ..write(obj.lastResetDate);
+      ..write(obj.lastResetDate)
+      ..writeByte(12)
+      ..write(obj.lastReflectionAt)
+      ..writeByte(13)
+      ..write(obj.reminderFrequency);
   }
 
   @override

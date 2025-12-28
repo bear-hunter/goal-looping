@@ -532,12 +532,41 @@ class _HabitCardWithCalendarState extends State<_HabitCardWithCalendar>
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  isQuit ? 'No ${habit.name}' : habit.name,
-                                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
+                                // For build habits, show the full scripted action format
+                                if (!isQuit && habit.triggerResponse != null && habit.triggerResponse!.isNotEmpty) ...[
+                                  RichText(
+                                    maxLines: 3,
+                                    overflow: TextOverflow.ellipsis,
+                                    text: TextSpan(
+                                      style: TextStyle(fontSize: 13, color: AppColors.textPrimary, height: 1.3),
+                                      children: [
+                                        TextSpan(
+                                          text: 'If ',
+                                          style: TextStyle(color: AppColors.textMuted, fontStyle: FontStyle.italic),
+                                        ),
+                                        TextSpan(
+                                          text: habit.triggerResponse!,
+                                          style: TextStyle(color: AppColors.warning, fontWeight: FontWeight.w500),
+                                        ),
+                                        TextSpan(
+                                          text: '\n→ I will ',
+                                          style: TextStyle(color: AppColors.textMuted, fontStyle: FontStyle.italic),
+                                        ),
+                                        TextSpan(
+                                          text: habit.name,
+                                          style: TextStyle(color: AppColors.success, fontWeight: FontWeight.w600),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ] else ...[
+                                  Text(
+                                    isQuit ? 'No ${habit.name}' : habit.name,
+                                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
                                 Row(
                                   children: [
                                     Text('🔥 ${habit.currentStreak}d', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),

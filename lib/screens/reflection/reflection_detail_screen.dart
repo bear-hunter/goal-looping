@@ -174,12 +174,91 @@ class ReflectionDetailScreen extends StatelessWidget {
                   ),
                 ],
 
+                // Cycle Group Info
+                if (reflection.groupId != null) ...[
+                  const SizedBox(height: 24),
+                  _CycleGroupBanner(
+                    group: state.getReflectionGroup(reflection.groupId!),
+                    currentReflectionId: reflectionId,
+                  ),
+                ],
+
+                // Cycling Actions
+                const SizedBox(height: 24),
+                _CyclingActionsSection(
+                  reflection: reflection,
+                  onCycleAgain: () => _handleCycleAgain(context, state, reflectionId),
+                  onFinishArchive: reflection.groupId != null
+                      ? () => _handleArchive(context, state, reflection.groupId!)
+                      : null,
+                ),
+
                 const SizedBox(height: 100),
               ],
             ),
           ),
         );
       },
+    );
+  }
+
+  void _handleCycleAgain(BuildContext context, AppState state, String reflectionId) async {
+    try {
+      final newReflection = await state.cycleReflection(reflectionId);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('New cycle created! Fill in your next reflection.'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+        // Navigate to the new reflection
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ReflectionDetailScreen(reflectionId: newReflection.id),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.danger),
+        );
+      }
+    }
+  }
+
+  void _handleArchive(BuildContext context, AppState state, String groupId) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: Text('Finish & Archive?', style: TextStyle(color: AppColors.textPrimary)),
+        content: Text(
+          'This will archive the entire cycle chain. You can restore it later from the archive.',
+          style: TextStyle(color: AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              state.archiveReflectionGroup(groupId);
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: const Text('Cycle archived successfully!'),
+                  backgroundColor: AppColors.success,
+                ),
+              );
+            },
+            child: Text('Archive', style: TextStyle(color: AppColors.primary)),
+          ),
+        ],
+      ),
     );
   }
 
@@ -401,8 +480,10 @@ class _StatusBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final (label, color) = switch (status) {
       ExperimentStatus.pending => ('Pending', AppColors.warning),
-      ExperimentStatus.promoted => ('Promoted', AppColors.primary),
+      ExperimentStatus.inProgress => ('In Progress', AppColors.info),
       ExperimentStatus.completed => ('Done', AppColors.success),
+      ExperimentStatus.cycled => ('Cycled', AppColors.primary),
+      ExperimentStatus.archived => ('Archived', AppColors.textMuted),
     };
     
     return Container(
@@ -436,6 +517,201 @@ class _ActionButton extends StatelessWidget {
           border: Border.all(color: (enabled ? color : AppColors.glassBorder).withAlpha(80)),
         ),
         child: Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: enabled ? color : AppColors.textMuted)),
+      ),
+    );
+  }
+}
+
+/// Banner showing cycle group information
+class _CycleGroupBanner extends StatelessWidget {
+  final dynamic group; // ReflectionGroup?
+  final String currentReflectionId;
+
+  const _CycleGroupBanner({
+    required this.group,
+    required this.currentReflectionId,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (group == null) return const SizedBox.shrink();
+
+    final cycleNumber = group.reflectionIds.indexOf(currentReflectionId) + 1;
+    final totalCycles = group.cycleCount;
+    final isArchived = group.isArchived;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppColors.primary.withAlpha(30),
+            AppColors.info.withAlpha(20),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.primary.withAlpha(50)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withAlpha(40),
+              shape: BoxShape.circle,
+            ),
+            child: Text(
+              '🔁',
+              style: const TextStyle(fontSize: 20),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Cycle $cycleNumber of $totalCycles',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  isArchived ? 'This cycle chain is archived' : 'Part of an active reflection chain',
+                  style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                ),
+              ],
+            ),
+          ),
+          if (isArchived)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.textMuted.withAlpha(30),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                'Archived',
+                style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Section with cycling action buttons
+class _CyclingActionsSection extends StatelessWidget {
+  final dynamic reflection;
+  final VoidCallback onCycleAgain;
+  final VoidCallback? onFinishArchive;
+
+  const _CyclingActionsSection({
+    required this.reflection,
+    required this.onCycleAgain,
+    this.onFinishArchive,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'ACTIONS',
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textMuted,
+            letterSpacing: 1.2,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _CycleActionButton(
+                icon: Icons.replay_rounded,
+                label: 'Cycle Again',
+                subtitle: 'Continue the chain',
+                color: AppColors.primary,
+                onTap: onCycleAgain,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _CycleActionButton(
+                icon: Icons.archive_rounded,
+                label: 'Finish & Archive',
+                subtitle: 'Complete this chain',
+                color: AppColors.success,
+                onTap: onFinishArchive,
+                enabled: onFinishArchive != null,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _CycleActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String subtitle;
+  final Color color;
+  final VoidCallback? onTap;
+  final bool enabled;
+
+  const _CycleActionButton({
+    required this.icon,
+    required this.label,
+    required this.subtitle,
+    required this.color,
+    this.onTap,
+    this.enabled = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final effectiveColor = enabled ? color : AppColors.textMuted;
+    
+    return GestureDetector(
+      onTap: enabled ? onTap : null,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: effectiveColor.withAlpha(15),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: effectiveColor.withAlpha(40)),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, size: 28, color: effectiveColor),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: effectiveColor,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              style: TextStyle(fontSize: 10, color: AppColors.textMuted),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }

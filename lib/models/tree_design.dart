@@ -44,6 +44,18 @@ class TreeDesign extends HiveObject {
     this.description = '',
     this.matureDescription = '',
   });
+
+  String getAssetPath(int stage) {
+    String stageName;
+    if (stage <= 1) {
+      stageName = 'sprout';
+    } else if (stage == 2) {
+      stageName = 'sapling';
+    } else {
+      stageName = 'mature';
+    }
+    return 'assets/images/trees/${id}_$stageName.png';
+  }
 }
 
 /// Predefined tree species

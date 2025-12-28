@@ -21,21 +21,30 @@ class FactorDetailScreen extends StatefulWidget {
 }
 
 class _FactorDetailScreenState extends State<FactorDetailScreen> {
+  late TextEditingController _nameController;
   late TextEditingController _targetDescController;
   late TextEditingController _currentDescController;
+  late TextEditingController _targetLevelController;
+  late TextEditingController _currentLevelController;
   bool _isEditing = false;
 
   @override
   void initState() {
     super.initState();
+    _nameController = TextEditingController();
     _targetDescController = TextEditingController();
     _currentDescController = TextEditingController();
+    _targetLevelController = TextEditingController();
+    _currentLevelController = TextEditingController();
   }
 
   @override
   void dispose() {
+    _nameController.dispose();
     _targetDescController.dispose();
     _currentDescController.dispose();
+    _targetLevelController.dispose();
+    _currentLevelController.dispose();
     super.dispose();
   }
 
@@ -54,8 +63,11 @@ class _FactorDetailScreenState extends State<FactorDetailScreen> {
 
         // Initialize controllers with current values
         if (!_isEditing) {
+          _nameController.text = factor.name;
           _targetDescController.text = factor.targetDescription;
           _currentDescController.text = factor.currentDescription;
+          _targetLevelController.text = factor.targetLevel.toString();
+          _currentLevelController.text = factor.currentLevel.toString();
         }
 
         final effortUnits = state.getEffortUnitsForFactor(factor.id);
@@ -74,8 +86,14 @@ class _FactorDetailScreenState extends State<FactorDetailScreen> {
                 onPressed: () {
                   if (_isEditing) {
                     // Save changes
+                    factor.name = _nameController.text.trim();
                     factor.targetDescription = _targetDescController.text;
                     factor.currentDescription = _currentDescController.text;
+                    factor.targetLevel = int.tryParse(_targetLevelController.text) ?? factor.targetLevel;
+                    factor.currentLevel = int.tryParse(_currentLevelController.text) ?? factor.currentLevel;
+                    // Clamp levels
+                    factor.targetLevel = factor.targetLevel.clamp(1, 10);
+                    factor.currentLevel = factor.currentLevel.clamp(1, 10);
                     factor.lastUpdated = DateTime.now();
                     state.updateFactor(factor);
                   }
@@ -101,15 +119,88 @@ class _FactorDetailScreenState extends State<FactorDetailScreen> {
                 const SizedBox(height: 24),
 
                 // Gap Analysis
-                _SectionHeader(title: 'Gap Analysis', icon: Icons.analytics_rounded, color: AppColors.info),
+                _SectionHeader(title: _isEditing ? 'Edit Details' : 'Gap Analysis', icon: _isEditing ? Icons.edit_rounded : Icons.analytics_rounded, color: AppColors.info),
                 GlassCard(
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(child: _LevelDisplay(label: 'Target', level: factor.targetLevel, color: AppColors.primary)),
-                      Container(width: 1, height: 50, color: AppColors.glassBorder),
-                      Expanded(child: _LevelDisplay(label: 'Current', level: factor.currentLevel, color: AppColors.success)),
-                      Container(width: 1, height: 50, color: AppColors.glassBorder),
-                      Expanded(child: _LevelDisplay(label: 'Gap', level: factor.gap, color: factor.needsFocus ? AppColors.danger : AppColors.warning)),
+                      // Name field (editable or display)
+                      if (_isEditing) ...[
+                        Text('Name', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceLight,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: AppColors.glassBorder),
+                          ),
+                          child: TextField(
+                            controller: _nameController,
+                            style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 16),
+                            decoration: const InputDecoration(
+                              isDense: true,
+                              contentPadding: EdgeInsets.symmetric(vertical: 8),
+                              border: InputBorder.none,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                      ],
+                      // Level row
+                      Row(
+                        children: [
+                          // Target
+                          Expanded(
+                            child: _isEditing
+                                ? _EditableLevelBox(
+                                    label: 'Target',
+                                    controller: _targetLevelController,
+                                    color: AppColors.primary,
+                                  )
+                                : _LevelDisplay(label: 'Target', level: factor.targetLevel, color: AppColors.primary),
+                          ),
+                          const SizedBox(width: 8),
+                          // Current
+                          Expanded(
+                            child: _isEditing
+                                ? _EditableLevelBox(
+                                    label: 'Current',
+                                    controller: _currentLevelController,
+                                    color: AppColors.success,
+                                  )
+                                : _LevelDisplay(label: 'Current', level: factor.currentLevel, color: AppColors.success),
+                          ),
+                          if (!_isEditing) ...[
+                            Container(width: 1, height: 50, color: AppColors.glassBorder),
+                            // Gap (always read-only)
+                            Expanded(child: _LevelDisplay(label: 'Gap', level: factor.gap, color: factor.needsFocus ? AppColors.danger : AppColors.warning)),
+                          ],
+                        ],
+                      ),
+                      // Show Gap separately when editing
+                      if (_isEditing) ...[
+                        const SizedBox(height: 12),
+                        Center(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: (factor.needsFocus ? AppColors.danger : AppColors.warning).withAlpha(20),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text('Gap: ', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                                Text(
+                                  '${factor.gap}',
+                                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: factor.needsFocus ? AppColors.danger : AppColors.warning),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -358,6 +449,52 @@ class _EffortRing extends StatelessWidget {
             Text('units', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Styled editable level box for edit mode
+class _EditableLevelBox extends StatelessWidget {
+  final String label;
+  final TextEditingController controller;
+  final Color color;
+
+  const _EditableLevelBox({
+    required this.label,
+    required this.controller,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+      decoration: BoxDecoration(
+        color: color.withAlpha(20),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withAlpha(80), width: 1.5),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(label, style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+          const SizedBox(height: 4),
+          SizedBox(
+            width: 50,
+            child: TextField(
+              controller: controller,
+              keyboardType: TextInputType.number,
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: color),
+              decoration: const InputDecoration(
+                isDense: true,
+                contentPadding: EdgeInsets.symmetric(vertical: 2),
+                border: InputBorder.none,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

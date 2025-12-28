@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:hive/hive.dart';
+import 'reflection_reminder.dart';
 
 part 'user_stats.g.dart';
 
@@ -43,6 +44,13 @@ class UserStats extends HiveObject {
   @HiveField(11)
   DateTime? lastResetDate;
 
+  // Reflection reminder system
+  @HiveField(12)
+  DateTime? lastReflectionAt;
+
+  @HiveField(13)
+  ReflectionReminderFrequency reminderFrequency;
+
   UserStats({
     this.totalXP = 0,
     this.coins = 0,
@@ -56,6 +64,8 @@ class UserStats extends HiveObject {
     this.coinsEarnedToday = 0,
     this.actionsToday = 0,
     this.lastResetDate,
+    this.lastReflectionAt,
+    this.reminderFrequency = ReflectionReminderFrequency.daily,
   })  : unlockedBadgeIds = unlockedBadgeIds ?? [],
         createdAt = createdAt ?? DateTime.now();
 
@@ -200,6 +210,42 @@ class UserStats extends HiveObject {
       unlockedBadgeIds.add(badgeId);
       save();
     }
+  }
+
+  // === REFLECTION REMINDER METHODS ===
+
+  /// Record that a reflection was completed
+  void recordReflection() {
+    lastReflectionAt = DateTime.now();
+    save();
+  }
+
+  /// Check if reflection is overdue based on reminder frequency
+  bool get isReflectionOverdue {
+    if (reminderFrequency == ReflectionReminderFrequency.disabled) return false;
+    if (lastReflectionAt == null) return true;
+
+    final hoursSinceLastReflection =
+        DateTime.now().difference(lastReflectionAt!).inHours;
+    return hoursSinceLastReflection >= reminderFrequency.maxHoursBetweenReflections;
+  }
+
+  /// Check if a week has passed without reflection (critical warning)
+  bool get isReflectionCriticallyOverdue {
+    if (lastReflectionAt == null) return true;
+    return DateTime.now().difference(lastReflectionAt!).inDays >= 7;
+  }
+
+  /// Hours since last reflection
+  int get hoursSinceLastReflection {
+    if (lastReflectionAt == null) return 999;
+    return DateTime.now().difference(lastReflectionAt!).inHours;
+  }
+
+  /// Set reminder frequency
+  void setReminderFrequency(ReflectionReminderFrequency frequency) {
+    reminderFrequency = frequency;
+    save();
   }
 }
 

@@ -20,17 +20,20 @@ class ExperimentAdapter extends TypeAdapter<Experiment> {
       id: fields[0] as String,
       description: fields[1] as String,
       status: fields[2] as ExperimentStatus,
-      promotedToPriority: fields[3] as bool,
-      reflectionId: fields[4] as String,
-      taskId: fields[5] as String?,
-      createdAt: fields[6] as DateTime?,
+      reflectionId: fields[3] as String,
+      createdAt: fields[4] as DateTime?,
+      groupId: fields[5] as String?,
+      cycleCount: fields[6] as int,
+      startedAt: fields[7] as DateTime?,
+      completedAt: fields[8] as DateTime?,
+      notes: fields[9] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Experiment obj) {
     writer
-      ..writeByte(7)
+      ..writeByte(10)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -38,13 +41,19 @@ class ExperimentAdapter extends TypeAdapter<Experiment> {
       ..writeByte(2)
       ..write(obj.status)
       ..writeByte(3)
-      ..write(obj.promotedToPriority)
-      ..writeByte(4)
       ..write(obj.reflectionId)
+      ..writeByte(4)
+      ..write(obj.createdAt)
       ..writeByte(5)
-      ..write(obj.taskId)
+      ..write(obj.groupId)
       ..writeByte(6)
-      ..write(obj.createdAt);
+      ..write(obj.cycleCount)
+      ..writeByte(7)
+      ..write(obj.startedAt)
+      ..writeByte(8)
+      ..write(obj.completedAt)
+      ..writeByte(9)
+      ..write(obj.notes);
   }
 
   @override
@@ -68,9 +77,13 @@ class ExperimentStatusAdapter extends TypeAdapter<ExperimentStatus> {
       case 0:
         return ExperimentStatus.pending;
       case 1:
-        return ExperimentStatus.promoted;
+        return ExperimentStatus.inProgress;
       case 2:
         return ExperimentStatus.completed;
+      case 3:
+        return ExperimentStatus.cycled;
+      case 4:
+        return ExperimentStatus.archived;
       default:
         return ExperimentStatus.pending;
     }
@@ -82,11 +95,17 @@ class ExperimentStatusAdapter extends TypeAdapter<ExperimentStatus> {
       case ExperimentStatus.pending:
         writer.writeByte(0);
         break;
-      case ExperimentStatus.promoted:
+      case ExperimentStatus.inProgress:
         writer.writeByte(1);
         break;
       case ExperimentStatus.completed:
         writer.writeByte(2);
+        break;
+      case ExperimentStatus.cycled:
+        writer.writeByte(3);
+        break;
+      case ExperimentStatus.archived:
+        writer.writeByte(4);
         break;
     }
   }

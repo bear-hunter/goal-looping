@@ -29,13 +29,23 @@ class ReflectionAdapter extends TypeAdapter<Reflection> {
       rawMarkdown: fields[9] as String?,
       targetFactorId: fields[10] as String?,
       previousExperimentId: fields[11] as String?,
+      groupId: fields[12] as String?,
+      marginalGainDescription: fields[13] as String?,
+      eventSequence: fields[14] as String?,
+      feelings: fields[15] as String?,
+      difficulties: fields[16] as String?,
+      challengeResponse: fields[17] as String?,
+      triggers: fields[18] as String?,
+      whyBehavior: fields[19] as String?,
+      crossLifePatterns: fields[20] as String?,
+      isManualEntry: fields[21] as bool,
     );
   }
 
   @override
   void write(BinaryWriter writer, Reflection obj) {
     writer
-      ..writeByte(12)
+      ..writeByte(22)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -59,7 +69,27 @@ class ReflectionAdapter extends TypeAdapter<Reflection> {
       ..writeByte(10)
       ..write(obj.targetFactorId)
       ..writeByte(11)
-      ..write(obj.previousExperimentId);
+      ..write(obj.previousExperimentId)
+      ..writeByte(12)
+      ..write(obj.groupId)
+      ..writeByte(13)
+      ..write(obj.marginalGainDescription)
+      ..writeByte(14)
+      ..write(obj.eventSequence)
+      ..writeByte(15)
+      ..write(obj.feelings)
+      ..writeByte(16)
+      ..write(obj.difficulties)
+      ..writeByte(17)
+      ..write(obj.challengeResponse)
+      ..writeByte(18)
+      ..write(obj.triggers)
+      ..writeByte(19)
+      ..write(obj.whyBehavior)
+      ..writeByte(20)
+      ..write(obj.crossLifePatterns)
+      ..writeByte(21)
+      ..write(obj.isManualEntry);
   }
 
   @override

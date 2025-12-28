@@ -8,6 +8,8 @@ import '../models/task.dart';
 import '../models/subtask.dart';
 import '../models/habit.dart';
 import '../models/reflection.dart';
+import '../models/reflection_group.dart';
+import '../models/reflection_reminder.dart';
 import '../models/experiment.dart';
 import '../models/time_availability.dart';
 import '../models/user_stats.dart';
@@ -29,6 +31,7 @@ class StorageService {
   static const String userStatsBox = 'userStats';
   static const String achievementsBox = 'achievements';
   static const String focusLogsBox = 'focusLogs';
+  static const String reflectionGroupsBox = 'reflectionGroups';
 
   static final Uuid _uuid = const Uuid();
   
@@ -80,6 +83,9 @@ class StorageService {
     tryRegister(UserStatsAdapter());
     tryRegister(AchievementAdapter());
     tryRegister(FocusLogAdapter());
+    // New adapters for reflection cycling & reminders
+    tryRegister(ReflectionGroupAdapter());
+    tryRegister(ReflectionReminderFrequencyAdapter());
   }
   
   /// Ensure a box is open (used for defensive access)
@@ -121,6 +127,7 @@ class StorageService {
     await _ensureBoxOpen<UserStats>(userStatsBox);
     await _ensureBoxOpen<Achievement>(achievementsBox);
     await _ensureBoxOpen<FocusLog>(focusLogsBox);
+    await _ensureBoxOpen<ReflectionGroup>(reflectionGroupsBox);
   }
 
   /// Initialize Hive and register all adapters
@@ -377,6 +384,38 @@ class StorageService {
     await _reflectionsBox.delete(id);
   }
 
+  // ========== REFLECTION GROUPS ==========
+
+  static Box<ReflectionGroup> get _reflectionGroupsBox {
+    if (!Hive.isBoxOpen(reflectionGroupsBox)) {
+      throw StateError('ReflectionGroups box not open. Ensure StorageService.initialize() is called.');
+    }
+    return Hive.box<ReflectionGroup>(reflectionGroupsBox);
+  }
+
+  static List<ReflectionGroup> getAllReflectionGroups() {
+    if (!Hive.isBoxOpen(reflectionGroupsBox)) return [];
+    return _reflectionGroupsBox.values.toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  }
+
+  static List<ReflectionGroup> getActiveReflectionGroups() =>
+      getAllReflectionGroups().where((g) => !g.isArchived).toList();
+
+  static List<ReflectionGroup> getArchivedReflectionGroups() =>
+      getAllReflectionGroups().where((g) => g.isArchived).toList();
+
+  static ReflectionGroup? getReflectionGroup(String id) =>
+      _reflectionGroupsBox.get(id);
+
+  static Future<void> saveReflectionGroup(ReflectionGroup group) async {
+    await _reflectionGroupsBox.put(group.id, group);
+  }
+
+  static Future<void> deleteReflectionGroup(String id) async {
+    await _reflectionGroupsBox.delete(id);
+  }
+
   // ========== EXPERIMENTS ==========
 
   static Box<Experiment> get _experimentsBox {
@@ -396,9 +435,24 @@ class StorageService {
           .where((e) => e.status == ExperimentStatus.pending)
           .toList();
 
+  static List<Experiment> getActiveExperiments() =>
+      _experimentsBox.values
+          .where((e) => e.isActionable)
+          .toList();
+
+  static List<Experiment> getArchivedExperiments() =>
+      _experimentsBox.values
+          .where((e) => e.status == ExperimentStatus.archived)
+          .toList();
+
   static List<Experiment> getExperimentsForReflection(String reflectionId) =>
       _experimentsBox.values
           .where((e) => e.reflectionId == reflectionId)
+          .toList();
+
+  static List<Experiment> getExperimentsForGroup(String groupId) =>
+      _experimentsBox.values
+          .where((e) => e.groupId == groupId)
           .toList();
 
   static Future<void> saveExperiment(Experiment experiment) async {
@@ -508,3 +562,4 @@ class StorageService {
     return Hive.box<FocusLog>(focusLogsBox).values.toList();
   }
 }
+
