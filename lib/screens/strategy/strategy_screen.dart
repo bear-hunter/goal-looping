@@ -11,6 +11,7 @@ import '../../providers/app_state.dart';
 import '../../services/storage_service.dart';
 import '../../widgets/glass_card.dart';
 import '../../widgets/factor_chip.dart';
+import 'factor_detail_screen.dart';
 
 /// Module 1: Strategy & Setup Screen
 class StrategyScreen extends StatelessWidget {
@@ -104,7 +105,16 @@ class StrategyScreen extends StatelessWidget {
             child: Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: state.factors.map((f) => FactorChip(factor: f, showGap: true)).toList(),
+              children: state.factors.map((f) => FactorChip(
+                factor: f,
+                showGap: true,
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => FactorDetailScreen(factorId: f.id),
+                  ),
+                ),
+              )).toList(),
             ),
           ),
         ],

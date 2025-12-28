@@ -8,8 +8,10 @@ import '../../providers/app_state.dart';
 import '../../services/storage_service.dart';
 import '../../widgets/glass_card.dart';
 import '../../widgets/progress_ring.dart';
+import '../../widgets/habit_calendar.dart';
+import '../../widgets/mood_barrier_dialog.dart';
 
-/// Module 3: Habit & Barrier Defense Screen
+/// Module 3: Habit & Barrier Defense Screen (Phase 3 Updated)
 class HabitsScreen extends StatelessWidget {
   const HabitsScreen({super.key});
 
@@ -37,51 +39,57 @@ class HabitsScreen extends StatelessWidget {
                 ),
               ),
 
-              // Limiting Habits Section
+              // Quit Habits Section
               SliverToBoxAdapter(
                 child: _SectionHeader(
-                  title: 'Limiting Habits',
+                  title: 'Quit Habits',
                   subtitle: 'Track the absence of bad habits',
                   icon: Icons.block_rounded,
                   color: AppColors.danger,
-                  onAdd: () => _showAddHabitDialog(context, HabitType.limiting),
+                  onAdd: () => _showAddHabitDialog(context, state, HabitType.quit),
                 ),
               ),
 
-              if (state.limitingHabits.isEmpty)
+              if (state.quitHabits.isEmpty)
                 SliverToBoxAdapter(child: _EmptyCard(
                   text: 'Add habits to avoid',
-                  onTap: () => _showAddHabitDialog(context, HabitType.limiting),
+                  onTap: () => _showAddHabitDialog(context, state, HabitType.quit),
                 ))
               else
                 SliverList(
                   delegate: SliverChildBuilderDelegate(
-                    (context, index) => _HabitCard(habit: state.limitingHabits[index]),
-                    childCount: state.limitingHabits.length,
+                    (context, index) => _HabitCardWithCalendar(
+                      habit: state.quitHabits[index],
+                      isQuit: true,
+                    ),
+                    childCount: state.quitHabits.length,
                   ),
                 ),
 
-              // Scripted Actions Section
+              // Build Habits Section
               SliverToBoxAdapter(
                 child: _SectionHeader(
-                  title: 'Scripted Actions',
-                  subtitle: 'If X happens → I will do Y',
-                  icon: Icons.code_rounded,
+                  title: 'Build Habits',
+                  subtitle: 'Positive habits to develop',
+                  icon: Icons.trending_up_rounded,
                   color: AppColors.success,
-                  onAdd: () => _showAddHabitDialog(context, HabitType.scripted),
+                  onAdd: () => _showAddHabitDialog(context, state, HabitType.build),
                 ),
               ),
 
-              if (state.scriptedActions.isEmpty)
+              if (state.buildHabits.isEmpty)
                 SliverToBoxAdapter(child: _EmptyCard(
-                  text: 'Add scripted responses',
-                  onTap: () => _showAddHabitDialog(context, HabitType.scripted),
+                  text: 'Add positive habits',
+                  onTap: () => _showAddHabitDialog(context, state, HabitType.build),
                 ))
               else
                 SliverList(
                   delegate: SliverChildBuilderDelegate(
-                    (context, index) => _ScriptedCard(habit: state.scriptedActions[index]),
-                    childCount: state.scriptedActions.length,
+                    (context, index) => _HabitCardWithCalendar(
+                      habit: state.buildHabits[index],
+                      isQuit: false,
+                    ),
+                    childCount: state.buildHabits.length,
                   ),
                 ),
 
@@ -105,7 +113,15 @@ class HabitsScreen extends StatelessWidget {
                         children: [
                           Icon(Icons.flash_on_rounded, color: AppColors.warning, size: 20),
                           const SizedBox(width: 12),
-                          Expanded(child: Text(barrier.description, style: TextStyle(color: AppColors.textPrimary))),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(barrier.description, style: TextStyle(color: AppColors.textPrimary)),
+                                Text(_formatDate(barrier.occurredAt), style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                              ],
+                            ),
+                          ),
                         ],
                       ),
                     );
@@ -122,52 +138,99 @@ class HabitsScreen extends StatelessWidget {
     );
   }
 
-  void _showAddHabitDialog(BuildContext context, HabitType type) {
+  String _formatDate(DateTime date) {
+    return '${date.day}/${date.month}/${date.year}';
+  }
+
+  void _showAddHabitDialog(BuildContext context, AppState state, HabitType type) {
     final nameController = TextEditingController();
-    final triggerController = TextEditingController();
+    final motivationController = TextEditingController();
+    String? selectedFactorId;
 
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.surface,
       isScrollControlled: true,
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(type == HabitType.limiting ? 'Add Limiting Habit' : 'Add Scripted Action',
-                style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 16),
-            TextField(
-              controller: nameController,
-              decoration: InputDecoration(
-                hintText: type == HabitType.limiting ? 'e.g., Doom scrolling' : 'e.g., Take 3 deep breaths',
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => Padding(
+          padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(type == HabitType.quit ? 'Add Quit Habit' : 'Add Build Habit',
+                  style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 16),
+              TextField(
+                controller: nameController,
+                decoration: InputDecoration(
+                  hintText: type == HabitType.quit ? 'e.g., Doom scrolling' : 'e.g., Morning exercise',
+                ),
               ),
-            ),
-            if (type == HabitType.scripted) ...[
               const SizedBox(height: 12),
               TextField(
-                controller: triggerController,
-                decoration: const InputDecoration(hintText: 'Trigger: When I feel...'),
+                controller: motivationController,
+                decoration: const InputDecoration(hintText: 'Why? (motivation)'),
+              ),
+              const SizedBox(height: 12),
+              
+              // Factor dropdown (mandatory linking)
+              Text('Link to Factor', style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceLight,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.glassBorder),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    isExpanded: true,
+                    hint: Text('Select Factor', style: TextStyle(color: AppColors.textMuted)),
+                    value: selectedFactorId,
+                    dropdownColor: AppColors.surface,
+                    items: [
+                      DropdownMenuItem<String>(value: null, child: Text('None', style: TextStyle(color: AppColors.textMuted))),
+                      ...state.factors.map((f) => DropdownMenuItem<String>(
+                        value: f.id,
+                        child: Text(f.name, style: TextStyle(color: AppColors.textPrimary)),
+                      )),
+                    ],
+                    onChanged: (v) => setDialogState(() => selectedFactorId = v),
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  if (selectedFactorId == null)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: Icon(Icons.info_outline, color: AppColors.warning, size: 16),
+                    ),
+                  if (selectedFactorId == null)
+                    Expanded(child: Text('Linking to a Factor helps track effort', style: TextStyle(fontSize: 12, color: AppColors.warning))),
+                  ElevatedButton(
+                    onPressed: () {
+                      if (nameController.text.isNotEmpty) {
+                        context.read<AppState>().addHabit(Habit(
+                          id: StorageService.generateId(),
+                          name: nameController.text,
+                          type: type,
+                          motivation: motivationController.text,
+                          factorId: selectedFactorId,
+                        ));
+                        Navigator.pop(ctx);
+                      }
+                    },
+                    child: const Text('Add'),
+                  ),
+                ],
               ),
             ],
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () {
-                if (nameController.text.isNotEmpty) {
-                  context.read<AppState>().addHabit(Habit(
-                    id: StorageService.generateId(),
-                    name: nameController.text,
-                    type: type,
-                    triggerResponse: triggerController.text.isNotEmpty ? triggerController.text : null,
-                  ));
-                  Navigator.pop(ctx);
-                }
-              },
-              child: const Text('Add'),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -221,7 +284,7 @@ class _SectionHeader extends StatelessWidget {
         children: [
           Container(
             padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+            decoration: BoxDecoration(color: color.withAlpha(25), borderRadius: BorderRadius.circular(10)),
             child: Icon(icon, color: color, size: 20),
           ),
           const SizedBox(width: 12),
@@ -241,87 +304,129 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-class _HabitCard extends StatelessWidget {
+/// Habit card with expandable calendar view
+class _HabitCardWithCalendar extends StatefulWidget {
   final Habit habit;
+  final bool isQuit;
 
-  const _HabitCard({required this.habit});
+  const _HabitCardWithCalendar({required this.habit, required this.isQuit});
+
+  @override
+  State<_HabitCardWithCalendar> createState() => _HabitCardWithCalendarState();
+}
+
+class _HabitCardWithCalendarState extends State<_HabitCardWithCalendar> {
+  bool _showCalendar = false;
 
   @override
   Widget build(BuildContext context) {
+    final habit = widget.habit;
+    final isQuit = widget.isQuit;
+
     return GlassCard(
-      child: Row(
+      child: Column(
         children: [
-          StreakIndicator(streak: habit.currentStreak, size: 50),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('No ${habit.name}', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-                Text('Best: ${habit.bestStreak} days', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
-              ],
-            ),
+          // Main row
+          Row(
+            children: [
+              StreakIndicator(streak: habit.currentStreak, size: 50),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isQuit ? 'No ${habit.name}' : habit.name,
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                    ),
+                    Row(
+                      children: [
+                        Text('Best: ${habit.bestStreak}d', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                        if (habit.targetFrequency > 1) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.info.withAlpha(30),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              '${_getCompletionsThisWeek()}/${habit.targetFrequency}/wk',
+                              style: TextStyle(fontSize: 10, color: AppColors.info, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    if (habit.motivation.isNotEmpty)
+                      Text(habit.motivation, style: TextStyle(fontSize: 11, color: AppColors.textSecondary, fontStyle: FontStyle.italic)),
+                  ],
+                ),
+              ),
+              
+              // Actions
+              if (!habit.isLoggedToday)
+                Row(
+                  children: [
+                    _CheckButton(
+                      icon: Icons.check_rounded,
+                      color: AppColors.success,
+                      onTap: () => _logWithMood(context, true),
+                    ),
+                    const SizedBox(width: 8),
+                    _CheckButton(
+                      icon: Icons.close_rounded,
+                      color: AppColors.danger,
+                      onTap: () => _logWithMood(context, false),
+                    ),
+                  ],
+                )
+              else
+                Icon(
+                  habit.todayLog?.completed == true ? Icons.check_circle_rounded : Icons.cancel_rounded,
+                  color: habit.todayLog?.completed == true ? AppColors.success : AppColors.danger,
+                ),
+              
+              // Calendar toggle
+              IconButton(
+                icon: Icon(
+                  _showCalendar ? Icons.expand_less_rounded : Icons.calendar_month_rounded,
+                  color: AppColors.textMuted,
+                  size: 20,
+                ),
+                onPressed: () => setState(() => _showCalendar = !_showCalendar),
+              ),
+            ],
           ),
-          if (!habit.isLoggedToday)
-            Row(
-              children: [
-                _CheckButton(
-                  icon: Icons.check_rounded,
-                  color: AppColors.success,
-                  onTap: () => context.read<AppState>().logHabit(habit.id, succumbed: false),
-                ),
-                const SizedBox(width: 8),
-                _CheckButton(
-                  icon: Icons.close_rounded,
-                  color: AppColors.danger,
-                  onTap: () => context.read<AppState>().logHabit(habit.id, succumbed: true),
-                ),
-              ],
-            )
-          else
-            Icon(
-              habit.todayLog?.succumbed == true ? Icons.close_rounded : Icons.check_rounded,
-              color: habit.todayLog?.succumbed == true ? AppColors.danger : AppColors.success,
-            ),
+          
+          // Expandable calendar
+          if (_showCalendar) ...[
+            const SizedBox(height: 16),
+            HabitCalendar(habit: habit),
+          ],
         ],
       ),
     );
   }
-}
 
-class _ScriptedCard extends StatelessWidget {
-  final Habit habit;
+  int _getCompletionsThisWeek() {
+    final weekAgo = DateTime.now().subtract(const Duration(days: 7));
+    return widget.habit.logs.where((l) => l.date.isAfter(weekAgo) && l.completed).length;
+  }
 
-  const _ScriptedCard({required this.habit});
-
-  @override
-  Widget build(BuildContext context) {
-    return GlassCard(
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: AppColors.success.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-            child: Text('${habit.scriptedUseCount}', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.success)),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(habit.name, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-                if (habit.triggerResponse != null)
-                  Text('When: ${habit.triggerResponse}', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
-              ],
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () => context.read<AppState>().logHabit(habit.id, succumbed: true),
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.success, padding: const EdgeInsets.symmetric(horizontal: 16)),
-            child: const Text('Used'),
-          ),
-        ],
-      ),
+  void _logWithMood(BuildContext context, bool completed) {
+    MoodBarrierDialog.show(
+      context,
+      habitCompleted: completed,
+      habitName: widget.habit.name,
+      onSubmit: (mood, barrier) {
+        context.read<AppState>().logHabit(
+          widget.habit.id,
+          completed: completed,
+          mood: mood,
+          barrier: barrier,
+        );
+      },
     );
   }
 }
@@ -339,7 +444,7 @@ class _CheckButton extends StatelessWidget {
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+        decoration: BoxDecoration(color: color.withAlpha(25), borderRadius: BorderRadius.circular(10)),
         child: Icon(icon, color: color, size: 20),
       ),
     );

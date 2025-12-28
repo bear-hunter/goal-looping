@@ -49,6 +49,17 @@ class Factor extends HiveObject {
   @HiveField(7)
   DateTime lastUpdated;
 
+  // Phase 2: Level Criteria (User Agency)
+  @HiveField(8)
+  String targetDescription; // "What does Level 10 look like?"
+
+  @HiveField(9)
+  String currentDescription; // "Why am I at my current level?"
+
+  // Phase 2: Effort Tracking
+  @HiveField(10)
+  List<String> linkedHabitIds; // All habits linked to this Factor
+
   Factor({
     required this.id,
     required this.name,
@@ -58,7 +69,11 @@ class Factor extends HiveObject {
     this.description = '',
     required this.goalId,
     DateTime? lastUpdated,
-  }) : lastUpdated = lastUpdated ?? DateTime.now();
+    this.targetDescription = '',
+    this.currentDescription = '',
+    List<String>? linkedHabitIds,
+  }) : lastUpdated = lastUpdated ?? DateTime.now(),
+       linkedHabitIds = linkedHabitIds ?? [];
 
   /// Calculate the gap between target and current level
   int get gap => targetLevel - currentLevel;
@@ -86,3 +101,4 @@ class Factor extends HiveObject {
     }
   }
 }
+

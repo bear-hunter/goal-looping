@@ -183,12 +183,12 @@ class StorageService {
 
   static List<Habit> getLimitingHabits() =>
       _habitsBox.values
-          .where((h) => h.type == HabitType.limiting && h.isActive)
+          .where((h) => h.type == HabitType.quit && h.isActive)
           .toList();
 
   static List<Habit> getScriptedActions() =>
       _habitsBox.values
-          .where((h) => h.type == HabitType.scripted && h.isActive)
+          .where((h) => h.type == HabitType.build && h.isActive)
           .toList();
 
   static Future<void> saveHabit(Habit habit) async {

@@ -18,21 +18,27 @@ class HabitLogAdapter extends TypeAdapter<HabitLog> {
     };
     return HabitLog(
       date: fields[0] as DateTime,
-      succumbed: fields[1] as bool,
+      completed: fields[1] as bool,
       note: fields[2] as String?,
+      moodRating: fields[3] as int?,
+      barrierTag: fields[4] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, HabitLog obj) {
     writer
-      ..writeByte(3)
+      ..writeByte(5)
       ..writeByte(0)
       ..write(obj.date)
       ..writeByte(1)
-      ..write(obj.succumbed)
+      ..write(obj.completed)
       ..writeByte(2)
-      ..write(obj.note);
+      ..write(obj.note)
+      ..writeByte(3)
+      ..write(obj.moodRating)
+      ..writeByte(4)
+      ..write(obj.barrierTag);
   }
 
   @override
@@ -63,17 +69,24 @@ class HabitAdapter extends TypeAdapter<Habit> {
       triggerResponse: fields[3] as String?,
       currentStreak: fields[4] as int,
       bestStreak: fields[5] as int,
-      scriptedUseCount: fields[6] as int,
+      completionCount: fields[6] as int,
       logs: (fields[7] as List?)?.cast<HabitLog>(),
       createdAt: fields[8] as DateTime?,
       isActive: fields[9] as bool,
+      factorId: fields[10] as String?,
+      scheduledDays: (fields[11] as List?)?.cast<int>(),
+      targetFrequency: fields[12] as int,
+      motivation: fields[13] as String,
+      timerMinutes: fields[14] as int?,
+      streakFreezes: fields[15] as int,
+      freezesUsed: fields[16] as int,
     );
   }
 
   @override
   void write(BinaryWriter writer, Habit obj) {
     writer
-      ..writeByte(10)
+      ..writeByte(17)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -87,13 +100,27 @@ class HabitAdapter extends TypeAdapter<Habit> {
       ..writeByte(5)
       ..write(obj.bestStreak)
       ..writeByte(6)
-      ..write(obj.scriptedUseCount)
+      ..write(obj.completionCount)
       ..writeByte(7)
       ..write(obj.logs)
       ..writeByte(8)
       ..write(obj.createdAt)
       ..writeByte(9)
-      ..write(obj.isActive);
+      ..write(obj.isActive)
+      ..writeByte(10)
+      ..write(obj.factorId)
+      ..writeByte(11)
+      ..write(obj.scheduledDays)
+      ..writeByte(12)
+      ..write(obj.targetFrequency)
+      ..writeByte(13)
+      ..write(obj.motivation)
+      ..writeByte(14)
+      ..write(obj.timerMinutes)
+      ..writeByte(15)
+      ..write(obj.streakFreezes)
+      ..writeByte(16)
+      ..write(obj.freezesUsed);
   }
 
   @override
@@ -123,13 +150,14 @@ class BarrierEntryAdapter extends TypeAdapter<BarrierEntry> {
       occurredAt: fields[2] as DateTime?,
       response: fields[3] as String?,
       wasHandled: fields[4] as bool,
+      factorId: fields[5] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, BarrierEntry obj) {
     writer
-      ..writeByte(5)
+      ..writeByte(6)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -139,7 +167,9 @@ class BarrierEntryAdapter extends TypeAdapter<BarrierEntry> {
       ..writeByte(3)
       ..write(obj.response)
       ..writeByte(4)
-      ..write(obj.wasHandled);
+      ..write(obj.wasHandled)
+      ..writeByte(5)
+      ..write(obj.factorId);
   }
 
   @override
@@ -161,22 +191,27 @@ class HabitTypeAdapter extends TypeAdapter<HabitType> {
   HabitType read(BinaryReader reader) {
     switch (reader.readByte()) {
       case 0:
-        return HabitType.limiting;
+        return HabitType.build;
       case 1:
-        return HabitType.scripted;
+        return HabitType.quit;
+      case 2:
+        return HabitType.timed;
       default:
-        return HabitType.limiting;
+        return HabitType.build;
     }
   }
 
   @override
   void write(BinaryWriter writer, HabitType obj) {
     switch (obj) {
-      case HabitType.limiting:
+      case HabitType.build:
         writer.writeByte(0);
         break;
-      case HabitType.scripted:
+      case HabitType.quit:
         writer.writeByte(1);
+        break;
+      case HabitType.timed:
+        writer.writeByte(2);
         break;
     }
   }

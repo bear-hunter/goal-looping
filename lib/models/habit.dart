@@ -2,36 +2,48 @@ import 'package:hive/hive.dart';
 
 part 'habit.g.dart';
 
-/// Type of habit tracking
+/// Type of habit tracking - Phase 2 expanded types
 @HiveType(typeId: 13)
 enum HabitType {
   @HiveField(0)
-  limiting, // Track absence (e.g., "No doom scrolling")
+  build, // Positive habit to build (formerly "scripted")
 
   @HiveField(1)
-  scripted, // Trigger-response (e.g., "If distracted -> 3 deep breaths")
+  quit, // Negative habit to avoid (formerly "limiting")
+
+  @HiveField(2)
+  timed, // Habit with timer (e.g., "Meditate 10 mins")
 }
 
-/// Daily log entry for habit
+/// Daily log entry for habit - Phase 2 with mood/barrier
 @HiveType(typeId: 14)
 class HabitLog extends HiveObject {
   @HiveField(0)
   DateTime date;
 
   @HiveField(1)
-  bool succumbed; // For limiting: did you fail? For scripted: did you execute?
+  bool completed; // Did you complete (build/timed) or stay clean (quit)?
 
   @HiveField(2)
   String? note;
 
+  // Phase 2: Psychological Depth
+  @HiveField(3)
+  int? moodRating; // 1-5 emoji scale
+
+  @HiveField(4)
+  String? barrierTag; // "Tired", "No Time", "Stressed", etc.
+
   HabitLog({
     required this.date,
-    this.succumbed = false,
+    this.completed = false,
     this.note,
+    this.moodRating,
+    this.barrierTag,
   });
 }
 
-/// Habit - Limiting habits and Scripted actions
+/// Habit - Build, Quit, or Timed habits with scheduling
 @HiveType(typeId: 5)
 class Habit extends HiveObject {
   @HiveField(0)
@@ -44,7 +56,7 @@ class Habit extends HiveObject {
   HabitType type;
 
   @HiveField(3)
-  String? triggerResponse; // For scripted: "If X -> I will Y"
+  String? triggerResponse; // For build: "If X -> I will Y"
 
   @HiveField(4)
   int currentStreak;
@@ -53,7 +65,7 @@ class Habit extends HiveObject {
   int bestStreak;
 
   @HiveField(6)
-  int scriptedUseCount; // For scripted: how many times deployed
+  int completionCount; // Total times completed
 
   @HiveField(7)
   List<HabitLog> logs;
@@ -64,6 +76,32 @@ class Habit extends HiveObject {
   @HiveField(9)
   bool isActive;
 
+  // Phase 2: Factor Linkage (Connection to Strategy)
+  @HiveField(10)
+  String? factorId; // Link to Strategy Factor
+
+  // Phase 2: Flexible Scheduling (HabitNow standard)
+  @HiveField(11)
+  List<int> scheduledDays; // [1,3,5] = Mon,Wed,Fri (1=Mon, 7=Sun)
+
+  @HiveField(12)
+  int targetFrequency; // Times per day for repetition habits
+
+  // Phase 2: Psychological Depth (Proddy standard)
+  @HiveField(13)
+  String motivation; // "The Why" - displayed during check-in
+
+  // Phase 2: Timed Habits
+  @HiveField(14)
+  int? timerMinutes; // Duration for timed habits
+
+  // Phase 2: Streak Freeze
+  @HiveField(15)
+  int streakFreezes; // Allowed skips without breaking streak
+
+  @HiveField(16)
+  int freezesUsed; // Freezes consumed this streak
+
   Habit({
     required this.id,
     required this.name,
@@ -71,15 +109,29 @@ class Habit extends HiveObject {
     this.triggerResponse,
     this.currentStreak = 0,
     this.bestStreak = 0,
-    this.scriptedUseCount = 0,
+    this.completionCount = 0,
     List<HabitLog>? logs,
     DateTime? createdAt,
     this.isActive = true,
+    this.factorId,
+    List<int>? scheduledDays,
+    this.targetFrequency = 1,
+    this.motivation = '',
+    this.timerMinutes,
+    this.streakFreezes = 0,
+    this.freezesUsed = 0,
   })  : logs = logs ?? [],
+        scheduledDays = scheduledDays ?? [1, 2, 3, 4, 5, 6, 7], // Default: every day
         createdAt = createdAt ?? DateTime.now();
 
+  /// Check if habit is scheduled for today
+  bool get isScheduledToday {
+    final weekday = DateTime.now().weekday; // 1=Mon, 7=Sun
+    return scheduledDays.contains(weekday);
+  }
+
   /// Log today's habit check
-  void logToday({required bool succumbed, String? note}) {
+  void logToday({required bool completed, String? note, int? mood, String? barrier}) {
     final today = DateTime.now();
     
     // Remove existing log for today if any
@@ -88,21 +140,41 @@ class Habit extends HiveObject {
         log.date.month == today.month && 
         log.date.day == today.day);
     
-    logs.add(HabitLog(date: today, succumbed: succumbed, note: note));
+    logs.add(HabitLog(
+      date: today, 
+      completed: completed, 
+      note: note,
+      moodRating: mood,
+      barrierTag: barrier,
+    ));
     
-    if (type == HabitType.limiting) {
-      if (!succumbed) {
+    if (type == HabitType.quit) {
+      // Quit habit: completed = stayed clean
+      if (completed) {
         currentStreak++;
-        if (currentStreak > bestStreak) {
-          bestStreak = currentStreak;
-        }
+        if (currentStreak > bestStreak) bestStreak = currentStreak;
       } else {
-        currentStreak = 0;
+        // Check for streak freeze
+        if (streakFreezes > freezesUsed) {
+          freezesUsed++;
+        } else {
+          currentStreak = 0;
+          freezesUsed = 0;
+        }
       }
     } else {
-      // Scripted action - succumbed means "used successfully"
-      if (succumbed) {
-        scriptedUseCount++;
+      // Build/Timed habit: completed = did the action
+      if (completed) {
+        completionCount++;
+        currentStreak++;
+        if (currentStreak > bestStreak) bestStreak = currentStreak;
+      } else {
+        if (streakFreezes > freezesUsed) {
+          freezesUsed++;
+        } else {
+          currentStreak = 0;
+          freezesUsed = 0;
+        }
       }
     }
   }
@@ -128,6 +200,27 @@ class Habit extends HiveObject {
       return null;
     }
   }
+
+  /// Get scheduled days as readable string
+  String get scheduleDaysLabel {
+    if (scheduledDays.length == 7) return 'Every day';
+    if (scheduledDays.isEmpty) return 'No schedule';
+    
+    const dayNames = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    return scheduledDays.map((d) => dayNames[d]).join(', ');
+  }
+
+  /// Get habit type label
+  String get typeLabel {
+    switch (type) {
+      case HabitType.build:
+        return 'Build';
+      case HabitType.quit:
+        return 'Quit';
+      case HabitType.timed:
+        return 'Timed';
+    }
+  }
 }
 
 
@@ -149,11 +242,30 @@ class BarrierEntry extends HiveObject {
   @HiveField(4)
   bool wasHandled;
 
+  @HiveField(5)
+  String? factorId; // Link to Factor
+
   BarrierEntry({
     required this.id,
     required this.description,
     DateTime? occurredAt,
     this.response,
     this.wasHandled = false,
+    this.factorId,
   }) : occurredAt = occurredAt ?? DateTime.now();
+}
+
+/// Common barrier tags for quick selection
+class BarrierTags {
+  static const List<String> common = [
+    'Tired',
+    'No Time',
+    'Stressed',
+    'Distracted',
+    'Unmotivated',
+    'Sick',
+    'Social Pressure',
+    'Forgot',
+    'Other',
+  ];
 }

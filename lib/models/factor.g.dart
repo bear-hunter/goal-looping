@@ -25,13 +25,16 @@ class FactorAdapter extends TypeAdapter<Factor> {
       description: fields[5] as String,
       goalId: fields[6] as String,
       lastUpdated: fields[7] as DateTime?,
+      targetDescription: fields[8] as String,
+      currentDescription: fields[9] as String,
+      linkedHabitIds: (fields[10] as List?)?.cast<String>(),
     );
   }
 
   @override
   void write(BinaryWriter writer, Factor obj) {
     writer
-      ..writeByte(8)
+      ..writeByte(11)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -47,7 +50,13 @@ class FactorAdapter extends TypeAdapter<Factor> {
       ..writeByte(6)
       ..write(obj.goalId)
       ..writeByte(7)
-      ..write(obj.lastUpdated);
+      ..write(obj.lastUpdated)
+      ..writeByte(8)
+      ..write(obj.targetDescription)
+      ..writeByte(9)
+      ..write(obj.currentDescription)
+      ..writeByte(10)
+      ..write(obj.linkedHabitIds);
   }
 
   @override

@@ -52,11 +52,19 @@ class AppState extends ChangeNotifier {
 
   bool get canAddPriorityTask => priorityTasks.length < 2;
 
-  List<Habit> get limitingHabits =>
-      _habits.where((h) => h.type == HabitType.limiting && h.isActive).toList();
+  // Phase 2: Updated habit type getters
+  List<Habit> get buildHabits =>
+      _habits.where((h) => h.type == HabitType.build && h.isActive).toList();
 
-  List<Habit> get scriptedActions =>
-      _habits.where((h) => h.type == HabitType.scripted && h.isActive).toList();
+  List<Habit> get quitHabits =>
+      _habits.where((h) => h.type == HabitType.quit && h.isActive).toList();
+
+  List<Habit> get timedHabits =>
+      _habits.where((h) => h.type == HabitType.timed && h.isActive).toList();
+
+  // Legacy aliases for backward compatibility
+  List<Habit> get limitingHabits => quitHabits;
+  List<Habit> get scriptedActions => buildHabits;
 
   List<Experiment> get pendingExperiments =>
       _experiments.where((e) => e.status == ExperimentStatus.pending).toList();
@@ -241,9 +249,9 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> logHabit(String id, {required bool succumbed, String? note}) async {
+  Future<void> logHabit(String id, {required bool completed, String? note, int? mood, String? barrier}) async {
     final habit = _habits.firstWhere((h) => h.id == id);
-    habit.logToday(succumbed: succumbed, note: note);
+    habit.logToday(completed: completed, note: note, mood: mood, barrier: barrier);
     await StorageService.saveHabit(habit);
     notifyListeners();
   }
@@ -331,4 +339,48 @@ class AppState extends ChangeNotifier {
     _timeAvailability = value;
     notifyListeners();
   }
+
+  // ========== PHASE 2: FACTOR-LINKED GETTERS ==========
+  /// Get all tasks linked to a specific Factor
+  List<Task> getTasksForFactor(String factorId) =>
+      _tasks.where((t) => t.linkedFactorIds.contains(factorId)).toList();
+
+  /// Get all habits linked to a specific Factor
+  List<Habit> getHabitsForFactor(String factorId) =>
+      _habits.where((h) => h.factorId == factorId).toList();
+
+  /// Get all reflections linked to a specific Factor
+  List<Reflection> getReflectionsForFactor(String factorId) =>
+      _reflections.where((r) => r.linkedFactorIds.contains(factorId)).toList();
+
+  /// Get total effort units for a Factor (Work Volume metric)
+  int getEffortUnitsForFactor(String factorId) {
+    final taskCount = getTasksForFactor(factorId).where((t) => t.isCompleted).length;
+    final habitLogs = getHabitsForFactor(factorId)
+        .fold<int>(0, (sum, h) => sum + h.logs.where((l) => l.completed).length);
+    final reflectionCount = getReflectionsForFactor(factorId).length;
+    return taskCount + habitLogs + reflectionCount;
+  }
+
+  /// Get reflection by ID
+  Reflection? getReflectionById(String id) {
+    try {
+      return _reflections.firstWhere((r) => r.id == id);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Get experiment by ID
+  Experiment? getExperimentById(String id) {
+    try {
+      return _experiments.firstWhere((e) => e.id == id);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Get experiments for a reflection
+  List<Experiment> getExperimentsForReflection(String reflectionId) =>
+      _experiments.where((e) => e.reflectionId == reflectionId).toList();
 }

@@ -8,6 +8,7 @@ import '../../models/experiment.dart';
 import '../../providers/app_state.dart';
 import '../../services/storage_service.dart';
 import '../../widgets/glass_card.dart';
+import 'reflection_detail_screen.dart';
 
 /// Module 5: Reflection Forge - Kolb's Cycles with Markdown parsing
 class ReflectionScreen extends StatelessWidget {
@@ -154,7 +155,15 @@ class ReflectionScreen extends StatelessWidget {
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
                       final reflection = state.reflections[index];
-                      return _ReflectionCard(reflection: reflection);
+                      return _ReflectionCard(
+                        reflection: reflection,
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ReflectionDetailScreen(reflectionId: reflection.id),
+                          ),
+                        ),
+                      );
                     },
                     childCount: state.reflections.length,
                   ),
@@ -205,12 +214,14 @@ class _ActionChip extends StatelessWidget {
 
 class _ReflectionCard extends StatelessWidget {
   final Reflection reflection;
+  final VoidCallback? onTap;
 
-  const _ReflectionCard({required this.reflection});
+  const _ReflectionCard({required this.reflection, this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return GlassCard(
+      onTap: onTap,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
