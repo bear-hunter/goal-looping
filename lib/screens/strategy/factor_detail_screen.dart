@@ -7,6 +7,7 @@ import '../../models/growth_area.dart';
 import '../../providers/app_state.dart';
 import '../../widgets/glass_card.dart';
 import '../../widgets/progress_ring.dart';
+import '../../widgets/tree_platform.dart';
 
 /// Phase 2: Factor Detail Screen - "Work Volume" Dashboard
 /// Shows all effort linked to a specific Factor
@@ -88,25 +89,24 @@ class _FactorDetailScreenState extends State<FactorDetailScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Effort Ring (Work Volume)
-                Center(
-                  child: Column(
-                    children: [
-                      _EffortRing(effortUnits: effortUnits),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Total Effort Units',
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
-                      ),
-                      Text(
-                        'Tasks + Habits + Reflections',
-                        style: TextStyle(fontSize: 12, color: AppColors.textMuted),
-                      ),
-                    ],
-                  ),
-                ).animate().fadeIn(duration: 400.ms).scale(begin: const Offset(0.9, 0.9)),
+                // Tree Platform Visualization
+                TreePlatform(
+                  factor: factor,
+                  dayNumber: factor.currentLevel * 10, // Approximate progress
+                  totalDays: 100, // Progress milestone
+                ).animate().fadeIn(duration: 500.ms),
 
-                const SizedBox(height: 32),
+                const SizedBox(height: 24),
+                
+                // Effort summary row
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _MiniStat(label: 'Effort', value: '$effortUnits', icon: Icons.bolt_rounded, color: AppColors.warning),
+                    _MiniStat(label: 'Level', value: '${factor.currentLevel}', icon: Icons.trending_up_rounded, color: AppColors.primary),
+                    _MiniStat(label: 'Health', value: '${factor.healthPercent.toInt()}%', icon: Icons.favorite_rounded, color: AppColors.danger),
+                  ],
+                ),
 
                 // Gap Analysis
                 _SectionHeader(title: 'Gap Analysis', icon: Icons.analytics_rounded, color: AppColors.info),
@@ -482,3 +482,32 @@ class _HistoryItem extends StatelessWidget {
     );
   }
 }
+
+class _MiniStat extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color color;
+
+  const _MiniStat({required this.label, required this.value, required this.icon, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: color.withAlpha(20),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 18),
+          const SizedBox(height: 4),
+          Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color)),
+          Text(label, style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
+        ],
+      ),
+    );
+  }
+}
+

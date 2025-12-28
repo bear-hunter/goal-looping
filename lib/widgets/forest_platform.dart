@@ -5,167 +5,210 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../core/theme/theme.dart';
 import '../models/growth_area.dart';
 
-/// Isometric Forest Platform Widget
-/// Displays trees growing on a 3D platform based on their level
+/// Tree Life Cycle Stages (7 stages)
+enum TreeLifeStage {
+  seed,      // Level 0-1: Dormant seed
+  sprout,    // Level 2-3: First leaves emerging
+  seedling,  // Level 4-5: Young flexible plant
+  sapling,   // Level 6-7: Teenage tree, sturdier
+  mature,    // Level 8-9: Full grown, peak health
+  decline,   // Level 10 with low health: Aging
+  snag,      // Dead: Bare trunk
+}
+
+TreeLifeStage getLifeStage(int level, double healthPercent, bool isDead) {
+  if (isDead || healthPercent <= 0) return TreeLifeStage.snag;
+  if (level >= 10 && healthPercent < 50) return TreeLifeStage.decline;
+  if (level >= 8) return TreeLifeStage.mature;
+  if (level >= 6) return TreeLifeStage.sapling;
+  if (level >= 4) return TreeLifeStage.seedling;
+  if (level >= 2) return TreeLifeStage.sprout;
+  return TreeLifeStage.seed;
+}
+
+/// Bird's Eye Isometric Forest Platform
+/// Large grid-based platform with trees positioned naturally
 class ForestPlatform extends StatelessWidget {
   final List<Factor> factors;
   final Function(Factor)? onTreeTap;
-  final double platformWidth;
-  final double platformHeight;
+  final double? platformWidth;
+  final double? platformHeight;
 
   const ForestPlatform({
     super.key,
     required this.factors,
     this.onTreeTap,
-    this.platformWidth = 300,
-    this.platformHeight = 200,
+    this.platformWidth,
+    this.platformHeight,
   });
 
   @override
   Widget build(BuildContext context) {
+    final width = platformWidth ?? 320;
+    final height = platformHeight ?? (width * 0.7);
+    
     return SizedBox(
-      width: platformWidth,
-      height: platformHeight + 60, // Extra space for trees above platform
+      width: width,
+      height: height + 80, // Extra space for trees
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // Platform base
+          // Isometric platform base
           Positioned(
             bottom: 0,
-            child: _IsometricPlatform(
-              width: platformWidth,
-              height: platformHeight * 0.4,
+            child: CustomPaint(
+              size: Size(width, height * 0.6),
+              painter: _IsometricGridPainter(),
             ),
           ),
-          // Trees on platform
+          // Trees positioned on platform
           ...factors.asMap().entries.map((entry) {
             final index = entry.key;
             final factor = entry.value;
-            final position = _getTreePosition(index, factors.length);
+            final pos = _getTreePosition(index, factors.length, width);
+            final treeSize = _getTreeSize(factor.currentLevel);
             
             return Positioned(
-              bottom: platformHeight * 0.35 + position.dy,
-              left: platformWidth * 0.5 + position.dx - 25,
+              bottom: height * 0.35 + pos.dy,
+              left: width * 0.5 + pos.dx - treeSize / 2,
               child: GestureDetector(
                 onTap: onTreeTap != null ? () => onTreeTap!(factor) : null,
-                child: _GrowingTree(
+                child: _IsometricTree(
                   factor: factor,
-                  size: 50 + (factor.currentLevel * 3).toDouble(),
+                  size: treeSize,
                 ),
               ),
             );
           }),
         ],
       ),
-    );
+    ).animate().fadeIn(duration: 500.ms);
   }
 
-  Offset _getTreePosition(int index, int total) {
-    // Arrange trees in a natural-looking pattern on the platform
-    if (total == 1) return Offset.zero;
+  Offset _getTreePosition(int index, int total, double platformWidth) {
+    // Grid positions on isometric platform (back to front, left to right)
+    final positions = <Offset>[];
     
-    final patterns = [
-      [Offset.zero], // 1 tree
-      [const Offset(-40, 0), const Offset(40, 0)], // 2 trees
-      [const Offset(-50, -10), Offset.zero, const Offset(50, -10)], // 3 trees
-      [const Offset(-60, 0), const Offset(-20, -15), const Offset(20, -15), const Offset(60, 0)], // 4 trees
-      [const Offset(-60, 5), const Offset(-30, -10), Offset.zero, const Offset(30, -10), const Offset(60, 5)], // 5 trees
-    ];
-    
-    if (total <= patterns.length && index < patterns[total - 1].length) {
-      return patterns[total - 1][index];
+    // Create natural grid positions
+    const rows = 3;
+    const cols = 4;
+    for (int r = 0; r < rows; r++) {
+      for (int c = 0; c < cols; c++) {
+        // Isometric transformation
+        final x = ((c - cols/2) * 45 + (r - rows/2) * 45).toDouble();
+        final y = (r * 30 - c * 10).toDouble();
+        positions.add(Offset(x, y));
+      }
     }
     
-    // For more than 5 trees, use a grid pattern
-    final row = index ~/ 3;
-    final col = index % 3;
-    return Offset((col - 1) * 50.0, -row * 25.0);
+    if (index < positions.length) {
+      return positions[index];
+    }
+    // Fallback for extra trees
+    return Offset.zero;
+  }
+
+  double _getTreeSize(int level) {
+    // Trees grow larger with level
+    return 35 + (level * 4).toDouble();
   }
 }
 
-/// Isometric platform base with grass texture
-class _IsometricPlatform extends StatelessWidget {
-  final double width;
-  final double height;
-
-  const _IsometricPlatform({required this.width, required this.height});
-
-  @override
-  Widget build(BuildContext context) {
-    return CustomPaint(
-      size: Size(width, height),
-      painter: _IsometricPlatformPainter(),
-    );
-  }
-}
-
-class _IsometricPlatformPainter extends CustomPainter {
+/// Isometric grid platform painter with grass and grid lines
+class _IsometricGridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    // Top grass layer
-    final topPath = Path();
-    topPath.moveTo(size.width * 0.5, 0);
-    topPath.lineTo(size.width, size.height * 0.35);
-    topPath.lineTo(size.width * 0.5, size.height * 0.7);
-    topPath.lineTo(0, size.height * 0.35);
-    topPath.close();
+    final path = Path();
     
-    final topGradient = LinearGradient(
+    // Diamond-shaped isometric platform
+    path.moveTo(size.width * 0.5, size.height * 0.1);  // Top
+    path.lineTo(size.width * 0.95, size.height * 0.4); // Right
+    path.lineTo(size.width * 0.5, size.height * 0.7);  // Bottom
+    path.lineTo(size.width * 0.05, size.height * 0.4); // Left
+    path.close();
+    
+    // Grass gradient
+    final grassGradient = LinearGradient(
       begin: Alignment.topCenter,
       end: Alignment.bottomCenter,
       colors: [
-        const Color(0xFF7CB342), // Light green
-        const Color(0xFF558B2F), // Darker green
+        const Color(0xFF8BC34A), // Light green
+        const Color(0xFF689F38), // Medium green
+        const Color(0xFF558B2F), // Dark green
       ],
     );
     
     canvas.drawPath(
-      topPath,
+      path,
       Paint()
-        ..shader = topGradient.createShader(Rect.fromLTWH(0, 0, size.width, size.height * 0.7))
+        ..shader = grassGradient.createShader(Rect.fromLTWH(0, 0, size.width, size.height * 0.7))
         ..style = PaintingStyle.fill,
     );
     
-    // Left dirt side
+    // Draw grid lines on grass
+    final gridPaint = Paint()
+      ..color = const Color(0xFF7CB342).withAlpha(100)
+      ..strokeWidth = 1
+      ..style = PaintingStyle.stroke;
+    
+    // Horizontal-ish grid lines (isometric)
+    for (int i = 1; i < 5; i++) {
+      final startX = size.width * 0.05 + (size.width * 0.45 / 5) * i;
+      final startY = size.height * 0.4 - (size.height * 0.3 / 5) * i;
+      final endX = size.width * 0.5 + (size.width * 0.45 / 5) * i;
+      final endY = size.height * 0.7 - (size.height * 0.3 / 5) * i;
+      canvas.drawLine(Offset(startX, startY), Offset(endX, endY), gridPaint);
+    }
+    
+    // Vertical-ish grid lines (isometric)
+    for (int i = 1; i < 5; i++) {
+      final startX = size.width * 0.5 - (size.width * 0.45 / 5) * i;
+      final startY = size.height * 0.1 + (size.height * 0.3 / 5) * i;
+      final endX = size.width * 0.5 + (size.width * 0.45 / 5) * (5 - i);
+      final endY = size.height * 0.4 + (size.height * 0.3 / 5) * i;
+      canvas.drawLine(Offset(startX, startY), Offset(endX, endY), gridPaint);
+    }
+    
+    // Left side (dirt)
     final leftPath = Path();
-    leftPath.moveTo(0, size.height * 0.35);
+    leftPath.moveTo(size.width * 0.05, size.height * 0.4);
     leftPath.lineTo(size.width * 0.5, size.height * 0.7);
     leftPath.lineTo(size.width * 0.5, size.height);
-    leftPath.lineTo(0, size.height * 0.65);
+    leftPath.lineTo(size.width * 0.05, size.height * 0.7);
     leftPath.close();
     
     canvas.drawPath(
       leftPath,
       Paint()
-        ..color = const Color(0xFF5D4037) // Brown dirt
+        ..color = const Color(0xFF5D4037)
         ..style = PaintingStyle.fill,
     );
     
-    // Right dirt side (slightly lighter)
+    // Right side (lighter dirt)
     final rightPath = Path();
-    rightPath.moveTo(size.width, size.height * 0.35);
+    rightPath.moveTo(size.width * 0.95, size.height * 0.4);
     rightPath.lineTo(size.width * 0.5, size.height * 0.7);
     rightPath.lineTo(size.width * 0.5, size.height);
-    rightPath.lineTo(size.width, size.height * 0.65);
+    rightPath.lineTo(size.width * 0.95, size.height * 0.7);
     rightPath.close();
     
     canvas.drawPath(
       rightPath,
       Paint()
-        ..color = const Color(0xFF795548) // Lighter brown
+        ..color = const Color(0xFF795548)
         ..style = PaintingStyle.fill,
     );
     
-    // Add grass texture dots on top
-    final random = math.Random(42); // Fixed seed for consistency
-    final grassPaint = Paint()
-      ..color = const Color(0xFF8BC34A)
+    // Grass texture (random dots)
+    final random = math.Random(42);
+    final grassDotPaint = Paint()
+      ..color = const Color(0xFF9CCC65)
       ..style = PaintingStyle.fill;
     
-    for (int i = 0; i < 20; i++) {
-      final x = size.width * 0.2 + random.nextDouble() * size.width * 0.6;
-      final y = size.height * 0.1 + random.nextDouble() * size.height * 0.5;
-      canvas.drawCircle(Offset(x, y), 2 + random.nextDouble() * 2, grassPaint);
+    for (int i = 0; i < 30; i++) {
+      final x = size.width * 0.15 + random.nextDouble() * size.width * 0.7;
+      final y = size.height * 0.15 + random.nextDouble() * size.height * 0.5;
+      canvas.drawCircle(Offset(x, y), 1.5 + random.nextDouble() * 2, grassDotPaint);
     }
   }
 
@@ -173,78 +216,79 @@ class _IsometricPlatformPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-/// Tree that grows based on factor level
-class _GrowingTree extends StatelessWidget {
+/// Isometric tree with life cycle stages
+class _IsometricTree extends StatelessWidget {
   final Factor factor;
   final double size;
 
-  const _GrowingTree({required this.factor, required this.size});
+  const _IsometricTree({required this.factor, required this.size});
 
   @override
   Widget build(BuildContext context) {
-    final stage = _getGrowthStage(factor.currentLevel);
+    final stage = getLifeStage(
+      factor.currentLevel, 
+      factor.healthPercent,
+      factor.healthPercent <= 0,
+    );
     
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Tree visualization
-        SizedBox(
-          width: size,
-          height: size,
-          child: CustomPaint(
-            painter: _TreeStagePainter(
-              stage: stage,
-              healthPercent: factor.isActiveFocus ? factor.healthPercent : 100,
-              isActive: factor.isActiveFocus,
+        // Shadow
+        Container(
+          width: size * 0.6,
+          height: size * 0.15,
+          decoration: BoxDecoration(
+            color: Colors.black.withAlpha(30),
+            borderRadius: BorderRadius.circular(size),
+          ),
+        ),
+        Transform.translate(
+          offset: Offset(0, -size * 0.1),
+          child: SizedBox(
+            width: size,
+            height: size,
+            child: CustomPaint(
+              painter: _TreeLifeCyclePainter(
+                stage: stage,
+                isActive: factor.isActiveFocus,
+                healthPercent: factor.healthPercent,
+              ),
             ),
           ),
-        ).animate().fadeIn(duration: 400.ms).scale(
-          begin: const Offset(0.8, 0.8),
-          end: const Offset(1, 1),
-          duration: 500.ms,
-          curve: Curves.elasticOut,
         ),
-        const SizedBox(height: 4),
-        // Tree name label
+        // Name label
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          margin: const EdgeInsets.only(top: 2),
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
           decoration: BoxDecoration(
-            color: factor.isActiveFocus 
-                ? AppColors.primary.withAlpha(200)
-                : AppColors.surface.withAlpha(200),
-            borderRadius: BorderRadius.circular(8),
+            color: (factor.isActiveFocus ? AppColors.primary : AppColors.surface).withAlpha(220),
+            borderRadius: BorderRadius.circular(6),
           ),
           child: Text(
-            factor.name.length > 8 ? '${factor.name.substring(0, 8)}...' : factor.name,
+            factor.name.length > 6 ? '${factor.name.substring(0, 6)}..' : factor.name,
             style: TextStyle(
-              fontSize: 9,
+              fontSize: 8,
               fontWeight: FontWeight.w600,
-              color: factor.isActiveFocus ? Colors.white : AppColors.textSecondary,
+              color: factor.isActiveFocus ? Colors.white : AppColors.textMuted,
             ),
           ),
         ),
       ],
     );
   }
-
-  int _getGrowthStage(int level) {
-    if (level <= 2) return 0; // Seed
-    if (level <= 4) return 1; // Sprout
-    if (level <= 6) return 2; // Sapling
-    if (level <= 8) return 3; // Young tree
-    return 4; // Full tree
-  }
 }
 
-class _TreeStagePainter extends CustomPainter {
-  final int stage;
-  final double healthPercent;
+/// Painter for 7-stage tree life cycle
+class _TreeLifeCyclePainter extends CustomPainter {
+  final TreeLifeStage stage;
   final bool isActive;
+  final double healthPercent;
 
-  _TreeStagePainter({
+  _TreeLifeCyclePainter({
     required this.stage,
-    required this.healthPercent,
     required this.isActive,
+    required this.healthPercent,
   });
 
   @override
@@ -252,183 +296,168 @@ class _TreeStagePainter extends CustomPainter {
     final centerX = size.width / 2;
     final bottom = size.height;
     
-    // Determine tree color based on health
-    Color trunkColor = const Color(0xFF5D4037);
-    Color leafColor = isActive
-        ? (healthPercent >= 50 ? const Color(0xFF2E7D32) : const Color(0xFFF9A825))
-        : const Color(0xFF455A64);
-    
+    // Colors based on health
+    final trunkColor = const Color(0xFF5D4037);
+    final leafColor = isActive
+        ? (healthPercent >= 60 ? const Color(0xFF4CAF50) : 
+           healthPercent >= 30 ? const Color(0xFFFFC107) : const Color(0xFFFF5722))
+        : const Color(0xFF78909C);
+
     switch (stage) {
-      case 0: // Seed
-        _drawSeed(canvas, size, leafColor);
+      case TreeLifeStage.seed:
+        _drawSeed(canvas, size, trunkColor);
         break;
-      case 1: // Sprout
+      case TreeLifeStage.sprout:
         _drawSprout(canvas, size, trunkColor, leafColor);
         break;
-      case 2: // Sapling
+      case TreeLifeStage.seedling:
+        _drawSeedling(canvas, size, trunkColor, leafColor);
+        break;
+      case TreeLifeStage.sapling:
         _drawSapling(canvas, size, trunkColor, leafColor);
         break;
-      case 3: // Young tree
-        _drawYoungTree(canvas, size, trunkColor, leafColor);
+      case TreeLifeStage.mature:
+        _drawMatureTree(canvas, size, trunkColor, leafColor);
         break;
-      case 4: // Full tree
-        _drawFullTree(canvas, size, trunkColor, leafColor);
+      case TreeLifeStage.decline:
+        _drawDecliningTree(canvas, size, trunkColor, leafColor);
+        break;
+      case TreeLifeStage.snag:
+        _drawSnag(canvas, size, trunkColor);
         break;
     }
   }
 
   void _drawSeed(Canvas canvas, Size size, Color color) {
     final paint = Paint()
-      ..color = const Color(0xFF795548)
+      ..color = const Color(0xFF8D6E63)
       ..style = PaintingStyle.fill;
     
-    // Draw seed shape
-    final center = Offset(size.width / 2, size.height * 0.7);
     canvas.drawOval(
-      Rect.fromCenter(center: center, width: size.width * 0.3, height: size.height * 0.2),
+      Rect.fromCenter(
+        center: Offset(size.width / 2, size.height * 0.75),
+        width: size.width * 0.25,
+        height: size.height * 0.15,
+      ),
       paint,
     );
     
-    // Small sprout coming out
+    // Tiny sprout hint
     final sproutPaint = Paint()
-      ..color = color
-      ..strokeWidth = 2
+      ..color = const Color(0xFF81C784)
+      ..strokeWidth = 1.5
       ..style = PaintingStyle.stroke;
     
-    final path = Path();
-    path.moveTo(center.dx, center.dy - size.height * 0.1);
-    path.quadraticBezierTo(
-      center.dx + 5, center.dy - size.height * 0.2,
-      center.dx, center.dy - size.height * 0.25,
+    canvas.drawLine(
+      Offset(size.width / 2, size.height * 0.68),
+      Offset(size.width / 2, size.height * 0.62),
+      sproutPaint,
     );
-    canvas.drawPath(path, sproutPaint);
   }
 
-  void _drawSprout(Canvas canvas, Size size, Color trunkColor, Color leafColor) {
+  void _drawSprout(Canvas canvas, Size size, Color trunk, Color leaf) {
     final centerX = size.width / 2;
     final bottom = size.height * 0.85;
     
-    // Stem
-    final stemPaint = Paint()
-      ..color = trunkColor
-      ..strokeWidth = 3
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-    
+    // Thin stem
     canvas.drawLine(
       Offset(centerX, bottom),
-      Offset(centerX, bottom - size.height * 0.35),
-      stemPaint,
+      Offset(centerX, bottom - size.height * 0.3),
+      Paint()..color = trunk..strokeWidth = 2..strokeCap = StrokeCap.round,
     );
     
-    // Two leaves
-    final leafPaint = Paint()
-      ..color = leafColor
-      ..style = PaintingStyle.fill;
+    // Two small leaves
+    final leafPaint = Paint()..color = leaf..style = PaintingStyle.fill;
     
-    final leafPath = Path();
-    leafPath.moveTo(centerX, bottom - size.height * 0.35);
-    leafPath.quadraticBezierTo(
-      centerX - size.width * 0.25, bottom - size.height * 0.5,
-      centerX - size.width * 0.15, bottom - size.height * 0.6,
+    // Left leaf
+    var path = Path();
+    path.moveTo(centerX, bottom - size.height * 0.3);
+    path.quadraticBezierTo(
+      centerX - size.width * 0.2, bottom - size.height * 0.4,
+      centerX - size.width * 0.1, bottom - size.height * 0.45,
     );
-    leafPath.quadraticBezierTo(
-      centerX, bottom - size.height * 0.45,
-      centerX, bottom - size.height * 0.35,
+    path.quadraticBezierTo(
+      centerX - size.width * 0.05, bottom - size.height * 0.35,
+      centerX, bottom - size.height * 0.3,
     );
+    canvas.drawPath(path, leafPaint);
     
-    leafPath.moveTo(centerX, bottom - size.height * 0.35);
-    leafPath.quadraticBezierTo(
-      centerX + size.width * 0.25, bottom - size.height * 0.5,
-      centerX + size.width * 0.15, bottom - size.height * 0.6,
+    // Right leaf
+    path = Path();
+    path.moveTo(centerX, bottom - size.height * 0.3);
+    path.quadraticBezierTo(
+      centerX + size.width * 0.2, bottom - size.height * 0.4,
+      centerX + size.width * 0.1, bottom - size.height * 0.45,
     );
-    leafPath.quadraticBezierTo(
-      centerX, bottom - size.height * 0.45,
-      centerX, bottom - size.height * 0.35,
+    path.quadraticBezierTo(
+      centerX + size.width * 0.05, bottom - size.height * 0.35,
+      centerX, bottom - size.height * 0.3,
     );
-    
-    canvas.drawPath(leafPath, leafPaint);
-  }
-
-  void _drawSapling(Canvas canvas, Size size, Color trunkColor, Color leafColor) {
-    final centerX = size.width / 2;
-    final bottom = size.height * 0.9;
-    
-    // Trunk
-    final trunkPaint = Paint()
-      ..color = trunkColor
-      ..strokeWidth = 5
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-    
-    canvas.drawLine(
-      Offset(centerX, bottom),
-      Offset(centerX, bottom - size.height * 0.45),
-      trunkPaint,
-    );
-    
-    // Small triangular foliage
-    final leafPaint = Paint()
-      ..color = leafColor
-      ..style = PaintingStyle.fill;
-    
-    final path = Path();
-    path.moveTo(centerX, bottom - size.height * 0.8);
-    path.lineTo(centerX - size.width * 0.25, bottom - size.height * 0.35);
-    path.lineTo(centerX + size.width * 0.25, bottom - size.height * 0.35);
-    path.close();
-    
     canvas.drawPath(path, leafPaint);
   }
 
-  void _drawYoungTree(Canvas canvas, Size size, Color trunkColor, Color leafColor) {
+  void _drawSeedling(Canvas canvas, Size size, Color trunk, Color leaf) {
+    final centerX = size.width / 2;
+    final bottom = size.height * 0.9;
+    
+    // Thin trunk
+    canvas.drawLine(
+      Offset(centerX, bottom),
+      Offset(centerX, bottom - size.height * 0.45),
+      Paint()..color = trunk..strokeWidth = 3..strokeCap = StrokeCap.round,
+    );
+    
+    // Small oval canopy
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(centerX, bottom - size.height * 0.55),
+        width: size.width * 0.35,
+        height: size.height * 0.3,
+      ),
+      Paint()..color = leaf,
+    );
+  }
+
+  void _drawSapling(Canvas canvas, Size size, Color trunk, Color leaf) {
     final centerX = size.width / 2;
     final bottom = size.height * 0.95;
     
-    // Trunk
-    final trunkPaint = Paint()
-      ..color = trunkColor
-      ..style = PaintingStyle.fill;
-    
+    // Trunk (thicker)
+    final trunkPaint = Paint()..color = trunk..style = PaintingStyle.fill;
     final trunkPath = Path();
     trunkPath.moveTo(centerX - 4, bottom);
-    trunkPath.lineTo(centerX - 3, bottom - size.height * 0.4);
-    trunkPath.lineTo(centerX + 3, bottom - size.height * 0.4);
+    trunkPath.lineTo(centerX - 2, bottom - size.height * 0.4);
+    trunkPath.lineTo(centerX + 2, bottom - size.height * 0.4);
     trunkPath.lineTo(centerX + 4, bottom);
     trunkPath.close();
     canvas.drawPath(trunkPath, trunkPaint);
     
-    // Two-tier foliage
-    final leafPaint = Paint()
-      ..color = leafColor
-      ..style = PaintingStyle.fill;
+    // Triangle-ish foliage (2 tiers)
+    final leafPaint = Paint()..color = leaf;
     
     // Lower tier
     var path = Path();
     path.moveTo(centerX, bottom - size.height * 0.45);
-    path.lineTo(centerX - size.width * 0.35, bottom - size.height * 0.3);
-    path.lineTo(centerX + size.width * 0.35, bottom - size.height * 0.3);
+    path.lineTo(centerX - size.width * 0.3, bottom - size.height * 0.35);
+    path.lineTo(centerX + size.width * 0.3, bottom - size.height * 0.35);
     path.close();
     canvas.drawPath(path, leafPaint);
     
     // Upper tier
     path = Path();
-    path.moveTo(centerX, bottom - size.height * 0.85);
-    path.lineTo(centerX - size.width * 0.25, bottom - size.height * 0.45);
-    path.lineTo(centerX + size.width * 0.25, bottom - size.height * 0.45);
+    path.moveTo(centerX, bottom - size.height * 0.75);
+    path.lineTo(centerX - size.width * 0.22, bottom - size.height * 0.45);
+    path.lineTo(centerX + size.width * 0.22, bottom - size.height * 0.45);
     path.close();
     canvas.drawPath(path, leafPaint);
   }
 
-  void _drawFullTree(Canvas canvas, Size size, Color trunkColor, Color leafColor) {
+  void _drawMatureTree(Canvas canvas, Size size, Color trunk, Color leaf) {
     final centerX = size.width / 2;
     final bottom = size.height;
     
-    // Thick trunk
-    final trunkPaint = Paint()
-      ..color = trunkColor
-      ..style = PaintingStyle.fill;
-    
+    // Thick trunk with base
+    final trunkPaint = Paint()..color = trunk..style = PaintingStyle.fill;
     final trunkPath = Path();
     trunkPath.moveTo(centerX - 6, bottom);
     trunkPath.lineTo(centerX - 4, bottom - size.height * 0.35);
@@ -437,44 +466,110 @@ class _TreeStagePainter extends CustomPainter {
     trunkPath.close();
     canvas.drawPath(trunkPath, trunkPaint);
     
-    // Three-tier foliage
-    final leafPaint = Paint()
-      ..color = leafColor
-      ..style = PaintingStyle.fill;
+    // Full 3-tier foliage
+    final leafPaint = Paint()..color = leaf;
+    final darkerLeaf = Paint()..color = Color.lerp(leaf, Colors.black, 0.15)!;
     
     // Lower tier
-    var path = Path();
-    path.moveTo(centerX, bottom - size.height * 0.4);
-    path.lineTo(centerX - size.width * 0.45, bottom - size.height * 0.25);
-    path.lineTo(centerX + size.width * 0.45, bottom - size.height * 0.25);
-    path.close();
-    canvas.drawPath(path, leafPaint);
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(centerX, bottom - size.height * 0.42),
+        width: size.width * 0.7,
+        height: size.height * 0.25,
+      ),
+      leafPaint,
+    );
     
     // Middle tier
-    path = Path();
-    path.moveTo(centerX, bottom - size.height * 0.65);
-    path.lineTo(centerX - size.width * 0.35, bottom - size.height * 0.4);
-    path.lineTo(centerX + size.width * 0.35, bottom - size.height * 0.4);
-    path.close();
-    canvas.drawPath(path, leafPaint);
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(centerX, bottom - size.height * 0.58),
+        width: size.width * 0.55,
+        height: size.height * 0.22,
+      ),
+      darkerLeaf,
+    );
     
     // Top tier
-    path = Path();
-    path.moveTo(centerX, bottom - size.height * 0.9);
-    path.lineTo(centerX - size.width * 0.2, bottom - size.height * 0.65);
-    path.lineTo(centerX + size.width * 0.2, bottom - size.height * 0.65);
-    path.close();
-    canvas.drawPath(path, leafPaint);
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(centerX, bottom - size.height * 0.72),
+        width: size.width * 0.35,
+        height: size.height * 0.18,
+      ),
+      leafPaint,
+    );
+  }
+
+  void _drawDecliningTree(Canvas canvas, Size size, Color trunk, Color leaf) {
+    final centerX = size.width / 2;
+    final bottom = size.height;
+    
+    // Trunk
+    final trunkPaint = Paint()..color = trunk..style = PaintingStyle.fill;
+    final trunkPath = Path();
+    trunkPath.moveTo(centerX - 5, bottom);
+    trunkPath.lineTo(centerX - 3, bottom - size.height * 0.35);
+    trunkPath.lineTo(centerX + 3, bottom - size.height * 0.35);
+    trunkPath.lineTo(centerX + 5, bottom);
+    trunkPath.close();
+    canvas.drawPath(trunkPath, trunkPaint);
+    
+    // Sparse foliage (autumn colors)
+    final autumnLeaf = const Color(0xFFFF8A65);
+    
+    // Fewer, smaller clusters
+    canvas.drawCircle(Offset(centerX - 8, bottom - size.height * 0.5), size.width * 0.12, Paint()..color = autumnLeaf);
+    canvas.drawCircle(Offset(centerX + 10, bottom - size.height * 0.45), size.width * 0.1, Paint()..color = leaf);
+    canvas.drawCircle(Offset(centerX, bottom - size.height * 0.6), size.width * 0.15, Paint()..color = autumnLeaf.withAlpha(200));
+    
+    // Bare branch
+    canvas.drawLine(
+      Offset(centerX, bottom - size.height * 0.35),
+      Offset(centerX + 12, bottom - size.height * 0.55),
+      Paint()..color = trunk..strokeWidth = 2,
+    );
+  }
+
+  void _drawSnag(Canvas canvas, Size size, Color trunk) {
+    final centerX = size.width / 2;
+    final bottom = size.height;
+    
+    // Dead trunk
+    final trunkPaint = Paint()..color = const Color(0xFF6D4C41)..style = PaintingStyle.fill;
+    final trunkPath = Path();
+    trunkPath.moveTo(centerX - 5, bottom);
+    trunkPath.lineTo(centerX - 3, bottom - size.height * 0.5);
+    trunkPath.lineTo(centerX + 3, bottom - size.height * 0.5);
+    trunkPath.lineTo(centerX + 5, bottom);
+    trunkPath.close();
+    canvas.drawPath(trunkPath, trunkPaint);
+    
+    // Bare broken branches
+    final branchPaint = Paint()..color = const Color(0xFF5D4037)..strokeWidth = 2..strokeCap = StrokeCap.round;
+    canvas.drawLine(
+      Offset(centerX, bottom - size.height * 0.4),
+      Offset(centerX - 10, bottom - size.height * 0.55),
+      branchPaint,
+    );
+    canvas.drawLine(
+      Offset(centerX, bottom - size.height * 0.45),
+      Offset(centerX + 12, bottom - size.height * 0.6),
+      branchPaint,
+    );
+    canvas.drawLine(
+      Offset(centerX, bottom - size.height * 0.5),
+      Offset(centerX - 5, bottom - size.height * 0.65),
+      branchPaint,
+    );
   }
 
   @override
-  bool shouldRepaint(covariant _TreeStagePainter oldDelegate) =>
-      stage != oldDelegate.stage || 
-      healthPercent != oldDelegate.healthPercent ||
-      isActive != oldDelegate.isActive;
+  bool shouldRepaint(covariant _TreeLifeCyclePainter old) =>
+      stage != old.stage || isActive != old.isActive || healthPercent != old.healthPercent;
 }
 
-/// Single tree on a small platform (for detail screens)
+/// Single tree on platform (for Factor Detail)
 class SingleTreePlatform extends StatelessWidget {
   final Factor factor;
   final double size;
@@ -483,34 +578,62 @@ class SingleTreePlatform extends StatelessWidget {
   const SingleTreePlatform({
     super.key,
     required this.factor,
-    this.size = 150,
+    this.size = 200,
     this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final stage = getLifeStage(
+      factor.currentLevel,
+      factor.healthPercent,
+      factor.healthPercent <= 0,
+    );
+    
     return GestureDetector(
       onTap: onTap,
       child: SizedBox(
         width: size,
-        height: size + 40,
+        height: size * 1.2,
         child: Stack(
           alignment: Alignment.center,
           children: [
-            // Small platform
+            // Wooden platform
             Positioned(
               bottom: 0,
               child: CustomPaint(
-                size: Size(size * 0.8, size * 0.3),
-                painter: _IsometricPlatformPainter(),
+                size: Size(size * 0.7, size * 0.25),
+                painter: _WoodenPlatformPainter(),
               ),
             ),
             // Tree
             Positioned(
               bottom: size * 0.2,
-              child: _GrowingTree(
-                factor: factor,
-                size: size * 0.7,
+              child: SizedBox(
+                width: size * 0.6,
+                height: size * 0.7,
+                child: CustomPaint(
+                  painter: _TreeLifeCyclePainter(
+                    stage: stage,
+                    isActive: factor.isActiveFocus,
+                    healthPercent: factor.healthPercent,
+                  ),
+                ),
+              ),
+            ),
+            // Level badge
+            Positioned(
+              bottom: size * 0.05,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  'Lv ${factor.currentLevel}',
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11),
+                ),
               ),
             ),
           ],
@@ -518,4 +641,46 @@ class SingleTreePlatform extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Wooden deck/platform painter
+class _WoodenPlatformPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final plankColor = const Color(0xFFA1887F);
+    final plankDark = const Color(0xFF8D6E63);
+    final plankLight = const Color(0xFFBCAAA4);
+    
+    // Draw planks
+    final plankHeight = size.height / 5;
+    for (int i = 0; i < 5; i++) {
+      final y = i * plankHeight;
+      final color = i % 2 == 0 ? plankColor : plankDark;
+      
+      canvas.drawRect(
+        Rect.fromLTWH(0, y, size.width, plankHeight - 1),
+        Paint()..color = color,
+      );
+      
+      // Plank highlight
+      canvas.drawLine(
+        Offset(2, y + 1),
+        Offset(size.width - 2, y + 1),
+        Paint()..color = plankLight..strokeWidth = 0.5,
+      );
+    }
+    
+    // Side edges
+    canvas.drawRect(
+      Rect.fromLTWH(0, 0, 3, size.height),
+      Paint()..color = plankDark,
+    );
+    canvas.drawRect(
+      Rect.fromLTWH(size.width - 3, 0, 3, size.height),
+      Paint()..color = plankDark,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
