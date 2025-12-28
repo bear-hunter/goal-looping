@@ -13,6 +13,7 @@ import '../../widgets/glass_card.dart';
 import '../../widgets/factor_chip.dart';
 import '../../widgets/factor_health_tree.dart';
 import 'factor_detail_screen.dart';
+import 'goal_detail_screen.dart';
 
 /// Module 1: Strategy & Setup Screen
 class StrategyScreen extends StatelessWidget {
@@ -75,14 +76,35 @@ class StrategyScreen extends StatelessWidget {
           else
             GlassCard(
               highlighted: true,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => GoalDetailScreen(goalId: state.activeGoal!.id)),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(state.activeGoal!.title, 
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                  Row(
+                    children: [
+                      Icon(Icons.park_rounded, color: AppColors.primary, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(state.activeGoal!.title, 
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                      ),
+                      Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+                    ],
+                  ),
                   const SizedBox(height: 8),
-                  Text('${state.activeGoal!.daysRemaining} days remaining',
-                      style: TextStyle(color: AppColors.primary)),
+                  Row(
+                    children: [
+                      Icon(Icons.schedule_rounded, size: 14, color: AppColors.textMuted),
+                      const SizedBox(width: 4),
+                      Text('${state.activeGoal!.daysRemaining} days remaining',
+                          style: TextStyle(color: AppColors.primary, fontSize: 13)),
+                      const Spacer(),
+                      Text('Tap to view forest →', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                    ],
+                  ),
                 ],
               ),
             ),

@@ -10,6 +10,7 @@ import '../../widgets/glass_card.dart';
 import '../../widgets/progress_ring.dart';
 import '../../widgets/habit_calendar.dart';
 import '../../widgets/mood_barrier_dialog.dart';
+import 'habit_detail_screen.dart';
 
 /// Module 3: Habit & Barrier Defense Screen (Phase 3 Updated)
 class HabitsScreen extends StatelessWidget {
@@ -418,7 +419,12 @@ class _HabitCardWithCalendarState extends State<_HabitCardWithCalendar>
                       }
                     }
                   },
-                  onTap: _isRevealed ? _closeReveal : null,
+                  onTap: _isRevealed 
+                      ? _closeReveal 
+                      : () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => HabitDetailScreen(habitId: habit.id)),
+                        ),
                   child: SlideTransition(
                     position: _slideAnimation,
                     child: Container(
