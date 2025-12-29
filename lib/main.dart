@@ -97,6 +97,28 @@ class _AppRootState extends State<AppRoot> {
     _checkOnboardingStatus();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Precache tree images for faster Strategy screen loading
+    _precacheTreeAssets();
+  }
+
+  /// Precache all tree assets to avoid loading delays
+  void _precacheTreeAssets() {
+    final treeTypes = ['oak', 'cherry', 'maple', 'pine', 'willow', 'baobab'];
+    final stages = ['sprout', 'sapling', 'mature'];
+    
+    for (final tree in treeTypes) {
+      for (final stage in stages) {
+        precacheImage(
+          AssetImage('assets/images/trees/${tree}_$stage.png'),
+          context,
+        );
+      }
+    }
+  }
+
   Future<void> _checkOnboardingStatus() async {
     try {
       final hasCompleted = StorageService.hasCompletedOnboarding;

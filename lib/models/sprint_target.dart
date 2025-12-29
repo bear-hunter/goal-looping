@@ -39,12 +39,20 @@ class SprintTarget extends HiveObject {
   @HiveField(7)
   List<String> linkedFactorIds;
 
+  @HiveField(8)
+  bool isFailed;
+
+  @HiveField(9)
+  DateTime? completedAt;
+
   SprintTarget({
     required this.id,
     required this.title,
     this.description = '',
     required this.duration,
     this.isCompleted = false,
+    this.isFailed = false,
+    this.completedAt,
     DateTime? createdAt,
     DateTime? targetDate,
     List<String>? linkedFactorIds,
@@ -57,9 +65,13 @@ class SprintTarget extends HiveObject {
   int get daysRemaining => targetDate.difference(DateTime.now()).inDays;
 
   /// Check if sprint is overdue
-  bool get isOverdue => !isCompleted && DateTime.now().isAfter(targetDate);
+  bool get isOverdue => !isCompleted && !isFailed && DateTime.now().isAfter(targetDate);
+
+  /// Check if sprint is still active (not completed or failed)
+  bool get isActive => !isCompleted && !isFailed;
 
   /// Human-readable duration
   String get durationLabel => 
       duration == SprintDuration.thirtyDays ? '30 Days' : '14 Days';
 }
+

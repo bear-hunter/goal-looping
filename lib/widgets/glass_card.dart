@@ -1,8 +1,11 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../core/theme/theme.dart';
 
 /// Glassmorphism card with blur effect - theme-aware
+/// 
+/// Performance note: The blur effect is expensive on mobile GPUs.
+/// This implementation uses a semi-transparent overlay to achieve a similar
+/// glass aesthetic without the real-time blur overhead.
 class GlassCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry? padding;
@@ -26,9 +29,6 @@ class GlassCard extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
     // Theme-aware colors
-    final glassBackground = isDark 
-        ? AppColors.glassBackground 
-        : LightColors.glassBackground;
     final glassBorder = isDark 
         ? AppColors.glassBorder 
         : LightColors.glassBorder;
@@ -38,53 +38,40 @@ class GlassCard extends StatelessWidget {
     
     return Container(
       margin: margin ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(borderRadius),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: onTap,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(borderRadius),
+          child: Container(
+            padding: padding ?? const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              // Use semi-transparent surface color for glass effect (much faster than BackdropFilter)
+              color: isDark 
+                  ? (highlighted 
+                      ? AppColors.primary.withAlpha(25) 
+                      : surfaceColor.withAlpha(230))
+                  : surfaceColor,
               borderRadius: BorderRadius.circular(borderRadius),
-              child: Container(
-                padding: padding ?? const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: isDark ? null : surfaceColor,
-                  gradient: isDark ? LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: highlighted
-                        ? [
-                            AppColors.primary.withAlpha(38),
-                            AppColors.primary.withAlpha(13),
-                          ]
-                        : [
-                            glassBackground,
-                            glassBackground.withAlpha(13),
-                          ],
-                  ) : null,
-                  borderRadius: BorderRadius.circular(borderRadius),
-                  border: Border.all(
-                    color: highlighted 
-                        ? AppColors.primary.withAlpha(128)
-                        : glassBorder,
-                    width: 1,
-                  ),
-                  boxShadow: isDark ? null : [
-                    BoxShadow(
-                      color: Colors.black.withAlpha(12),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: child,
+              border: Border.all(
+                color: highlighted 
+                    ? AppColors.primary.withAlpha(128)
+                    : glassBorder,
+                width: 1,
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withAlpha(isDark ? 30 : 12),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
+            child: child,
           ),
         ),
       ),
     );
   }
 }
+

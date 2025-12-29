@@ -53,12 +53,14 @@ class ForestPlatform extends StatelessWidget {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // Isometric platform base
+          // Isometric platform base (wrapped for repaint isolation)
           Positioned(
             bottom: 0,
-            child: CustomPaint(
-              size: Size(width, height * 0.6),
-              painter: _IsometricGridPainter(),
+            child: RepaintBoundary(
+              child: CustomPaint(
+                size: Size(width, height * 0.6),
+                painter: _IsometricGridPainter(),
+              ),
             ),
           ),
           // Trees positioned on platform
@@ -245,14 +247,16 @@ class _IsometricTree extends StatelessWidget {
         ),
         Transform.translate(
           offset: Offset(0, -size * 0.1),
-          child: SizedBox(
-            width: size,
-            height: size,
-            child: CustomPaint(
-              painter: _TreeLifeCyclePainter(
-                stage: stage,
-                isActive: factor.isActiveFocus,
-                healthPercent: factor.healthPercent,
+          child: RepaintBoundary(
+            child: SizedBox(
+              width: size,
+              height: size,
+              child: CustomPaint(
+                painter: _TreeLifeCyclePainter(
+                  stage: stage,
+                  isActive: factor.isActiveFocus,
+                  healthPercent: factor.healthPercent,
+                ),
               ),
             ),
           ),
@@ -293,9 +297,6 @@ class _TreeLifeCyclePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final centerX = size.width / 2;
-    final bottom = size.height;
-    
     // Colors based on health
     final trunkColor = const Color(0xFF5D4037);
     final leafColor = isActive
@@ -598,25 +599,29 @@ class SingleTreePlatform extends StatelessWidget {
         child: Stack(
           alignment: Alignment.center,
           children: [
-            // Wooden platform
+            // Wooden platform (wrapped for repaint isolation)
             Positioned(
               bottom: 0,
-              child: CustomPaint(
-                size: Size(size * 0.7, size * 0.25),
-                painter: _WoodenPlatformPainter(),
+              child: RepaintBoundary(
+                child: CustomPaint(
+                  size: Size(size * 0.7, size * 0.25),
+                  painter: _WoodenPlatformPainter(),
+                ),
               ),
             ),
-            // Tree
+            // Tree (wrapped for repaint isolation)
             Positioned(
               bottom: size * 0.2,
-              child: SizedBox(
-                width: size * 0.6,
-                height: size * 0.7,
-                child: CustomPaint(
-                  painter: _TreeLifeCyclePainter(
-                    stage: stage,
-                    isActive: factor.isActiveFocus,
-                    healthPercent: factor.healthPercent,
+              child: RepaintBoundary(
+                child: SizedBox(
+                  width: size * 0.6,
+                  height: size * 0.7,
+                  child: CustomPaint(
+                    painter: _TreeLifeCyclePainter(
+                      stage: stage,
+                      isActive: factor.isActiveFocus,
+                      healthPercent: factor.healthPercent,
+                    ),
                   ),
                 ),
               ),

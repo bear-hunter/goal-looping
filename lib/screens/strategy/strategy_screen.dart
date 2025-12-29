@@ -447,7 +447,15 @@ class StrategyScreen extends StatelessWidget {
               child: Text('No 30-day goals set', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textMuted)),
             )
           else
-            ...thirtyDayGoals.map((t) => _SprintGoalCard(target: t, factors: state.factors)),
+            ...thirtyDayGoals.map((t) => _SprintGoalCard(
+              target: t,
+              factors: state.factors,
+              onEdit: () => _showEditSprintDialog(context, state, t),
+              onDelete: () => _showDeleteSprintConfirmation(context, state, t),
+              onComplete: () => state.markSprintComplete(t.id),
+              onFail: () => state.markSprintFailed(t.id),
+              onReset: () => state.resetSprintTarget(t.id),
+            )),
           
           const SizedBox(height: 8),
           
@@ -464,7 +472,15 @@ class StrategyScreen extends StatelessWidget {
               child: Text('No 14-day goals set', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textMuted)),
             )
           else
-            ...fourteenDayGoals.map((t) => _SprintGoalCard(target: t, factors: state.factors)),
+            ...fourteenDayGoals.map((t) => _SprintGoalCard(
+              target: t,
+              factors: state.factors,
+              onEdit: () => _showEditSprintDialog(context, state, t),
+              onDelete: () => _showDeleteSprintConfirmation(context, state, t),
+              onComplete: () => state.markSprintComplete(t.id),
+              onFail: () => state.markSprintFailed(t.id),
+              onReset: () => state.resetSprintTarget(t.id),
+            )),
         ],
       ),
     );
@@ -614,6 +630,119 @@ class StrategyScreen extends StatelessWidget {
       ),
     );
   }
+
+  void _showEditSprintDialog(BuildContext context, AppState state, SprintTarget target) {
+    final controller = TextEditingController(text: target.title);
+    List<String> selectedFactorIds = List.from(target.linkedFactorIds);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surfaceColor = isDark ? AppColors.surface : LightColors.surface;
+    
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: surfaceColor,
+      isScrollControlled: true,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => Padding(
+          padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Edit ${target.duration == SprintDuration.thirtyDays ? '30-Day' : '14-Day'} Goal',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 16),
+              TextField(controller: controller, decoration: const InputDecoration(hintText: 'Performance goal')),
+              const SizedBox(height: 12),
+              Text('Link to Factors', style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: state.factors.map((f) {
+                  final isSelected = selectedFactorIds.contains(f.id);
+                  return GestureDetector(
+                    onTap: () => setDialogState(() {
+                      if (isSelected) {
+                        selectedFactorIds.remove(f.id);
+                      } else {
+                        selectedFactorIds.add(f.id);
+                      }
+                    }),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: isSelected ? AppColors.primary.withAlpha(30) : AppColors.surfaceLight,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: isSelected ? AppColors.primary : AppColors.glassBorder),
+                      ),
+                      child: Text(f.name, style: TextStyle(
+                        color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                      )),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  if (controller.text.isNotEmpty) {
+                    // Create updated target
+                    final updatedTarget = SprintTarget(
+                      id: target.id,
+                      title: controller.text,
+                      duration: target.duration,
+                      linkedFactorIds: selectedFactorIds,
+                      createdAt: target.createdAt,
+                    );
+                    state.updateSprintTarget(updatedTarget);
+                    Navigator.pop(ctx);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Goal updated!')),
+                    );
+                  }
+                },
+                child: const Text('Save Changes'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showDeleteSprintConfirmation(BuildContext context, AppState state, SprintTarget target) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surfaceColor = isDark ? AppColors.surface : LightColors.surface;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: surfaceColor,
+        title: const Text('Delete Goal?'),
+        content: Text('Are you sure you want to delete "${target.title}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              state.deleteSprintTarget(target.id);
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Goal deleted')),
+              );
+            },
+            style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _SectionHeader extends StatelessWidget {
@@ -643,63 +772,195 @@ class _SectionHeader extends StatelessWidget {
 class _SprintGoalCard extends StatelessWidget {
   final SprintTarget target;
   final List<Factor> factors;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
+  final VoidCallback? onComplete;
+  final VoidCallback? onFail;
+  final VoidCallback? onReset;
 
-  const _SprintGoalCard({required this.target, required this.factors});
+  const _SprintGoalCard({
+    required this.target,
+    required this.factors,
+    this.onEdit,
+    this.onDelete,
+    this.onComplete,
+    this.onFail,
+    this.onReset,
+  });
 
   @override
   Widget build(BuildContext context) {
     final linkedFactors = factors.where((f) => target.linkedFactorIds.contains(f.id)).toList();
     final isOverdue = target.isOverdue;
     final daysLeft = target.daysRemaining;
+    final isCompleted = target.isCompleted;
+    final isFailed = target.isFailed;
+    final isActive = target.isActive;
     
     return GlassCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                target.duration == SprintDuration.thirtyDays ? Icons.calendar_month_rounded : Icons.bolt_rounded,
-                color: isOverdue ? AppColors.danger : (target.duration == SprintDuration.thirtyDays ? AppColors.info : AppColors.warning),
-                size: 20,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(target.title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: 15)),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: isOverdue ? AppColors.danger.withAlpha(30) : AppColors.surfaceLight,
-                  borderRadius: BorderRadius.circular(8),
+      onTap: isActive ? onEdit : null,
+      child: Opacity(
+        opacity: isActive ? 1.0 : 0.7,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                // Status icon - changes based on completion state
+                Icon(
+                  isCompleted ? Icons.check_circle_rounded :
+                  isFailed ? Icons.cancel_rounded :
+                  target.duration == SprintDuration.thirtyDays ? Icons.calendar_month_rounded : Icons.bolt_rounded,
+                  color: isCompleted ? AppColors.success :
+                         isFailed ? AppColors.danger :
+                         isOverdue ? AppColors.danger : 
+                         (target.duration == SprintDuration.thirtyDays ? AppColors.info : AppColors.warning),
+                  size: 20,
                 ),
-                child: Text(
-                  isOverdue ? 'Overdue' : '${daysLeft}d left',
-                  style: TextStyle(fontSize: 12, color: isOverdue ? AppColors.danger : AppColors.textMuted),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    target.title,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontSize: 15,
+                      decoration: isCompleted || isFailed ? TextDecoration.lineThrough : null,
+                      color: isCompleted || isFailed ? AppColors.textMuted : null,
+                    ),
+                  ),
                 ),
+                // Status badge
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isCompleted ? AppColors.success.withAlpha(30) :
+                           isFailed ? AppColors.danger.withAlpha(30) :
+                           isOverdue ? AppColors.danger.withAlpha(30) : AppColors.surfaceLight,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    isCompleted ? '✓ Done' :
+                    isFailed ? '✗ Failed' :
+                    isOverdue ? 'Overdue' : '${daysLeft}d left',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isCompleted ? AppColors.success :
+                             isFailed ? AppColors.danger :
+                             isOverdue ? AppColors.danger : AppColors.textMuted,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (linkedFactors.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 6,
+                runSpacing: 4,
+                children: linkedFactors.map((f) => Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withAlpha(20),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(f.name, style: TextStyle(fontSize: 11, color: AppColors.primary)),
+                )).toList(),
               ),
             ],
-          ),
-          if (linkedFactors.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 6,
-              runSpacing: 4,
-              children: linkedFactors.map((f) => Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withAlpha(20),
-                  borderRadius: BorderRadius.circular(12),
+            const SizedBox(height: 12),
+            // Action buttons row
+            Row(
+              children: [
+                if (isActive) ...[
+                  // Complete button
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: onComplete,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        decoration: BoxDecoration(
+                          color: AppColors.success.withAlpha(30),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppColors.success.withAlpha(50)),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.check_rounded, color: AppColors.success, size: 18),
+                            const SizedBox(width: 4),
+                            Text('Complete', style: TextStyle(fontSize: 12, color: AppColors.success, fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Fail button
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: onFail,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        decoration: BoxDecoration(
+                          color: AppColors.danger.withAlpha(20),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppColors.danger.withAlpha(40)),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.close_rounded, color: AppColors.danger, size: 18),
+                            const SizedBox(width: 4),
+                            Text('Failed', style: TextStyle(fontSize: 12, color: AppColors.danger, fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ] else ...[
+                  // Reset button for completed/failed goals
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: onReset,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        decoration: BoxDecoration(
+                          color: AppColors.textMuted.withAlpha(20),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.refresh_rounded, color: AppColors.textMuted, size: 18),
+                            const SizedBox(width: 4),
+                            Text('Undo', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(width: 8),
+                // Delete button
+                GestureDetector(
+                  onTap: onDelete,
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.textMuted.withAlpha(20),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(Icons.delete_outline_rounded, color: AppColors.textMuted, size: 18),
+                  ),
                 ),
-                child: Text(f.name, style: TextStyle(fontSize: 11, color: AppColors.primary)),
-              )).toList(),
+              ],
             ),
           ],
-        ],
+        ),
       ),
     );
   }
 }
+
 
 /// Time-based recommendations widget
 class _TimeRecommendation extends StatelessWidget {

@@ -22,6 +22,8 @@ class SprintTargetAdapter extends TypeAdapter<SprintTarget> {
       description: fields[2] as String,
       duration: fields[3] as SprintDuration,
       isCompleted: fields[4] as bool,
+      isFailed: fields[8] as bool,
+      completedAt: fields[9] as DateTime?,
       createdAt: fields[5] as DateTime?,
       targetDate: fields[6] as DateTime?,
       linkedFactorIds: (fields[7] as List?)?.cast<String>(),
@@ -31,7 +33,7 @@ class SprintTargetAdapter extends TypeAdapter<SprintTarget> {
   @override
   void write(BinaryWriter writer, SprintTarget obj) {
     writer
-      ..writeByte(8)
+      ..writeByte(10)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -47,7 +49,11 @@ class SprintTargetAdapter extends TypeAdapter<SprintTarget> {
       ..writeByte(6)
       ..write(obj.targetDate)
       ..writeByte(7)
-      ..write(obj.linkedFactorIds);
+      ..write(obj.linkedFactorIds)
+      ..writeByte(8)
+      ..write(obj.isFailed)
+      ..writeByte(9)
+      ..write(obj.completedAt);
   }
 
   @override

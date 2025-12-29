@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import '../core/theme/theme.dart';
 import '../models/task.dart';
 
@@ -366,7 +365,7 @@ class TaskCard extends StatelessWidget {
         ),
       ),
       ),
-    ).animate().fadeIn(duration: 200.ms).slideX(begin: -0.02, end: 0);
+    );
   }
 
   /// Build a comprehensive semantic label for screen readers

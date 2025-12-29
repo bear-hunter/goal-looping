@@ -331,23 +331,86 @@ class AppState extends ChangeNotifier {
       _factors.where((f) => f.goalId == goalId).toList();
 
   // ========== SPRINT TARGETS ==========
+  /// Add sprint target with optimistic UI pattern
   Future<void> addSprintTarget(SprintTarget target) async {
-    await StorageService.saveSprintTarget(target);
+    // OPTIMISTIC: Add to local state first
     _sprintTargets.add(target);
     notifyListeners();
+    
+    // Persist in background
+    StorageService.saveSprintTarget(target).catchError((e) {
+      debugPrint('Sprint target save failed: $e');
+    });
   }
 
+  /// Update sprint target with optimistic UI pattern
   Future<void> updateSprintTarget(SprintTarget target) async {
-    await StorageService.saveSprintTarget(target);
+    // OPTIMISTIC: Update local state first
     final index = _sprintTargets.indexWhere((t) => t.id == target.id);
     if (index != -1) _sprintTargets[index] = target;
     notifyListeners();
+    
+    // Persist in background
+    StorageService.saveSprintTarget(target).catchError((e) {
+      debugPrint('Sprint target update failed: $e');
+    });
   }
 
+  /// Delete sprint target with optimistic UI pattern
   Future<void> deleteSprintTarget(String id) async {
-    await StorageService.deleteSprintTarget(id);
+    // OPTIMISTIC: Remove from local state first
     _sprintTargets.removeWhere((t) => t.id == id);
     notifyListeners();
+    
+    // Persist in background
+    StorageService.deleteSprintTarget(id).catchError((e) {
+      debugPrint('Sprint target delete failed: $e');
+    });
+  }
+
+  /// Mark sprint target as completed with optimistic UI pattern
+  Future<void> markSprintComplete(String id) async {
+    // OPTIMISTIC: Update local state first
+    final target = _sprintTargets.firstWhere((t) => t.id == id);
+    target.isCompleted = true;
+    target.isFailed = false;
+    target.completedAt = DateTime.now();
+    notifyListeners();
+    
+    // Persist in background
+    StorageService.saveSprintTarget(target).catchError((e) {
+      debugPrint('Sprint target complete failed: $e');
+    });
+  }
+
+  /// Mark sprint target as failed with optimistic UI pattern
+  Future<void> markSprintFailed(String id) async {
+    // OPTIMISTIC: Update local state first
+    final target = _sprintTargets.firstWhere((t) => t.id == id);
+    target.isFailed = true;
+    target.isCompleted = false;
+    target.completedAt = DateTime.now();
+    notifyListeners();
+    
+    // Persist in background
+    StorageService.saveSprintTarget(target).catchError((e) {
+      debugPrint('Sprint target fail failed: $e');
+    });
+  }
+
+  /// Reset sprint target to active (undo complete/failed) with optimistic UI
+  Future<void> resetSprintTarget(String id) async {
+    // OPTIMISTIC: Update local state first
+    final target = _sprintTargets.firstWhere((t) => t.id == id);
+    target.isCompleted = false;
+    target.isFailed = false;
+    target.completedAt = null;
+    notifyListeners();
+    
+    // Persist in background
+    StorageService.saveSprintTarget(target).catchError((e) {
+      debugPrint('Sprint target reset failed: $e');
+    });
   }
 
   // ========== TASKS ==========
@@ -376,20 +439,31 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  /// Update task with optimistic UI pattern
   Future<void> updateTask(Task task) async {
-    await StorageService.saveTask(task);
+    // OPTIMISTIC: Update local state first
     final index = _tasks.indexWhere((t) => t.id == task.id);
     if (index != -1) _tasks[index] = task;
     notifyListeners();
+    
+    // Persist in background
+    StorageService.saveTask(task).catchError((e) {
+      debugPrint('Task update failed: $e');
+    });
   }
 
+  /// Toggle task completion with optimistic UI pattern
+  /// 
+  /// The UI updates INSTANTLY - storage persistence happens in the background.
+  /// This makes the app feel responsive even on slow storage operations.
   Future<void> toggleTaskComplete(String id) async {
     final task = _tasks.firstWhere((t) => t.id == id);
     final wasCompleted = task.isCompleted;
+    
+    // OPTIMISTIC UPDATE: Change state and notify UI immediately
     task.isCompleted = !task.isCompleted;
     task.completedAt = task.isCompleted ? DateTime.now() : null;
-    await StorageService.saveTask(task);
-
+    
     // Award XP if completing (not uncompleting)
     if (task.isCompleted && !wasCompleted) {
       if (task.isPriority) {
@@ -404,32 +478,59 @@ class AppState extends ChangeNotifier {
         );
       }
     }
+    
+    // Notify UI BEFORE storage - makes completion feel instant
     notifyListeners();
+    
+    // Persist to storage in background (fire-and-forget pattern)
+    // If storage fails, the in-memory state is still correct for this session
+    StorageService.saveTask(task).catchError((e) {
+      debugPrint('Task save failed: $e');
+      // In production, you might want to queue for retry or show a subtle indicator
+    });
   }
 
+  /// Promote task to priority with optimistic UI pattern
   Future<void> promoteTaskToPriority(String id) async {
     if (!canAddPriorityTask) {
       throw Exception('Cannot add more than 2 priority tasks');
     }
+    // OPTIMISTIC: Update local state first
     final task = _tasks.firstWhere((t) => t.id == id);
     task.isPriority = true;
     task.addedToPriorityAt = DateTime.now();
-    await StorageService.saveTask(task);
     notifyListeners();
+    
+    // Persist in background
+    StorageService.saveTask(task).catchError((e) {
+      debugPrint('Task promote failed: $e');
+    });
   }
 
+  /// Demote task to backlog with optimistic UI pattern
   Future<void> demoteTaskToBacklog(String id) async {
+    // OPTIMISTIC: Update local state first
     final task = _tasks.firstWhere((t) => t.id == id);
     task.isPriority = false;
     task.addedToPriorityAt = null;
-    await StorageService.saveTask(task);
     notifyListeners();
+    
+    // Persist in background
+    StorageService.saveTask(task).catchError((e) {
+      debugPrint('Task demote failed: $e');
+    });
   }
 
+  /// Delete task with optimistic UI pattern
   Future<void> deleteTask(String id) async {
-    await StorageService.deleteTask(id);
+    // OPTIMISTIC: Remove from local state first
     _tasks.removeWhere((t) => t.id == id);
     notifyListeners();
+    
+    // Persist in background
+    StorageService.deleteTask(id).catchError((e) {
+      debugPrint('Task delete failed: $e');
+    });
   }
 
   // --- Focus Session Logs ---
