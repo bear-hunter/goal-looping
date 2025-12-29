@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'core/theme/theme.dart';
 import 'providers/app_state.dart';
 import 'services/storage_service.dart';
+import 'services/notification_service.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/strategy/strategy_screen.dart';
 import 'screens/habits/habits_screen.dart';
@@ -36,6 +37,14 @@ void main() async {
     } catch (e) {
       debugPrint('Failed to reopen boxes: $e');
     }
+  }
+  
+  // Initialize notifications
+  try {
+    await NotificationService.initialize();
+    await NotificationService.requestPermission();
+  } catch (e) {
+    debugPrint('Notification init failed: $e');
   }
   
   runApp(const MarginalGainsApp());

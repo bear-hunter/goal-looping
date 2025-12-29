@@ -80,12 +80,14 @@ class StorageService {
     tryRegister(ExperimentAdapter());
     tryRegister(ExperimentStatusAdapter());
     tryRegister(TimeAvailabilityAdapter());
+    // Register ReflectionReminderFrequencyAdapter BEFORE UserStatsAdapter
+    // because UserStats contains ReflectionReminderFrequency
+    tryRegister(ReflectionReminderFrequencyAdapter());
     tryRegister(UserStatsAdapter());
     tryRegister(AchievementAdapter());
     tryRegister(FocusLogAdapter());
-    // New adapters for reflection cycling & reminders
+    // Register ReflectionGroup adapter
     tryRegister(ReflectionGroupAdapter());
-    tryRegister(ReflectionReminderFrequencyAdapter());
   }
   
   /// Ensure a box is open (used for defensive access)

@@ -552,9 +552,90 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> deleteReflection(String id) async {
+    // Get reflection before deletion to check group/links
+    final reflection = _reflections.firstWhere((r) => r.id == id, orElse: () => Reflection(
+      id: 'dummy', 
+      createdAt: DateTime.now(), 
+      experience: '',
+      reflection: '',
+      abstraction: '',
+    ));
+    
+    if (reflection.id == 'dummy') return;
+
+    // 1. Chain Repair: Update next links to point to previous
+    final nextReflections = _reflections.where((r) => r.previousReflectionId == id).toList();
+    for (final next in nextReflections) {
+      next.previousReflectionId = reflection.previousReflectionId;
+      await StorageService.saveReflection(next);
+    }
+
+    // 2. Group Cleanup
+    if (reflection.groupId != null) {
+      final group = getReflectionGroup(reflection.groupId!);
+      if (group != null) {
+        group.reflectionIds.remove(id);
+        if (group.reflectionIds.isEmpty) {
+          await StorageService.deleteReflectionGroup(group.id);
+          _reflectionGroups.removeWhere((g) => g.id == group.id);
+        } else {
+          await StorageService.saveReflectionGroup(group);
+        }
+      }
+    }
+
     await StorageService.deleteReflection(id);
     _reflections.removeWhere((r) => r.id == id);
     notifyListeners();
+  }
+
+  /// Add a reflection that is part of a cycle (linked to previous)
+  Future<void> addLinkedReflection(Reflection newReflection, {Reflection? previousReflection}) async {
+    if (previousReflection != null) {
+      ReflectionGroup group;
+      
+      if (previousReflection.groupId != null) {
+        // Use existing group
+        final existing = getReflectionGroup(previousReflection.groupId!);
+        if (existing != null) {
+          group = existing;
+        } else {
+          // Should not happen, but fallback
+          group = ReflectionGroup(
+            id: previousReflection.groupId!,
+            title: 'Reflection Cycle',
+            targetFactorId: previousReflection.targetFactorId,
+          );
+          _reflectionGroups.add(group);
+        }
+      } else {
+        // Create new group for the chain
+        group = ReflectionGroup(
+          id: StorageService.generateId(),
+          title: 'Reflection Cycle',
+          targetFactorId: previousReflection.targetFactorId,
+        );
+        
+        // Add previous reflection to this new group
+        group.addReflection(previousReflection.id);
+        previousReflection.groupId = group.id;
+        await updateReflection(previousReflection); // Saves and updates list
+        
+        await StorageService.saveReflectionGroup(group);
+        _reflectionGroups.add(group);
+      }
+
+      // Link new reflection
+      newReflection.groupId = group.id;
+      newReflection.previousReflectionId = previousReflection.id;
+      newReflection.isFollowUp = true;
+      
+      // Update group
+      group.addReflection(newReflection.id);
+      await StorageService.saveReflectionGroup(group);
+    }
+
+    await addReflection(newReflection);
   }
 
   // ========== REFLECTION GROUPS ==========
@@ -574,12 +655,33 @@ class AppState extends ChangeNotifier {
 
   /// Create a new reflection as a cycle of an existing one
   Future<Reflection> cycleReflection(String reflectionId) async {
-    final original = _reflections.firstWhere((r) => r.id == reflectionId);
+    final original = _reflections.firstWhere(
+      (r) => r.id == reflectionId,
+      orElse: () => throw Exception('Reflection not found'),
+    );
     
     // Get or create the group
     ReflectionGroup group;
     if (original.groupId != null) {
-      group = _reflectionGroups.firstWhere((g) => g.id == original.groupId);
+      // Try to find existing group
+      final existingGroup = _reflectionGroups.cast<ReflectionGroup?>().firstWhere(
+        (g) => g?.id == original.groupId,
+        orElse: () => null,
+      );
+      
+      if (existingGroup != null) {
+        group = existingGroup;
+      } else {
+        // Group reference exists but group not found - create a new one
+        group = ReflectionGroup(
+          id: original.groupId!,
+          title: 'Reflection Cycle',
+          targetFactorId: original.targetFactorId,
+        );
+        group.addReflection(original.id);
+        await StorageService.saveReflectionGroup(group);
+        _reflectionGroups.add(group);
+      }
     } else {
       // Create new group for this chain
       group = ReflectionGroup(
@@ -616,9 +718,73 @@ class AppState extends ChangeNotifier {
     return newReflection;
   }
 
+  /// Archive a single reflection (creates group if needed, then archives it)
+  Future<void> archiveReflection(String reflectionId) async {
+    final reflection = _reflections.firstWhere(
+      (r) => r.id == reflectionId,
+      orElse: () => throw Exception('Reflection not found'),
+    );
+    
+    if (reflection.groupId != null) {
+      // Try to find existing group
+      final existingGroup = _reflectionGroups.cast<ReflectionGroup?>().firstWhere(
+        (g) => g?.id == reflection.groupId,
+        orElse: () => null,
+      );
+      
+      if (existingGroup != null) {
+        // Archive the existing group
+        existingGroup.archive();
+        await StorageService.saveReflectionGroup(existingGroup);
+        notifyListeners();
+      } else {
+        // Group reference exists but group not found - create and archive
+        final group = ReflectionGroup(
+          id: reflection.groupId!,
+          title: 'Archived Reflection',
+          targetFactorId: reflection.targetFactorId,
+        );
+        group.addReflection(reflection.id);
+        group.archive();
+        await StorageService.saveReflectionGroup(group);
+        _reflectionGroups.add(group);
+        notifyListeners();
+      }
+    } else {
+      // Create a group for this reflection, then archive it
+      final group = ReflectionGroup(
+        id: StorageService.generateId(),
+        title: 'Archived Reflection',
+        targetFactorId: reflection.targetFactorId,
+      );
+      group.addReflection(reflection.id);
+      reflection.groupId = group.id;
+      group.archive();
+      
+      await StorageService.saveReflection(reflection);
+      await StorageService.saveReflectionGroup(group);
+      _reflectionGroups.add(group);
+      notifyListeners();
+    }
+  }
+
   /// Archive a reflection group (finish the cycle chain)
   Future<void> archiveReflectionGroup(String groupId) async {
-    final group = _reflectionGroups.firstWhere((g) => g.id == groupId);
+    // Try to find existing group
+    var group = _reflectionGroups.cast<ReflectionGroup?>().firstWhere(
+      (g) => g?.id == groupId,
+      orElse: () => null,
+    );
+    
+    if (group == null) {
+      // Group not in memory, create a placeholder and archive it
+      group = ReflectionGroup(
+        id: groupId,
+        title: 'Archived Reflection',
+      );
+      _reflectionGroups.add(group);
+    }
+    
     group.archive();
     await StorageService.saveReflectionGroup(group);
     notifyListeners();
@@ -626,16 +792,30 @@ class AppState extends ChangeNotifier {
 
   /// Restore an archived reflection group
   Future<void> restoreReflectionGroup(String groupId) async {
-    final group = _reflectionGroups.firstWhere((g) => g.id == groupId);
+    final group = _reflectionGroups.cast<ReflectionGroup?>().firstWhere(
+      (g) => g?.id == groupId,
+      orElse: () => null,
+    );
+    
+    if (group == null) {
+      throw Exception('Cannot restore: reflection group not found');
+    }
+    
     group.restore();
     await StorageService.saveReflectionGroup(group);
     notifyListeners();
   }
 
   // ========== EXPERIMENTS ==========
-  Future<void> addExperiment(Experiment experiment) async {
+Future<void> addExperiment(Experiment experiment) async {
     await StorageService.saveExperiment(experiment);
     _experiments.add(experiment);
+    notifyListeners();
+  }
+
+  Future<void> deleteExperiment(String id) async {
+    await StorageService.deleteExperiment(id);
+    _experiments.removeWhere((e) => e.id == id);
     notifyListeners();
   }
 

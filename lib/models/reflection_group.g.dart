@@ -8,7 +8,7 @@ part of 'reflection_group.dart';
 
 class ReflectionGroupAdapter extends TypeAdapter<ReflectionGroup> {
   @override
-  final int typeId = 23;
+  final int typeId = 25;
 
   @override
   ReflectionGroup read(BinaryReader reader) {

@@ -140,7 +140,7 @@ class TaskSourceAdapter extends TypeAdapter<TaskSource> {
 
 class TaskEffortAdapter extends TypeAdapter<TaskEffort> {
   @override
-  final int typeId = 20;
+  final int typeId = 26;
 
   @override
   TaskEffort read(BinaryReader reader) {
@@ -179,7 +179,7 @@ class TaskEffortAdapter extends TypeAdapter<TaskEffort> {
 
 class TaskImpactAdapter extends TypeAdapter<TaskImpact> {
   @override
-  final int typeId = 21;
+  final int typeId = 27;
 
   @override
   TaskImpact read(BinaryReader reader) {
@@ -218,7 +218,7 @@ class TaskImpactAdapter extends TypeAdapter<TaskImpact> {
 
 class TaskAbandonReasonAdapter extends TypeAdapter<TaskAbandonReason> {
   @override
-  final int typeId = 22;
+  final int typeId = 28;
 
   @override
   TaskAbandonReason read(BinaryReader reader) {

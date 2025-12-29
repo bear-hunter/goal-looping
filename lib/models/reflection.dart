@@ -150,5 +150,55 @@ class Reflection extends HiveObject {
     
     return filled / total;
   }
+
+  Reflection copyWith({
+    String? id,
+    String? experience,
+    String? reflection,
+    String? abstraction,
+    List<String>? experimentIds,
+    List<String>? linkedFactorIds,
+    bool? isFollowUp,
+    String? previousReflectionId,
+    DateTime? createdAt,
+    String? rawMarkdown,
+    String? targetFactorId,
+    String? previousExperimentId,
+    String? groupId,
+    String? marginalGainDescription,
+    String? eventSequence,
+    String? feelings,
+    String? difficulties,
+    String? challengeResponse,
+    String? triggers,
+    String? whyBehavior,
+    String? crossLifePatterns,
+    bool? isManualEntry,
+  }) {
+    return Reflection(
+      id: id ?? this.id,
+      experience: experience ?? this.experience,
+      reflection: reflection ?? this.reflection,
+      abstraction: abstraction ?? this.abstraction,
+      experimentIds: experimentIds ?? this.experimentIds,
+      linkedFactorIds: linkedFactorIds ?? this.linkedFactorIds,
+      isFollowUp: isFollowUp ?? this.isFollowUp,
+      previousReflectionId: previousReflectionId ?? this.previousReflectionId,
+      createdAt: createdAt ?? this.createdAt,
+      rawMarkdown: rawMarkdown ?? this.rawMarkdown,
+      targetFactorId: targetFactorId ?? this.targetFactorId,
+      previousExperimentId: previousExperimentId ?? this.previousExperimentId,
+      groupId: groupId ?? this.groupId,
+      marginalGainDescription: marginalGainDescription ?? this.marginalGainDescription,
+      eventSequence: eventSequence ?? this.eventSequence,
+      feelings: feelings ?? this.feelings,
+      difficulties: difficulties ?? this.difficulties,
+      challengeResponse: challengeResponse ?? this.challengeResponse,
+      triggers: triggers ?? this.triggers,
+      whyBehavior: whyBehavior ?? this.whyBehavior,
+      crossLifePatterns: crossLifePatterns ?? this.crossLifePatterns,
+      isManualEntry: isManualEntry ?? this.isManualEntry,
+    );
+  }
 }
 

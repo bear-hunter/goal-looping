@@ -140,7 +140,7 @@ class _ManualReflectionFormState extends State<ManualReflectionForm> {
 
         // Navigation buttons
         Padding(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(context).viewInsets.bottom + 16),
           child: Row(
             children: [
               if (_currentStep > 0)
@@ -205,7 +205,7 @@ class _ManualReflectionFormState extends State<ManualReflectionForm> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Follow-up question
-        _buildQuestionLabel('Is this Kolb\'s cycle reflecting on an experiment from a previous Kolb\'s?*'),
+        _buildQuestionLabel('Is this Kolb\'s cycle reflecting on an experiment from a previous Kolb\'s?'),
         _buildHelperText('Always cycle experiments from the previous Kolb\'s into your next one to ensure your marginal gains are compounding.'),
         GlassCard(
           child: Row(
@@ -231,16 +231,16 @@ class _ManualReflectionFormState extends State<ManualReflectionForm> {
         _buildGuidelinesCard(
           'Guidelines for experience',
           [
-            '**Process-focused** - avoid reflecting on outcomes (e.g. test results) as this is not a process.',
-            '**Specific** - avoid reflecting on many events and activities as this will make it difficult to produce a targeted and focused reflection.',
-            '**Recent** - reflecting on experience that happened too long ago makes it easier to forget important parts.',
-            '**Concise** - the experience is usually only one sentence as we will elaborate on it in the next steps.',
+            'Process-focused - avoid reflecting on outcomes (e.g. test results) as this is not a process.',
+            'Specific - avoid reflecting on many events and activities as this will make it difficult to produce a targeted and focused reflection.',
+            'Recent - reflecting on experience that happened too long ago makes it easier to forget important parts.',
+            'Concise - the experience is usually only one sentence as we will elaborate on it in the next steps.',
           ],
         ),
         
         const SizedBox(height: 16),
         
-        _buildQuestionLabel('What experience do you want to reflect on?*'),
+        _buildQuestionLabel('What experience do you want to reflect on?'),
         _buildMultilineField(_experienceController, 'Describe your experience...', 3),
         
         const SizedBox(height: 16),
@@ -256,18 +256,18 @@ class _ManualReflectionFormState extends State<ManualReflectionForm> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildQuestionLabel('List and describe the sequence of events, in chronological order*'),
+        _buildQuestionLabel('List and describe the sequence of events, in chronological order'),
         _buildMultilineField(_eventSequenceController, 'What happened first, then...', 3),
         
         const SizedBox(height: 16),
         
-        _buildQuestionLabel('How did you feel about the experience?*'),
+        _buildQuestionLabel('How did you feel about the experience?'),
         _buildHelperText('Be specific and detailed about how you felt and when you felt this way. Heightened emotions often indicate key parts of the process that contributed to success or failure.'),
         _buildMultilineField(_feelingsController, 'Frustrated, anxious, calm, motivated...', 2),
         
         const SizedBox(height: 16),
         
-        _buildQuestionLabel('Which aspects (if any) of the process felt especially difficult? Which aspects felt like they went well?*'),
+        _buildQuestionLabel('Which aspects (if any) of the process felt especially difficult? Which aspects felt like they went well?'),
         _buildMultilineField(_difficultiesController, 'Barriers, obstacles, challenges faced', 2),
         
         const SizedBox(height: 16),
@@ -284,7 +284,7 @@ class _ManualReflectionFormState extends State<ManualReflectionForm> {
         
         const SizedBox(height: 16),
         
-        _buildQuestionLabel('Why do you think you acted the way you did during this experience?*'),
+        _buildQuestionLabel('Why do you think you acted the way you did during this experience?'),
         _buildHelperText('This question challenges your metacognition (thinking about thinking). Rather than reflecting on "what", we should reflect on "why".'),
         _buildMultilineField(_whyBehaviorController, 'Root cause analysis...', 3),
         
@@ -330,7 +330,7 @@ class _ManualReflectionFormState extends State<ManualReflectionForm> {
         
         const SizedBox(height: 16),
         
-        _buildQuestionLabel('What habits, beliefs, and tendencies can you identify from your reflection that explains why you acted the way you did?*'),
+        _buildQuestionLabel('What habits, beliefs, and tendencies can you identify from your reflection that explains why you acted the way you did?'),
         _buildHelperText('For example: you may identify that whenever you feel overwhelmed, you tend to try and avoid challenges and revert to something easier and more comfortable.'),
         _buildMultilineField(_abstractionController, 'Identify patterns and tendencies...', 4),
         
@@ -360,7 +360,7 @@ class _ManualReflectionFormState extends State<ManualReflectionForm> {
         
         const SizedBox(height: 16),
         
-        _buildQuestionLabel('List some potential solutions and actions to experiment on.*'),
+        _buildQuestionLabel('List some potential solutions and actions to experiment on'),
         _buildHelperText('Enter one experiment per line (max 3)'),
         _buildMultilineField(_experimentsController, '- Experiment 1\n- Experiment 2\n- Experiment 3', 5),
       ],
@@ -380,16 +380,45 @@ class _ManualReflectionFormState extends State<ManualReflectionForm> {
         children: [
           Text(title, style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
           const SizedBox(height: 8),
-          ...points.map((p) => Padding(
-            padding: const EdgeInsets.only(bottom: 4),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('• ', style: TextStyle(color: AppColors.textMuted)),
-                Expanded(child: Text(p, style: TextStyle(fontSize: 12, color: AppColors.textSecondary))),
-              ],
-            ),
-          )),
+          ...points.map((p) {
+            // Parse "BoldWord - rest of text" format
+            final dashIndex = p.indexOf(' - ');
+            if (dashIndex != -1) {
+              final boldPart = p.substring(0, dashIndex);
+              final restPart = p.substring(dashIndex);
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('• ', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                    Expanded(
+                      child: RichText(
+                        text: TextSpan(
+                          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                          children: [
+                            TextSpan(text: boldPart, style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                            TextSpan(text: restPart),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+            // Fallback for non-dash format
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('• ', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                  Expanded(child: Text(p, style: TextStyle(fontSize: 12, color: AppColors.textSecondary))),
+                ],
+              ),
+            );
+          }),
         ],
       ),
     );

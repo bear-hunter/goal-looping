@@ -5,23 +5,45 @@ import 'package:provider/provider.dart';
 import '../../core/theme/theme.dart';
 import '../../models/reflection.dart';
 import '../../models/experiment.dart';
-import '../../models/task.dart';
 import '../../providers/app_state.dart';
 import '../../services/storage_service.dart';
 import '../../widgets/glass_card.dart';
 import '../../widgets/factor_chip.dart';
+import '../../models/reflection_group.dart';
+import '../../services/pdf_export_service.dart';
+import 'new_reflection_sheet.dart';
 
 /// Module 5: Reflection Detail Screen - Read-only view of a saved reflection
-class ReflectionDetailScreen extends StatelessWidget {
+class ReflectionDetailScreen extends StatefulWidget {
   final String reflectionId;
 
   const ReflectionDetailScreen({super.key, required this.reflectionId});
 
   @override
+  State<ReflectionDetailScreen> createState() => _ReflectionDetailScreenState();
+}
+
+class _ReflectionDetailScreenState extends State<ReflectionDetailScreen> {
+  late PageController _pageController;
+  bool _initialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Consumer<AppState>(
       builder: (context, state, _) {
-        final reflection = state.getReflectionById(reflectionId);
+        final reflection = state.getReflectionById(widget.reflectionId);
         
         if (reflection == null) {
           return Scaffold(
@@ -30,213 +52,161 @@ class ReflectionDetailScreen extends StatelessWidget {
           );
         }
 
-        final experiments = state.getExperimentsForReflection(reflectionId);
-        final linkedFactors = reflection.linkedFactorIds
-            .map((id) => state.factors.where((f) => f.id == id).firstOrNull)
-            .whereType<dynamic>()
-            .toList();
+        // Determine the collection of reflections (the "book")
+        List<Reflection> bookReflections = [];
+        if (reflection.groupId != null) {
+          bookReflections = state.reflections
+              .where((r) => r.groupId == reflection.groupId)
+              .toList();
+          // Sort by creation time to maintain the chain order
+          bookReflections.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+        } else {
+          bookReflections = [reflection];
+        }
+
+        // Jump to the initial reflection on first load
+        if (!_initialized) {
+          final initialIndex = bookReflections.indexWhere((r) => r.id == widget.reflectionId);
+          if (initialIndex != -1) {
+            _pageController = PageController(initialPage: initialIndex);
+          }
+          _initialized = true;
+        }
 
         return Scaffold(
           backgroundColor: AppColors.background,
           appBar: AppBar(
-            title: const Text('Reflection'),
+            title: ListenableBuilder(
+              listenable: _pageController,
+              builder: (context, _) {
+                final page = (_pageController.hasClients ? _pageController.page?.round() : null) ?? _pageController.initialPage;
+                if (bookReflections.length > 1) {
+                  return Column(
+                    children: [
+                      const Text('Reflection Chain', style: TextStyle(fontSize: 16)),
+                      Text(
+                        'Cycle ${page + 1} of ${bookReflections.length}',
+                        style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                      ),
+                    ],
+                  );
+                }
+                return const Text('Reflection');
+              },
+            ),
             backgroundColor: Colors.transparent,
             actions: [
               IconButton(
+                icon: const Icon(Icons.picture_as_pdf_outlined),
+                onPressed: () => _handleExportPdf(context, state, bookReflections),
+                tooltip: 'Export to PDF',
+              ),
+              IconButton(
+                icon: const Icon(Icons.edit_rounded),
+                onPressed: () => _handleEdit(context, state, bookReflections),
+                tooltip: 'Edit Reflection',
+              ),
+              IconButton(
                 icon: const Icon(Icons.delete_outline_rounded),
-                onPressed: () => _confirmDelete(context, state, reflectionId),
+                onPressed: () {
+                  final page = _pageController.page?.round() ?? 0;
+                  _confirmDelete(context, state, bookReflections[page].id);
+                },
               ),
             ],
           ),
-          body: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Date & Completion
-                Row(
-                  children: [
-                    Icon(Icons.calendar_today_rounded, color: AppColors.textMuted, size: 16),
-                    const SizedBox(width: 8),
-                    Text(
-                      _formatDate(reflection.createdAt),
-                      style: TextStyle(color: AppColors.textMuted),
-                    ),
-                    const Spacer(),
-                    _CompletionBadge(percent: reflection.completionPercent),
-                  ],
-                ).animate().fadeIn(duration: 300.ms),
-
-                const SizedBox(height: 24),
-
-                // Linked Factors
-                if (linkedFactors.isNotEmpty) ...[
-                  _SectionLabel(label: 'Linked Factors'),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: linkedFactors.map((f) => FactorChip(factor: f)).toList(),
-                  ),
-                  const SizedBox(height: 24),
-                ],
-
-                // Step 1: Experience
-                _KolbSection(
-                  step: 1,
-                  title: 'Experience',
-                  subtitle: 'What happened?',
-                  content: reflection.experience,
-                  color: AppColors.primary,
-                ),
-
-                // Step 2: Reflection
-                _KolbSection(
-                  step: 2,
-                  title: 'Reflection',
-                  subtitle: 'How did you feel?',
-                  content: reflection.reflection,
-                  color: AppColors.info,
-                ),
-
-                // Step 3: Abstraction
-                _KolbSection(
-                  step: 3,
-                  title: 'Abstraction',
-                  subtitle: 'Patterns identified',
-                  content: reflection.abstraction,
-                  color: AppColors.warning,
-                ),
-
-                // Step 4: Experiments
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          _StepNumber(step: 4, color: AppColors.success),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Experiments', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-                                Text('Actions to try', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      if (experiments.isEmpty)
-                        GlassCard(
-                          child: Center(
-                            child: Text('No experiments extracted', style: TextStyle(color: AppColors.textMuted)),
-                          ),
-                        )
-                      else
-                        ...experiments.map((exp) => _ExperimentCard(
-                          experiment: exp,
-                          onResurrect: () => _resurrectExperiment(context, state, exp),
-                          canPromote: state.canAddPriorityTask,
-                          onPromoteToTop2: exp.status == ExperimentStatus.pending
-                              ? () => state.promoteExperimentToTask(exp.id, toPriority: true)
-                              : null,
-                          onPromoteToBacklog: exp.status == ExperimentStatus.pending
-                              ? () => state.promoteExperimentToTask(exp.id, toPriority: false)
-                              : null,
-                        )),
-                    ],
-                  ),
-                ),
-
-                // Raw Markdown (if present)
-                if (reflection.rawMarkdown != null && reflection.rawMarkdown!.isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  ExpansionTile(
-                    title: Text('Raw Markdown', style: TextStyle(color: AppColors.textSecondary)),
-                    tilePadding: EdgeInsets.zero,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppColors.surfaceLight,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          reflection.rawMarkdown!,
-                          style: TextStyle(fontFamily: 'monospace', fontSize: 12, color: AppColors.textSecondary),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-
-                // Cycle Group Info
-                if (reflection.groupId != null) ...[
-                  const SizedBox(height: 24),
-                  _CycleGroupBanner(
-                    group: state.getReflectionGroup(reflection.groupId!),
-                    currentReflectionId: reflectionId,
-                  ),
-                ],
-
-                // Cycling Actions
-                const SizedBox(height: 24),
-                _CyclingActionsSection(
-                  reflection: reflection,
-                  onCycleAgain: () => _handleCycleAgain(context, state, reflectionId),
-                  onFinishArchive: reflection.groupId != null
-                      ? () => _handleArchive(context, state, reflection.groupId!)
-                      : null,
-                ),
-
-                const SizedBox(height: 100),
-              ],
-            ),
+          body: PageView.builder(
+            controller: _pageController,
+            itemCount: bookReflections.length,
+            itemBuilder: (context, index) {
+              return _ReflectionPage(
+                reflection: bookReflections[index],
+                state: state,
+                onCycleAgain: () => _handleCycleAgain(context, state, bookReflections[index].id, _pageController),
+                onArchive: () => _handleArchive(context, state, bookReflections[index]),
+                onResurrect: (exp) => _resurrectExperiment(context, state, exp),
+              );
+            },
           ),
         );
       },
     );
   }
 
-  void _handleCycleAgain(BuildContext context, AppState state, String reflectionId) async {
+  void _handleExportPdf(BuildContext context, AppState state, List<Reflection> reflections) async {
+    if (reflections.isEmpty) return;
+    
+    final reflection = reflections.first;
+    final group = reflection.groupId != null ? state.getReflectionGroup(reflection.groupId!) : null;
+    
+    // Create a dummy group if none exists for a single reflection
+    final effectiveGroup = group ?? ReflectionGroup(
+      id: 'single',
+      title: 'Reflection - ${_formatDate(reflection.createdAt)}',
+    );
+
     try {
-      final newReflection = await state.cycleReflection(reflectionId);
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('New cycle created! Fill in your next reflection.'),
-            backgroundColor: AppColors.success,
-          ),
-        );
-        // Navigate to the new reflection
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => ReflectionDetailScreen(reflectionId: newReflection.id),
-          ),
-        );
-      }
+      await PdfExportService.exportGroup(effectiveGroup, reflections, state);
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.danger),
+          SnackBar(content: Text('Export failed: $e'), backgroundColor: AppColors.danger),
         );
       }
     }
+
   }
 
-  void _handleArchive(BuildContext context, AppState state, String groupId) {
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final diff = now.difference(date);
+    if (diff.inDays == 0) return 'Today';
+    if (diff.inDays == 1) return 'Yesterday';
+    if (diff.inDays < 7) return '${diff.inDays}d ago';
+    return '${date.day}/${date.month}';
+  }
+
+  void _handleCycleAgain(BuildContext context, AppState state, String reflectionId, PageController controller) async {
+    final reflection = state.getReflectionById(reflectionId);
+    if (reflection == null) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => NewReflectionSheet(
+        previousReflection: reflection,
+        groupId: reflection.groupId,
+      ),
+    );
+    // Note: State updates will trigger rebuilds automatically via Consumer
+  }
+
+  void _handleEdit(BuildContext context, AppState state, List<Reflection> bookReflections) {
+    if (!_pageController.hasClients) return;
+    final page = _pageController.page?.round() ?? 0;
+    if (page >= bookReflections.length) return;
+    
+    final reflection = bookReflections[page];
+    
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => NewReflectionSheet(
+        reflectionToEdit: reflection,
+      ),
+    );
+  }
+
+  void _handleArchive(BuildContext context, AppState state, Reflection reflection) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
         title: Text('Finish & Archive?', style: TextStyle(color: AppColors.textPrimary)),
         content: Text(
-          'This will archive the entire cycle chain. You can restore it later from the archive.',
+          'This will archive the reflection. You can restore it later from the archive.',
           style: TextStyle(color: AppColors.textSecondary),
         ),
         actions: [
@@ -245,25 +215,24 @@ class ReflectionDetailScreen extends StatelessWidget {
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
-              state.archiveReflectionGroup(groupId);
+            onPressed: () async {
+              await state.archiveReflection(reflection.id);
               Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text('Cycle archived successfully!'),
-                  backgroundColor: AppColors.success,
-                ),
-              );
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: const Text('Archived successfully!'),
+                    backgroundColor: AppColors.success,
+                  ),
+                );
+                Navigator.pop(context); // Go back after archiving
+              }
             },
             child: Text('Archive', style: TextStyle(color: AppColors.primary)),
           ),
         ],
       ),
     );
-  }
-
-  String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year}';
   }
 
   void _confirmDelete(BuildContext context, AppState state, String id) {
@@ -302,6 +271,187 @@ class ReflectionDetailScreen extends StatelessWidget {
         backgroundColor: AppColors.success,
       ),
     );
+  }
+}
+
+/// A single page in the reflection book
+class _ReflectionPage extends StatelessWidget {
+  final Reflection reflection;
+  final AppState state;
+  final VoidCallback onCycleAgain;
+  final VoidCallback onArchive;
+  final Function(Experiment) onResurrect;
+
+  const _ReflectionPage({
+    required this.reflection,
+    required this.state,
+    required this.onCycleAgain,
+    required this.onArchive,
+    required this.onResurrect,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final experiments = state.getExperimentsForReflection(reflection.id);
+    final linkedFactors = reflection.linkedFactorIds
+        .map((id) => state.factors.where((f) => f.id == id).firstOrNull)
+        .whereType<dynamic>()
+        .toList();
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Date & Completion
+          Row(
+            children: [
+              Icon(Icons.calendar_today_rounded, color: AppColors.textMuted, size: 16),
+              const SizedBox(width: 8),
+              Text(
+                _formatDate(reflection.createdAt),
+                style: TextStyle(color: AppColors.textMuted),
+              ),
+              const Spacer(),
+              _CompletionBadge(percent: reflection.completionPercent),
+            ],
+          ).animate().fadeIn(duration: 300.ms),
+
+          const SizedBox(height: 24),
+
+          // Linked Factors
+          if (linkedFactors.isNotEmpty) ...[
+            _SectionLabel(label: 'Linked Factors'),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: linkedFactors.map((f) => FactorChip(factor: f)).toList(),
+            ),
+            const SizedBox(height: 24),
+          ],
+
+          // Step 1: Experience
+          _KolbSection(
+            step: 1,
+            title: 'Experience',
+            subtitle: 'What happened?',
+            content: reflection.experience,
+            color: AppColors.primary,
+          ),
+
+          // Step 2: Reflection
+          _KolbSection(
+            step: 2,
+            title: 'Reflection',
+            subtitle: 'How did you feel?',
+            content: reflection.reflection,
+            color: AppColors.info,
+          ),
+
+          // Step 3: Abstraction
+          _KolbSection(
+            step: 3,
+            title: 'Abstraction',
+            subtitle: 'Patterns identified',
+            content: reflection.abstraction,
+            color: AppColors.warning,
+          ),
+
+          // Step 4: Experiments
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    _StepNumber(step: 4, color: AppColors.success),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Experiments', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                          Text('Actions to try', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                if (experiments.isEmpty)
+                  GlassCard(
+                    child: Center(
+                      child: Text('No experiments extracted', style: TextStyle(color: AppColors.textMuted)),
+                    ),
+                  )
+                else
+                  ...experiments.map((exp) => _ExperimentCard(
+                    experiment: exp,
+                    onResurrect: () => onResurrect(exp),
+                    canPromote: state.canAddPriorityTask,
+                    onPromoteToTop2: exp.status == ExperimentStatus.pending
+                        ? () => state.promoteExperimentToTask(exp.id, toPriority: true)
+                        : null,
+                    onPromoteToBacklog: exp.status == ExperimentStatus.pending
+                        ? () => state.promoteExperimentToTask(exp.id, toPriority: false)
+                        : null,
+                  )),
+              ],
+            ),
+          ),
+
+          // Raw Markdown (if present)
+          if (reflection.rawMarkdown != null && reflection.rawMarkdown!.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            ExpansionTile(
+              title: Text('Raw Markdown', style: TextStyle(color: AppColors.textSecondary)),
+              tilePadding: EdgeInsets.zero,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceLight,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    reflection.rawMarkdown!,
+                    style: TextStyle(fontFamily: 'monospace', fontSize: 12, color: AppColors.textSecondary),
+                  ),
+                ),
+              ],
+            ),
+          ],
+
+          // Cycle Group Info - Removed because title already shows "Cycle X of Y"
+          // and we want a clean "page" look.
+          /*
+          if (reflection.groupId != null) ...[
+            const SizedBox(height: 24),
+            _CycleGroupBanner(
+              group: state.getReflectionGroup(reflection.groupId!),
+              currentReflectionId: reflection.id,
+            ),
+          ],
+          */
+
+          // Cycling Actions
+          const SizedBox(height: 24),
+          _CyclingActionsSection(
+            reflection: reflection,
+            onCycleAgain: onCycleAgain,
+            onFinishArchive: onArchive,
+          ),
+
+          const SizedBox(height: 100),
+        ],
+      ),
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.day}/${date.month}/${date.year}';
   }
 }
 
@@ -522,89 +672,6 @@ class _ActionButton extends StatelessWidget {
   }
 }
 
-/// Banner showing cycle group information
-class _CycleGroupBanner extends StatelessWidget {
-  final dynamic group; // ReflectionGroup?
-  final String currentReflectionId;
-
-  const _CycleGroupBanner({
-    required this.group,
-    required this.currentReflectionId,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (group == null) return const SizedBox.shrink();
-
-    final cycleNumber = group.reflectionIds.indexOf(currentReflectionId) + 1;
-    final totalCycles = group.cycleCount;
-    final isArchived = group.isArchived;
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            AppColors.primary.withAlpha(30),
-            AppColors.info.withAlpha(20),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.primary.withAlpha(50)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withAlpha(40),
-              shape: BoxShape.circle,
-            ),
-            child: Text(
-              '🔁',
-              style: const TextStyle(fontSize: 20),
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Cycle $cycleNumber of $totalCycles',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  isArchived ? 'This cycle chain is archived' : 'Part of an active reflection chain',
-                  style: TextStyle(fontSize: 12, color: AppColors.textMuted),
-                ),
-              ],
-            ),
-          ),
-          if (isArchived)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: AppColors.textMuted.withAlpha(30),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                'Archived',
-                style: TextStyle(fontSize: 11, color: AppColors.textMuted),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
 
 /// Section with cycling action buttons
 class _CyclingActionsSection extends StatelessWidget {

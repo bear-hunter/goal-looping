@@ -16,7 +16,7 @@ enum TaskSource {
 }
 
 /// Effort level for a task
-@HiveType(typeId: 20)
+@HiveType(typeId: 26)
 enum TaskEffort {
   @HiveField(0)
   quick,  // ⚡ Low effort, quick win
@@ -26,7 +26,7 @@ enum TaskEffort {
 }
 
 /// Impact level for a task
-@HiveType(typeId: 21)
+@HiveType(typeId: 27)
 enum TaskImpact {
   @HiveField(0)
   high,        // ⭐ High value outcome
@@ -36,7 +36,7 @@ enum TaskImpact {
 }
 
 /// Reason for abandoning/demoting a task
-@HiveType(typeId: 22)
+@HiveType(typeId: 28)
 enum TaskAbandonReason {
   @HiveField(0)
   noTime,       // 🕐 Ran out of time

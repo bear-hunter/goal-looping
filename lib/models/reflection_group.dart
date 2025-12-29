@@ -3,7 +3,7 @@ import 'package:hive/hive.dart';
 part 'reflection_group.g.dart';
 
 /// Groups related reflection cycles together for tracking compounding marginal gains
-@HiveType(typeId: 23)
+@HiveType(typeId: 25)
 class ReflectionGroup extends HiveObject {
   @HiveField(0)
   String id;

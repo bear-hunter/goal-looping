@@ -12,6 +12,8 @@ import '../../widgets/manual_reflection_form.dart';
 import 'reflection_detail_screen.dart';
 import 'reflection_archive_screen.dart';
 import '../experiment/experiment_screen.dart';
+import '../../services/pdf_export_service.dart';
+import 'new_reflection_sheet.dart';
 
 /// Module 5: Reflection Forge - Kolb's Cycles with Markdown parsing
 class ReflectionScreen extends StatelessWidget {
@@ -90,12 +92,37 @@ class ReflectionScreen extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 8),
-                      Text('Transform reflections into actions',
-                          style: TextStyle(color: AppColors.textSecondary)),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text('Transform reflections into actions',
+                                style: TextStyle(color: AppColors.textSecondary)),
+                          ),
+                          if (state.activeReflectionGroups.isNotEmpty)
+                            TextButton.icon(
+                              onPressed: () => _handleExportAll(context, state),
+                              icon: const Icon(Icons.picture_as_pdf_outlined, size: 18),
+                              label: const Text('Export All', style: TextStyle(fontSize: 12)),
+                              style: TextButton.styleFrom(
+                                foregroundColor: AppColors.primary,
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              ),
+                            ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
               ),
+
+              // Reflection Reminder Banner (when overdue)
+              if (state.userStats.isReflectionOverdue)
+                SliverToBoxAdapter(
+                  child: _ReflectionReminderBanner(
+                    isCritical: state.userStats.isReflectionCriticallyOverdue,
+                    hoursSince: state.userStats.hoursSinceLastReflection,
+                  ),
+                ),
 
               // New Reflection Button
               SliverToBoxAdapter(
@@ -159,6 +186,14 @@ class ReflectionScreen extends StatelessWidget {
                             builder: (_) => ReflectionDetailScreen(reflectionId: reflectionId),
                           ),
                         ),
+                        // Pass the LAST reflection as the previous one for the cycle
+                        onQuickCycle: () => _showNewReflectionDialog(
+                          context,
+                          previousReflection: group.reflectionIds.isNotEmpty 
+                              ? state.getReflectionById(group.reflectionIds.last)
+                              : null,
+                          groupId: group.id,
+                        ),
                       );
                     },
                     childCount: state.activeReflectionGroups.length,
@@ -201,12 +236,11 @@ class ReflectionScreen extends StatelessWidget {
                 SliverList(
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
-                      final reflection = state.reflections[index];
+                      final visibleReflections = state.reflections.where((r) => r.groupId == null).toList();
+                      final reflection = visibleReflections[index];
                       return _ReflectionCard(
                         reflection: reflection,
-                        cycleNumber: reflection.groupId != null 
-                            ? state.getReflectionGroup(reflection.groupId!)?.reflectionIds.indexOf(reflection.id) ?? 0 + 1
-                            : null,
+                        cycleNumber: null, // Standalone always null
                         onTap: () => Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -215,7 +249,7 @@ class ReflectionScreen extends StatelessWidget {
                         ),
                       );
                     },
-                    childCount: state.reflections.length,
+                    childCount: state.reflections.where((r) => r.groupId == null).length,
                   ),
                 ),
 
@@ -227,12 +261,34 @@ class ReflectionScreen extends StatelessWidget {
     );
   }
 
-  void _showNewReflectionDialog(BuildContext context) {
+  void _handleExportAll(BuildContext context, AppState state) async {
+    final groups = state.activeReflectionGroups;
+    if (groups.isEmpty) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Preparing full export...')),
+    );
+
+    try {
+      await PdfExportService.exportMultipleGroups(groups, state);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Export failed: $e'), backgroundColor: AppColors.danger),
+        );
+      }
+    }
+  }
+
+  void _showNewReflectionDialog(BuildContext context, {Reflection? previousReflection, String? groupId}) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => const _NewReflectionSheet(),
+      builder: (ctx) => NewReflectionSheet(
+        previousReflection: previousReflection,
+        groupId: groupId,
+      ),
     );
   }
 }
@@ -242,12 +298,31 @@ class _CycleChainCard extends StatelessWidget {
   final dynamic group;
   final List<dynamic> reflections;
   final Function(String) onViewReflection;
+  final VoidCallback? onQuickCycle;
 
   const _CycleChainCard({
     required this.group,
     required this.reflections,
     required this.onViewReflection,
+    this.onQuickCycle,
   });
+
+  void _handleExportGroup(BuildContext context) async {
+    final state = Provider.of<AppState>(context, listen: false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Preparing chain export...')),
+    );
+
+    try {
+      await PdfExportService.exportGroup(group, reflections.cast<Reflection>(), state);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Export failed: $e'), backgroundColor: AppColors.danger),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -282,12 +357,23 @@ class _CycleChainCard extends StatelessWidget {
                   ],
                 ),
               ),
+              IconButton(
+                icon: Icon(Icons.picture_as_pdf_outlined, size: 20, color: AppColors.primary.withAlpha(204)),
+                onPressed: () => _handleExportGroup(context),
+                tooltip: 'Export Chain to PDF',
+              ),
+              if (onQuickCycle != null)
+                IconButton(
+                  icon: const Icon(Icons.add_circle_outline_rounded, size: 22, color: AppColors.primary),
+                  onPressed: onQuickCycle,
+                  tooltip: 'Quick Cycle',
+                ),
             ],
           ),
           const SizedBox(height: 12),
           // Timeline
           SizedBox(
-            height: 50,
+            height: 56,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               itemCount: reflections.length,
@@ -348,30 +434,6 @@ class _CycleChainCard extends StatelessWidget {
   }
 }
 
-class _ActionChip extends StatelessWidget {
-  final String label;
-  final Color color;
-  final VoidCallback? onTap;
-  final bool enabled;
-
-  const _ActionChip({required this.label, required this.color, this.onTap, this.enabled = true});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: enabled ? onTap : null,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: enabled ? color.withOpacity(0.1) : AppColors.surfaceLight,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: enabled ? color.withOpacity(0.3) : AppColors.glassBorder),
-        ),
-        child: Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: enabled ? color : AppColors.textMuted)),
-      ),
-    );
-  }
-}
 
 class _ReflectionCard extends StatelessWidget {
   final Reflection reflection;
@@ -446,475 +508,113 @@ class _ReflectionCard extends StatelessWidget {
   }
 }
 
-class _NewReflectionSheet extends StatefulWidget {
-  const _NewReflectionSheet();
 
-  @override
-  State<_NewReflectionSheet> createState() => _NewReflectionSheetState();
-}
 
-enum _EntryMode { guided, manual }
+/// Reflection reminder banner when overdue
+class _ReflectionReminderBanner extends StatelessWidget {
+  final bool isCritical;
+  final int hoursSince;
 
-class _NewReflectionSheetState extends State<_NewReflectionSheet> {
-  int _step = 0; // Start at Step 0: Factor selection
-  _EntryMode _entryMode = _EntryMode.guided;
-  final _experienceController = TextEditingController();
-  final _reflectionController = TextEditingController();
-  final _abstractionController = TextEditingController();
-  final _experimentsController = TextEditingController();
-  final _markdownController = TextEditingController();
-  
-  // Phase 4: Factor linkage and cycling
-  String? _selectedFactorId;
-  String? _previousExperimentId;
-  bool _isCyclingFromExperiment = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final state = context.watch<AppState>();
-    
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.85,
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      child: Column(
-        children: [
-          // Header
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              children: [
-                Text('New Kolb\'s Cycle', style: Theme.of(context).textTheme.titleLarge),
-                const Spacer(),
-                IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(context)),
-              ],
-            ),
-          ),
-
-          // Entry Mode Toggle
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Row(
-              children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => setState(() => _entryMode = _EntryMode.guided),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(
-                        color: _entryMode == _EntryMode.guided 
-                            ? AppColors.primary.withAlpha(30) 
-                            : AppColors.surfaceLight,
-                        borderRadius: const BorderRadius.horizontal(left: Radius.circular(12)),
-                        border: Border.all(
-                          color: _entryMode == _EntryMode.guided 
-                              ? AppColors.primary 
-                              : AppColors.glassBorder,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.paste_rounded, 
-                            size: 18,
-                            color: _entryMode == _EntryMode.guided ? AppColors.primary : AppColors.textMuted,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Paste from Gemini',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: _entryMode == _EntryMode.guided ? FontWeight.w600 : FontWeight.normal,
-                              color: _entryMode == _EntryMode.guided ? AppColors.primary : AppColors.textMuted,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => setState(() => _entryMode = _EntryMode.manual),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(
-                        color: _entryMode == _EntryMode.manual 
-                            ? AppColors.primary.withAlpha(30) 
-                            : AppColors.surfaceLight,
-                        borderRadius: const BorderRadius.horizontal(right: Radius.circular(12)),
-                        border: Border.all(
-                          color: _entryMode == _EntryMode.manual 
-                              ? AppColors.primary 
-                              : AppColors.glassBorder,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.edit_note_rounded, 
-                            size: 18,
-                            color: _entryMode == _EntryMode.manual ? AppColors.primary : AppColors.textMuted,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Manual Entry',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: _entryMode == _EntryMode.manual ? FontWeight.w600 : FontWeight.normal,
-                              color: _entryMode == _EntryMode.manual ? AppColors.primary : AppColors.textMuted,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 12),
-
-          // Progress (6 steps for guided mode)
-          if (_entryMode == _EntryMode.guided)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Row(
-                children: List.generate(6, (i) => Expanded(
-                  child: Container(
-                    height: 4,
-                    margin: const EdgeInsets.symmetric(horizontal: 2),
-                    decoration: BoxDecoration(
-                      color: i <= _step ? AppColors.primary : AppColors.surfaceLight,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                )),
-              ),
-            ),
-
-          // Content
-          Expanded(
-            child: _entryMode == _EntryMode.manual
-                ? _ManualEntryContent(
-                    targetFactorId: _selectedFactorId,
-                    previousExperimentId: _previousExperimentId,
-                    onSave: (reflection) {
-                      _saveManualReflection(state, reflection);
-                    },
-                  )
-                : SingleChildScrollView(
-                    padding: const EdgeInsets.all(20),
-                    child: _buildStepContent(state),
-                  ),
-          ),
-
-          // Actions (only for guided mode)
-          if (_entryMode == _EntryMode.guided)
-            Padding(
-              padding: EdgeInsets.fromLTRB(20, 12, 20, MediaQuery.of(context).viewInsets.bottom + 20),
-              child: Row(
-                children: [
-                  if (_step > 0)
-                    TextButton(onPressed: () => setState(() => _step--), child: const Text('Back')),
-                  const Spacer(),
-                  ElevatedButton(
-                    onPressed: _step < 5 ? () => setState(() => _step++) : _saveReflection,
-                    child: Text(_step < 5 ? 'Next' : 'Save'),
-                  ),
-                ],
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  void _saveManualReflection(AppState state, Reflection reflection) async {
-    final reflectionId = StorageService.generateId();
-    
-    // Parse experiments from rawMarkdown (temporary storage)
-    final experimentLines = (reflection.rawMarkdown ?? '')
-        .split('\n')
-        .map((l) => l.replaceFirst(RegExp(r'^[-*•]\s*'), '').trim())
-        .where((l) => l.isNotEmpty)
-        .take(3)
-        .toList();
-
-    final experimentIds = <String>[];
-    for (final line in experimentLines) {
-      final exp = Experiment(
-        id: StorageService.generateId(),
-        description: line,
-        reflectionId: reflectionId,
-      );
-      await state.addExperiment(exp);
-      experimentIds.add(exp.id);
-    }
-    
-    // Copy reflection with generated ID and experiment IDs
-    final savedReflection = Reflection(
-      id: reflectionId,
-      experience: reflection.experience,
-      reflection: reflection.reflection,
-      abstraction: reflection.abstraction,
-      isFollowUp: reflection.isFollowUp,
-      previousExperimentId: reflection.previousExperimentId,
-      targetFactorId: reflection.targetFactorId,
-      linkedFactorIds: reflection.linkedFactorIds,
-      isManualEntry: true,
-      marginalGainDescription: reflection.marginalGainDescription,
-      eventSequence: reflection.eventSequence,
-      feelings: reflection.feelings,
-      difficulties: reflection.difficulties,
-      challengeResponse: reflection.challengeResponse,
-      triggers: reflection.triggers,
-      whyBehavior: reflection.whyBehavior,
-      crossLifePatterns: reflection.crossLifePatterns,
-      experimentIds: experimentIds,
-    );
-    
-    state.addReflection(savedReflection);
-    Navigator.pop(context);
-  }
-
-  Widget _buildStepContent(AppState state) {
-    switch (_step) {
-      case 0: // NEW: Factor Selection + Cycling
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Step 0: Target Factor', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-            const SizedBox(height: 8),
-            Text('Which Factor from your dissected tree are you improving?', style: TextStyle(color: AppColors.textMuted)),
-            const SizedBox(height: 16),
-            
-            // Factor selection
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: state.factors.map((f) {
-                final isSelected = _selectedFactorId == f.id;
-                return GestureDetector(
-                  onTap: () => setState(() => _selectedFactorId = f.id),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: isSelected ? AppColors.primary.withAlpha(30) : AppColors.surfaceLight,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: isSelected ? AppColors.primary : AppColors.glassBorder, width: isSelected ? 2 : 1),
-                    ),
-                    child: Text(f.name, style: TextStyle(
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                      color: isSelected ? AppColors.primary : AppColors.textSecondary,
-                    )),
-                  ),
-                );
-              }).toList(),
-            ),
-            
-            if (state.factors.isEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text('⚠️ Add Factors in Strategy first', style: TextStyle(color: AppColors.warning)),
-              ),
-            
-            const SizedBox(height: 24),
-            
-            // Cycling from previous experiment
-            Text('Cycling from previous?', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-            const SizedBox(height: 8),
-            Text('Always cycle experiments to ensure marginal gains compound', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
-            const SizedBox(height: 12),
-            
-            if (state.pendingExperiments.isNotEmpty)
-              ...state.pendingExperiments.take(5).map((exp) {
-                final isSelected = _previousExperimentId == exp.id;
-                return GestureDetector(
-                  onTap: () => setState(() {
-                    _previousExperimentId = isSelected ? null : exp.id;
-                    _isCyclingFromExperiment = !isSelected;
-                    if (!isSelected) {
-                      _experienceController.text = 'Experiment: ${exp.description}';
-                    }
-                  }),
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: isSelected ? AppColors.warning.withAlpha(30) : AppColors.surfaceLight,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: isSelected ? AppColors.warning : AppColors.glassBorder),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.science_rounded, color: isSelected ? AppColors.warning : AppColors.textMuted, size: 18),
-                        const SizedBox(width: 10),
-                        Expanded(child: Text(exp.description, style: TextStyle(color: AppColors.textPrimary), maxLines: 2, overflow: TextOverflow.ellipsis)),
-                        if (isSelected) Icon(Icons.check_circle_rounded, color: AppColors.warning, size: 18),
-                      ],
-                    ),
-                  ),
-                );
-              }),
-            
-            if (state.pendingExperiments.isEmpty)
-              Text('No pending experiments to cycle from', style: TextStyle(color: AppColors.textMuted)),
-          ],
-        );
-      case 1:
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Step 1: Experience', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-            const SizedBox(height: 8),
-            Text('What experience do you want to reflect on?', style: TextStyle(color: AppColors.textMuted)),
-            if (_isCyclingFromExperiment)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: AppColors.warning.withAlpha(20), borderRadius: BorderRadius.circular(8)),
-                  child: Text('♻️ Cycling from previous experiment', style: TextStyle(color: AppColors.warning, fontSize: 12)),
-                ),
-              ),
-            const SizedBox(height: 16),
-            TextField(controller: _experienceController, maxLines: 4, decoration: const InputDecoration(hintText: 'Describe the experience...')),
-          ],
-        );
-      case 2:
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Step 2: Reflection', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-            const SizedBox(height: 8),
-            Text('How did you feel? What went well/poorly?', style: TextStyle(color: AppColors.textMuted)),
-            const SizedBox(height: 16),
-            TextField(controller: _reflectionController, maxLines: 6, decoration: const InputDecoration(hintText: 'Reflect on the experience...')),
-          ],
-        );
-      case 3:
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Step 3: Abstraction', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-            const SizedBox(height: 8),
-            Text('What habits, beliefs, or tendencies explain your actions?', style: TextStyle(color: AppColors.textMuted)),
-            const SizedBox(height: 16),
-            TextField(controller: _abstractionController, maxLines: 6, decoration: const InputDecoration(hintText: 'Identify patterns...')),
-          ],
-        );
-      case 4:
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Step 4: Experiments', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-            const SizedBox(height: 8),
-            Text('List 1-3 experiments (one per line)', style: TextStyle(color: AppColors.textMuted)),
-            Container(
-              margin: const EdgeInsets.symmetric(vertical: 8),
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: AppColors.info.withAlpha(20), borderRadius: BorderRadius.circular(8)),
-              child: Text('💡 Less than 3 experiments is ideal for focused progress', style: TextStyle(color: AppColors.info, fontSize: 12)),
-            ),
-            TextField(controller: _experimentsController, maxLines: 6, decoration: const InputDecoration(hintText: '- Experiment 1\n- Experiment 2\n- Experiment 3 (max)')),
-          ],
-        );
-      case 5:
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Or: Paste Markdown', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-            const SizedBox(height: 8),
-            Text('Paste Gemini Kolb\'s output to auto-parse', style: TextStyle(color: AppColors.textMuted)),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _markdownController, 
-              maxLines: 10, 
-              decoration: const InputDecoration(hintText: 'Paste markdown here...'),
-              onChanged: _parseMarkdown,
-            ),
-          ],
-        );
-      default:
-        return const SizedBox();
-    }
-  }
-
-  void _parseMarkdown(String markdown) {
-    final expMatch = RegExp(r'#\s*Experience\s*\n(.*?)(?=#|$)', dotAll: true).firstMatch(markdown);
-    if (expMatch != null) _experienceController.text = expMatch.group(1)?.trim() ?? '';
-
-    final expsMatch = RegExp(r'#\s*Experiments?\s*\n(.*?)(?=#|$)', dotAll: true).firstMatch(markdown);
-    if (expsMatch != null) _experimentsController.text = expsMatch.group(1)?.trim() ?? '';
-  }
-
-  void _saveReflection() async {
-    final state = context.read<AppState>();
-    final reflectionId = StorageService.generateId();
-
-    // Create reflection with Factor linkage
-    final reflection = Reflection(
-      id: reflectionId,
-      experience: _experienceController.text,
-      reflection: _reflectionController.text,
-      abstraction: _abstractionController.text,
-      rawMarkdown: _markdownController.text.isNotEmpty ? _markdownController.text : null,
-      targetFactorId: _selectedFactorId,
-      previousExperimentId: _previousExperimentId,
-      isFollowUp: _isCyclingFromExperiment,
-      linkedFactorIds: _selectedFactorId != null ? [_selectedFactorId!] : [],
-    );
-
-    // Parse experiments (limit to 3)
-    final experimentLines = _experimentsController.text
-        .split('\n')
-        .map((l) => l.replaceFirst(RegExp(r'^[-*•]\s*'), '').trim())
-        .where((l) => l.isNotEmpty)
-        .take(3) // Max 3 experiments
-        .toList();
-
-    final experimentIds = <String>[];
-    for (final line in experimentLines) {
-      final exp = Experiment(
-        id: StorageService.generateId(),
-        description: line,
-        reflectionId: reflectionId,
-      );
-      await state.addExperiment(exp);
-      experimentIds.add(exp.id);
-    }
-
-    reflection.experimentIds.addAll(experimentIds);
-    state.addReflection(reflection);
-
-    Navigator.pop(context);
-  }
-}
-
-/// Wrapper for manual entry content using the ManualReflectionForm
-class _ManualEntryContent extends StatelessWidget {
-  final String? targetFactorId;
-  final String? previousExperimentId;
-  final Function(Reflection) onSave;
-
-  const _ManualEntryContent({
-    this.targetFactorId,
-    this.previousExperimentId,
-    required this.onSave,
+  const _ReflectionReminderBanner({
+    required this.isCritical,
+    required this.hoursSince,
   });
 
   @override
   Widget build(BuildContext context) {
-    return ManualReflectionForm(
-      targetFactorId: targetFactorId,
-      previousExperimentId: previousExperimentId,
-      onSave: onSave,
+    final color = isCritical ? AppColors.danger : AppColors.warning;
+    final daysSince = hoursSince ~/ 24;
+    
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+      child: GestureDetector(
+        onTap: () => _showNewReflectionDialog(context),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                color.withValues(alpha: 0.15),
+                color.withValues(alpha: 0.05),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color.withValues(alpha: 0.3)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  isCritical ? Icons.warning_rounded : Icons.psychology_rounded,
+                  color: color,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isCritical 
+                          ? '⚠️ Reflection Critical!'
+                          : '🔔 Time to Reflect',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: color,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      isCritical
+                          ? '$daysSince+ days without reflection - never go a week!'
+                          : 'It\'s been ${daysSince > 0 ? "$daysSince days" : "$hoursSince hours"} since your last reflection',
+                      style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.arrow_forward_rounded,
+                color: color,
+                size: 20,
+              ),
+            ],
+          ),
+        ),
+      ),
+    ).animate().fadeIn(duration: 300.ms).shimmer(
+      delay: 500.ms,
+      duration: 1500.ms,
+      color: color.withValues(alpha: 0.1),
+    );
+  }
+
+  void _showNewReflectionDialog(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.9,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        builder: (_, controller) => Container(
+          decoration: BoxDecoration(
+            color: AppColors.background,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: const NewReflectionSheet(),
+        ),
+      ),
     );
   }
 }

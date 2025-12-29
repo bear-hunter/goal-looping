@@ -221,25 +221,30 @@ class UserStats extends HiveObject {
   }
 
   /// Check if reflection is overdue based on reminder frequency
+  /// Check if reflection is overdue based on reminder frequency
   bool get isReflectionOverdue {
     if (reminderFrequency == ReflectionReminderFrequency.disabled) return false;
-    if (lastReflectionAt == null) return true;
+    
+    // If never reflected, check against account creation
+    final referenceDate = lastReflectionAt ?? createdAt;
 
-    final hoursSinceLastReflection =
-        DateTime.now().difference(lastReflectionAt!).inHours;
-    return hoursSinceLastReflection >= reminderFrequency.maxHoursBetweenReflections;
+    final hoursSince = DateTime.now().difference(referenceDate).inHours;
+    return hoursSince >= reminderFrequency.maxHoursBetweenReflections;
   }
 
   /// Check if a week has passed without reflection (critical warning)
   bool get isReflectionCriticallyOverdue {
-    if (lastReflectionAt == null) return true;
-    return DateTime.now().difference(lastReflectionAt!).inDays >= 7;
+    // If never reflected, check against account creation
+    final referenceDate = lastReflectionAt ?? createdAt;
+    
+    return DateTime.now().difference(referenceDate).inDays >= 7;
   }
 
   /// Hours since last reflection
   int get hoursSinceLastReflection {
-    if (lastReflectionAt == null) return 999;
-    return DateTime.now().difference(lastReflectionAt!).inHours;
+    // If never reflected, return hours since creation
+    final referenceDate = lastReflectionAt ?? createdAt;
+    return DateTime.now().difference(referenceDate).inHours;
   }
 
   /// Set reminder frequency

@@ -211,47 +211,53 @@ class _ExperimentCard extends StatelessWidget {
   Widget _buildActionButtons() {
     switch (experiment.status) {
       case ExperimentStatus.pending:
-        return Row(
-          children: [
-            _ActionButton(
-              label: 'Start',
-              icon: Icons.play_arrow_rounded,
-              color: AppColors.primary,
-              onTap: onStart,
-            ),
-            const SizedBox(width: 8),
-            _ActionButton(
-              label: 'Archive',
-              icon: Icons.archive_outlined,
-              color: AppColors.textMuted,
-              onTap: onArchive,
-            ),
-          ],
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              _ActionButton(
+                label: 'Start',
+                icon: Icons.play_arrow_rounded,
+                color: AppColors.primary,
+                onTap: onStart,
+              ),
+              const SizedBox(width: 8),
+              _ActionButton(
+                label: 'Archive',
+                icon: Icons.archive_outlined,
+                color: AppColors.textMuted,
+                onTap: onArchive,
+              ),
+            ],
+          ),
         );
       case ExperimentStatus.inProgress:
-        return Row(
-          children: [
-            _ActionButton(
-              label: 'Complete',
-              icon: Icons.check_circle_rounded,
-              color: AppColors.success,
-              onTap: onComplete,
-            ),
-            const SizedBox(width: 8),
-            _ActionButton(
-              label: 'Cycle Forward',
-              icon: Icons.replay_rounded,
-              color: AppColors.info,
-              onTap: onCycle,
-            ),
-            const SizedBox(width: 8),
-            _ActionButton(
-              label: 'Archive',
-              icon: Icons.archive_outlined,
-              color: AppColors.textMuted,
-              onTap: onArchive,
-            ),
-          ],
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              _ActionButton(
+                label: 'Complete',
+                icon: Icons.check_circle_rounded,
+                color: AppColors.success,
+                onTap: onComplete,
+              ),
+              const SizedBox(width: 8),
+              _ActionButton(
+                label: 'Cycle Forward',
+                icon: Icons.replay_rounded,
+                color: AppColors.info,
+                onTap: onCycle,
+              ),
+              const SizedBox(width: 8),
+              _ActionButton(
+                label: 'Archive',
+                icon: Icons.archive_outlined,
+                color: AppColors.textMuted,
+                onTap: onArchive,
+              ),
+            ],
+          ),
         );
       default:
         return const SizedBox.shrink();
