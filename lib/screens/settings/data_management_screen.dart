@@ -9,6 +9,8 @@ import '../../core/theme/theme.dart';
 import '../../services/backup_service.dart';
 import '../../models/backup_models.dart';
 import '../../widgets/glass_card.dart';
+import '../../providers/theme_provider.dart';
+import 'package:provider/provider.dart';
 
 /// Screen for managing data backup, export, and import
 class DataManagementScreen extends StatefulWidget {
@@ -25,8 +27,11 @@ class _DataManagementScreenState extends State<DataManagementScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? AppColors.background : LightColors.background;
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: bgColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         title: Text(
@@ -157,6 +162,58 @@ class _DataManagementScreenState extends State<DataManagementScreen> {
                 ],
               ),
             ).animate(delay: 200.ms).fadeIn(duration: 300.ms).slideY(begin: -0.1, end: 0),
+
+            const SizedBox(height: 16),
+
+            // Theme Toggle section
+            _buildSection(
+              context,
+              title: 'Appearance',
+              icon: Icons.palette_rounded,
+              iconColor: AppColors.info,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'Choose your preferred theme.',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  const SizedBox(height: 16),
+                  Consumer<ThemeProvider>(
+                    builder: (context, themeProvider, _) => Row(
+                      children: [
+                        Expanded(
+                          child: _ThemeOptionButton(
+                            icon: Icons.brightness_auto_rounded,
+                            label: 'System',
+                            isSelected: themeProvider.themeMode == AppThemeMode.system,
+                            onTap: () => themeProvider.setThemeMode(AppThemeMode.system),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _ThemeOptionButton(
+                            icon: Icons.light_mode_rounded,
+                            label: 'Light',
+                            isSelected: themeProvider.themeMode == AppThemeMode.light,
+                            onTap: () => themeProvider.setThemeMode(AppThemeMode.light),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _ThemeOptionButton(
+                            icon: Icons.dark_mode_rounded,
+                            label: 'Dark',
+                            isSelected: themeProvider.themeMode == AppThemeMode.dark,
+                            onTap: () => themeProvider.setThemeMode(AppThemeMode.dark),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ).animate(delay: 250.ms).fadeIn(duration: 300.ms).slideY(begin: -0.1, end: 0),
 
             const SizedBox(height: 24),
 
@@ -730,6 +787,62 @@ class _DataManagementScreenState extends State<DataManagementScreen> {
             child: const Text('OK'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Theme option button for light/dark/system selection
+class _ThemeOptionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _ThemeOptionButton({
+    required this.icon,
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surfaceLight = isDark ? AppColors.surfaceLight : LightColors.surfaceLight;
+    final glassBorder = isDark ? AppColors.glassBorder : LightColors.glassBorder;
+    final textMuted = isDark ? AppColors.textMuted : LightColors.textMuted;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primary.withAlpha(30) : surfaceLight,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? AppColors.primary : glassBorder,
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Column(
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? AppColors.primary : textMuted,
+              size: 24,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? AppColors.primary : textMuted,
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

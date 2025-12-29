@@ -14,18 +14,22 @@ class XPBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (compact) {
-      return _buildCompact();
+      return _buildCompact(context);
     }
     return _buildFull();
   }
 
-  Widget _buildCompact() {
+  Widget _buildCompact(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surfaceLight = isDark ? AppColors.surfaceLight : LightColors.surfaceLight;
+    final glassBorder = isDark ? AppColors.glassBorder : LightColors.glassBorder;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.surfaceLight,
+        color: surfaceLight,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.glassBorder),
+        border: Border.all(color: glassBorder),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -45,7 +49,7 @@ class XPBar extends StatelessWidget {
               borderRadius: BorderRadius.circular(4),
               child: LinearProgressIndicator(
                 value: stats.levelProgress,
-                backgroundColor: AppColors.surfaceLight,
+                backgroundColor: surfaceLight,
                 valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
                 minHeight: 6,
               ),
@@ -162,10 +166,15 @@ class StreakBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surfaceLight = isDark ? AppColors.surfaceLight : LightColors.surfaceLight;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: isAtRisk ? AppColors.danger.withAlpha(30) : AppColors.warning.withAlpha(30),
+        color: isAtRisk 
+            ? AppColors.danger.withAlpha(30) 
+            : (isDark ? AppColors.warning.withAlpha(30) : AppColors.warning.withAlpha(20)),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: isAtRisk ? AppColors.danger : AppColors.warning),
       ),

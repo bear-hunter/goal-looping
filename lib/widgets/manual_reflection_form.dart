@@ -1,49 +1,55 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 
 import '../core/theme/theme.dart';
 import '../models/reflection.dart';
 import 'glass_card.dart';
 
-/// Manual entry form for full Kolb's reflection template based on guidedkolbs.md
+/// Manual entry form for Kolb's reflection - Mobile-First Design
+/// 
+/// Architecture: 12 individual pages, one question each
+/// - Page controller managed by parent (NewReflectionSheet)
+/// - Each page has full-screen text input
+/// - Returns current page widget via getPage(index)
 class ManualReflectionForm extends StatefulWidget {
   final String? targetFactorId;
   final String? previousExperimentId;
   final Function(Reflection) onSave;
+  final PageController? pageController;
+  final Function(int)? onPageChanged;
+  final VoidCallback? onChanged;
 
   const ManualReflectionForm({
     super.key,
     this.targetFactorId,
     this.previousExperimentId,
     required this.onSave,
+    this.pageController,
+    this.onPageChanged,
+    this.onChanged,
   });
 
+  /// Total number of pages in Manual Entry mode
+  static const int totalPages = 12;
+
   @override
-  State<ManualReflectionForm> createState() => _ManualReflectionFormState();
+  State<ManualReflectionForm> createState() => ManualReflectionFormState();
 }
 
-class _ManualReflectionFormState extends State<ManualReflectionForm> {
-  int _currentStep = 0;
-  
-  // Step 1: Experience
+class ManualReflectionFormState extends State<ManualReflectionForm> {
+  // All text controllers
   final _experienceController = TextEditingController();
   final _marginalGainController = TextEditingController();
-  bool _isFollowUp = false;
-  
-  // Step 2: Reflection
   final _eventSequenceController = TextEditingController();
   final _feelingsController = TextEditingController();
   final _difficultiesController = TextEditingController();
   final _challengeResponseController = TextEditingController();
   final _triggersController = TextEditingController();
   final _whyBehaviorController = TextEditingController();
-  
-  // Step 3: Abstraction
   final _abstractionController = TextEditingController();
   final _crossLifePatternsController = TextEditingController();
-  
-  // Step 4: Experiments
   final _experimentsController = TextEditingController();
+  
+  bool _isFollowUp = false;
 
   @override
   void initState() {
@@ -67,418 +73,58 @@ class _ManualReflectionFormState extends State<ManualReflectionForm> {
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        // Header
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Guided Kolb\'s Reflection',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'This technique is taught in the early lessons of Briefing.',
-                style: TextStyle(fontSize: 12, color: AppColors.textMuted),
-              ),
-            ],
-          ),
-        ),
-
-        // Progress indicator
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            children: List.generate(4, (i) => Expanded(
-              child: Container(
-                height: 4,
-                margin: const EdgeInsets.symmetric(horizontal: 2),
-                decoration: BoxDecoration(
-                  color: i <= _currentStep ? AppColors.primary : AppColors.surfaceLight,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            )),
-          ),
-        ),
-
-        const SizedBox(height: 8),
-
-        // Step title
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            children: [
-              Text(_stepEmoji, style: const TextStyle(fontSize: 18)),
-              const SizedBox(width: 8),
-              Text(
-                _stepTitle,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ],
-          ).animate(key: ValueKey(_currentStep)).fadeIn(duration: 200.ms),
-        ),
-
-        const SizedBox(height: 8),
-
-        // Step content
-        Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: _buildStepContent(),
-          ),
-        ),
-
-        // Navigation buttons
-        Padding(
-          padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(context).viewInsets.bottom + 16),
-          child: Row(
-            children: [
-              if (_currentStep > 0)
-                TextButton(
-                  onPressed: () => setState(() => _currentStep--),
-                  child: const Text('Back'),
-                ),
-              const Spacer(),
-              ElevatedButton(
-                onPressed: _currentStep < 3 
-                    ? () => setState(() => _currentStep++)
-                    : _saveReflection,
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                ),
-                child: Text(_currentStep < 3 ? 'Next' : 'Save Reflection'),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  String get _stepEmoji {
-    switch (_currentStep) {
-      case 0: return '📝';
-      case 1: return '🔍';
-      case 2: return '💡';
-      case 3: return '🧪';
-      default: return '✨';
-    }
-  }
-
-  String get _stepTitle {
-    switch (_currentStep) {
-      case 0: return 'Step 1: Experience';
-      case 1: return 'Step 2: Reflection';
-      case 2: return 'Step 3: Abstraction';
-      case 3: return 'Step 4: Experiment';
-      default: return '';
-    }
-  }
-
-  Widget _buildStepContent() {
-    switch (_currentStep) {
+  /// Get page content for given index (0-11)
+  Widget getPage(int index, double keyboardHeight) {
+    switch (index) {
       case 0:
-        return _buildExperienceStep();
+        return _buildFollowUpPage(keyboardHeight);
       case 1:
-        return _buildReflectionStep();
+        return _buildExperiencePage(keyboardHeight);
       case 2:
-        return _buildAbstractionStep();
+        return _buildMarginalGainPage(keyboardHeight);
       case 3:
-        return _buildExperimentsStep();
+        return _buildEventSequencePage(keyboardHeight);
+      case 4:
+        return _buildFeelingsPage(keyboardHeight);
+      case 5:
+        return _buildDifficultiesPage(keyboardHeight);
+      case 6:
+        return _buildChallengeResponsePage(keyboardHeight);
+      case 7:
+        return _buildTriggersPage(keyboardHeight);
+      case 8:
+        return _buildWhyBehaviorPage(keyboardHeight);
+      case 9:
+        return _buildAbstractionPage(keyboardHeight);
+      case 10:
+        return _buildCrossLifePage(keyboardHeight);
+      case 11:
+        return _buildExperimentsPage(keyboardHeight);
       default:
         return const SizedBox.shrink();
     }
   }
 
-  Widget _buildExperienceStep() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Follow-up question
-        _buildQuestionLabel('Is this Kolb\'s cycle reflecting on an experiment from a previous Kolb\'s?'),
-        _buildHelperText('Always cycle experiments from the previous Kolb\'s into your next one to ensure your marginal gains are compounding.'),
-        GlassCard(
-          child: Row(
-            children: [
-              Icon(Icons.replay_rounded, color: AppColors.primary),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text('Follow-up from previous cycle', style: TextStyle(color: AppColors.textPrimary)),
-              ),
-              Switch(
-                value: _isFollowUp,
-                onChanged: (v) => setState(() => _isFollowUp = v),
-                activeTrackColor: AppColors.primary.withAlpha(128),
-                activeColor: AppColors.primary,
-              ),
-            ],
-          ),
-        ),
-        
-        const SizedBox(height: 20),
-        
-        // Guidelines
-        _buildGuidelinesCard(
-          'Guidelines for experience',
-          [
-            'Process-focused - avoid reflecting on outcomes (e.g. test results) as this is not a process.',
-            'Specific - avoid reflecting on many events and activities as this will make it difficult to produce a targeted and focused reflection.',
-            'Recent - reflecting on experience that happened too long ago makes it easier to forget important parts.',
-            'Concise - the experience is usually only one sentence as we will elaborate on it in the next steps.',
-          ],
-        ),
-        
-        const SizedBox(height: 16),
-        
-        _buildQuestionLabel('What experience do you want to reflect on?'),
-        _buildMultilineField(_experienceController, 'Describe your experience...', 3),
-        
-        const SizedBox(height: 16),
-        
-        _buildQuestionLabel('What would a marginal gain look like?'),
-        _buildHelperText('Remember that marginal gains look different at different levels of the conscious competence model.'),
-        _buildMultilineField(_marginalGainController, 'e.g., Reducing decision fatigue by preparing the night before', 2),
-      ],
-    );
+  /// Get phase name for page index
+  String getPhaseName(int index) {
+    if (index <= 2) return 'Experience';
+    if (index <= 8) return 'Reflection';
+    if (index <= 10) return 'Abstraction';
+    return 'Experiment';
   }
 
-  Widget _buildReflectionStep() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildQuestionLabel('List and describe the sequence of events, in chronological order'),
-        _buildMultilineField(_eventSequenceController, 'What happened first, then...', 3),
-        
-        const SizedBox(height: 16),
-        
-        _buildQuestionLabel('How did you feel about the experience?'),
-        _buildHelperText('Be specific and detailed about how you felt and when you felt this way. Heightened emotions often indicate key parts of the process that contributed to success or failure.'),
-        _buildMultilineField(_feelingsController, 'Frustrated, anxious, calm, motivated...', 2),
-        
-        const SizedBox(height: 16),
-        
-        _buildQuestionLabel('Which aspects (if any) of the process felt especially difficult? Which aspects felt like they went well?'),
-        _buildMultilineField(_difficultiesController, 'Barriers, obstacles, challenges faced', 2),
-        
-        const SizedBox(height: 16),
-        
-        _buildQuestionLabel('How did you respond to challenges and difficulties during this process?'),
-        _buildHelperText('This could include mental or physical activities you used to try and overcome the issue. Be specific and detailed. Skip this question if there were no difficulties.'),
-        _buildMultilineField(_challengeResponseController, 'Your actions, reactions, coping strategies', 2),
-        
-        const SizedBox(height: 16),
-        
-        _buildQuestionLabel('What were the triggers to you feeling the way you did?'),
-        _buildHelperText('Triggers are cues, signs, events, actions, or exposures that made you feel or act a certain way.'),
-        _buildMultilineField(_triggersController, 'Time of day, emotion, environment, person...', 2),
-        
-        const SizedBox(height: 16),
-        
-        _buildQuestionLabel('Why do you think you acted the way you did during this experience?'),
-        _buildHelperText('This question challenges your metacognition (thinking about thinking). Rather than reflecting on "what", we should reflect on "why".'),
-        _buildMultilineField(_whyBehaviorController, 'Root cause analysis...', 3),
-        
-        const SizedBox(height: 16),
-        
-        // Difficulties info box
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.info.withAlpha(20),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.info.withAlpha(50)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Difficulties with reflection', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.info)),
-              const SizedBox(height: 8),
-              Text(
-                'If you struggle with reflecting deeply, it may indicate either a lack of practice or a lack of self-awareness during the experience itself. Focus on completing as much as you can within 30 minutes.',
-                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
+  /// Get phase emoji for page index
+  String getPhaseEmoji(int index) {
+    if (index <= 2) return '📝';
+    if (index <= 8) return '🔍';
+    if (index <= 10) return '💡';
+    return '🧪';
   }
 
-  Widget _buildAbstractionStep() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Guidelines
-        _buildGuidelinesCard(
-          'Guidelines for abstraction',
-          [
-            'Your abstraction should be an analysis and evaluation of your reflection.',
-            'You are examining your reflection for clues that help you understand the root causes for your actions and processes.',
-            'If you struggle to find trends and patterns, your reflection may be too brief or superficial.',
-          ],
-        ),
-        
-        const SizedBox(height: 16),
-        
-        _buildQuestionLabel('What habits, beliefs, and tendencies can you identify from your reflection that explains why you acted the way you did?'),
-        _buildHelperText('For example: you may identify that whenever you feel overwhelmed, you tend to try and avoid challenges and revert to something easier and more comfortable.'),
-        _buildMultilineField(_abstractionController, 'Identify patterns and tendencies...', 4),
-        
-        const SizedBox(height: 16),
-        
-        _buildQuestionLabel('Do you act or respond in similar ways in other parts of your life?'),
-        _buildHelperText('This can help you to identify the holistic impact of the habits and tendencies you found above.'),
-        _buildMultilineField(_crossLifePatternsController, 'Work, relationships, health, hobbies...', 3),
-      ],
-    );
-  }
-
-  Widget _buildExperimentsStep() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Guidelines
-        _buildGuidelinesCard(
-          'Guidelines for experiment',
-          [
-            'Keep your experiments concise, specific, and actionable.',
-            'Avoid vague statements of intention.',
-            'Imagine waking up tomorrow and seeing this list - you want to have a clear idea of exactly what you need to do.',
-            'Less than 3 experiments is ideal. More than 4 experiments is highly unadvised.',
-          ],
-        ),
-        
-        const SizedBox(height: 16),
-        
-        _buildQuestionLabel('List some potential solutions and actions to experiment on'),
-        _buildHelperText('Enter one experiment per line (max 3)'),
-        _buildMultilineField(_experimentsController, '- Experiment 1\n- Experiment 2\n- Experiment 3', 5),
-      ],
-    );
-  }
-
-  Widget _buildGuidelinesCard(String title, List<String> points) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceLight,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.glassBorder),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-          const SizedBox(height: 8),
-          ...points.map((p) {
-            // Parse "BoldWord - rest of text" format
-            final dashIndex = p.indexOf(' - ');
-            if (dashIndex != -1) {
-              final boldPart = p.substring(0, dashIndex);
-              final restPart = p.substring(dashIndex);
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('• ', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
-                    Expanded(
-                      child: RichText(
-                        text: TextSpan(
-                          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                          children: [
-                            TextSpan(text: boldPart, style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-                            TextSpan(text: restPart),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }
-            // Fallback for non-dash format
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('• ', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
-                  Expanded(child: Text(p, style: TextStyle(fontSize: 12, color: AppColors.textSecondary))),
-                ],
-              ),
-            );
-          }),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuestionLabel(String label) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          color: AppColors.textPrimary,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHelperText(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Text(
-        text,
-        style: TextStyle(fontSize: 12, color: AppColors.textMuted),
-      ),
-    );
-  }
-
-  Widget _buildMultilineField(TextEditingController controller, String hint, int lines) {
-    return TextField(
-      controller: controller,
-      maxLines: lines,
-      style: TextStyle(color: AppColors.textPrimary),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: TextStyle(color: AppColors.textMuted.withAlpha(150)),
-        filled: true,
-        fillColor: AppColors.surfaceLight,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.glassBorder),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.glassBorder),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.primary, width: 2),
-        ),
-        contentPadding: const EdgeInsets.all(16),
-      ),
-    );
-  }
-
-  void _saveReflection() {
-    // Create reflection with all manual entry fields
+  /// Save and return the reflection data
+  void saveReflection() {
     final reflection = Reflection(
-      id: '', // Will be set by caller
+      id: '',
       experience: _experienceController.text,
       reflection: '''
 Events: ${_eventSequenceController.text}
@@ -502,9 +148,389 @@ Why: ${_whyBehaviorController.text}
       triggers: _triggersController.text,
       whyBehavior: _whyBehaviorController.text,
       crossLifePatterns: _crossLifePatternsController.text,
-      rawMarkdown: _experimentsController.text, // Store experiments temporarily
+      rawMarkdown: _experimentsController.text,
     );
 
     widget.onSave(reflection);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // This widget is now just a state holder
+    // Pages are rendered by parent via getPage()
+    return const SizedBox.shrink();
+  }
+
+  // ============================================
+  // PAGE BUILDERS - One question per page
+  // ============================================
+
+  Widget _buildFollowUpPage(double keyboardHeight) {
+    return _buildPageLayout(
+      title: 'Is this a follow-up?',
+      subtitle: 'Are you reflecting on an experiment from a previous Kolb\'s cycle?',
+      helperText: 'Always cycle experiments from the previous Kolb\'s into your next one to ensure your marginal gains are compounding.',
+      keyboardHeight: keyboardHeight,
+      child: GlassCard(
+        onTap: () {
+          setState(() => _isFollowUp = !_isFollowUp);
+          if (widget.onChanged != null) widget.onChanged!();
+        },
+        child: Row(
+          children: [
+            Icon(Icons.replay_rounded, color: AppColors.primary, size: 28),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Follow-up from previous cycle',
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _isFollowUp ? 'Yes, this is a follow-up' : 'No, this is a new reflection',
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+            Switch(
+              value: _isFollowUp,
+              onChanged: (v) {
+                setState(() => _isFollowUp = v);
+                if (widget.onChanged != null) widget.onChanged!();
+              },
+              activeTrackColor: AppColors.primary.withAlpha(128),
+              activeThumbColor: AppColors.primary,
+            ),
+          ],
+        ),
+      ),
+      showGuidelines: true,
+      guidelines: [
+        'Process-focused - avoid reflecting on outcomes (e.g. test results)',
+        'Specific - avoid reflecting on many events at once',
+        'Recent - don\'t reflect on experiences too long ago',
+        'Concise - experience is usually one sentence',
+      ],
+    );
+  }
+
+  Widget _buildExperiencePage(double keyboardHeight) {
+    return _buildPageLayout(
+      title: 'What experience do you want to reflect on?',
+      subtitle: 'Describe the specific experience or event',
+      keyboardHeight: keyboardHeight,
+      child: _buildExpandedTextField(
+        controller: _experienceController,
+        hint: 'Describe your experience...\n\nBe specific about what happened, when, and where.',
+      ),
+    );
+  }
+
+  Widget _buildMarginalGainPage(double keyboardHeight) {
+    return _buildPageLayout(
+      title: 'What would a marginal gain look like?',
+      subtitle: 'What small improvement could you achieve?',
+      helperText: 'Remember that marginal gains look different at different levels of the conscious competence model.',
+      keyboardHeight: keyboardHeight,
+      child: _buildExpandedTextField(
+        controller: _marginalGainController,
+        hint: 'e.g., Reducing decision fatigue by preparing the night before\n\nThink about small, achievable improvements.',
+      ),
+    );
+  }
+
+  Widget _buildEventSequencePage(double keyboardHeight) {
+    return _buildPageLayout(
+      title: 'Sequence of events',
+      subtitle: 'List and describe the sequence of events in chronological order',
+      keyboardHeight: keyboardHeight,
+      child: _buildExpandedTextField(
+        controller: _eventSequenceController,
+        hint: 'What happened first, then next...\n\n1. First I...\n2. Then...\n3. After that...',
+      ),
+    );
+  }
+
+  Widget _buildFeelingsPage(double keyboardHeight) {
+    return _buildPageLayout(
+      title: 'How did you feel?',
+      subtitle: 'How did you feel about the experience?',
+      helperText: 'Be specific and detailed about how you felt and when. Heightened emotions often indicate key parts of the process.',
+      keyboardHeight: keyboardHeight,
+      child: _buildExpandedTextField(
+        controller: _feelingsController,
+        hint: 'Frustrated, anxious, calm, motivated...\n\nDescribe when you felt each emotion.',
+      ),
+    );
+  }
+
+  Widget _buildDifficultiesPage(double keyboardHeight) {
+    return _buildPageLayout(
+      title: 'Difficulties and successes',
+      subtitle: 'Which aspects felt especially difficult? Which went well?',
+      keyboardHeight: keyboardHeight,
+      child: _buildExpandedTextField(
+        controller: _difficultiesController,
+        hint: 'Difficult: ...\n\nWent well: ...\n\nBarriers, obstacles, or challenges faced.',
+      ),
+    );
+  }
+
+  Widget _buildChallengeResponsePage(double keyboardHeight) {
+    return _buildPageLayout(
+      title: 'Response to challenges',
+      subtitle: 'How did you respond to challenges and difficulties?',
+      helperText: 'This could include mental or physical activities you used to overcome the issue. Skip if no difficulties.',
+      keyboardHeight: keyboardHeight,
+      child: _buildExpandedTextField(
+        controller: _challengeResponseController,
+        hint: 'Your actions, reactions, coping strategies...\n\nHow did you try to overcome obstacles?',
+      ),
+    );
+  }
+
+  Widget _buildTriggersPage(double keyboardHeight) {
+    return _buildPageLayout(
+      title: 'What were the triggers?',
+      subtitle: 'What triggered you to feel or act the way you did?',
+      helperText: 'Triggers are cues, signs, events, actions, or exposures that made you feel or act a certain way.',
+      keyboardHeight: keyboardHeight,
+      child: _buildExpandedTextField(
+        controller: _triggersController,
+        hint: 'Time of day, emotion, environment, person...\n\nWhat specifically triggered your reactions?',
+      ),
+    );
+  }
+
+  Widget _buildWhyBehaviorPage(double keyboardHeight) {
+    return _buildPageLayout(
+      title: 'Why did you act this way?',
+      subtitle: 'Root cause analysis of your behavior',
+      helperText: 'This question challenges your metacognition (thinking about thinking). Reflect on "why", not just "what".',
+      keyboardHeight: keyboardHeight,
+      child: _buildExpandedTextField(
+        controller: _whyBehaviorController,
+        hint: 'I think I acted this way because...\n\nDig deep into the root causes.',
+      ),
+    );
+  }
+
+  Widget _buildAbstractionPage(double keyboardHeight) {
+    return _buildPageLayout(
+      title: 'Habits, beliefs, and tendencies',
+      subtitle: 'What patterns can you identify from your reflection?',
+      helperText: 'For example: whenever you feel overwhelmed, you tend to avoid challenges and revert to something easier.',
+      keyboardHeight: keyboardHeight,
+      child: _buildExpandedTextField(
+        controller: _abstractionController,
+        hint: 'I notice that I tend to...\n\nIdentify patterns and tendencies in your behavior.',
+      ),
+      showGuidelines: true,
+      guidelines: [
+        'Your abstraction should be an analysis and evaluation of your reflection',
+        'Examine your reflection for clues about root causes',
+        'If you struggle to find patterns, your reflection may be too brief',
+      ],
+    );
+  }
+
+  Widget _buildCrossLifePage(double keyboardHeight) {
+    return _buildPageLayout(
+      title: 'Cross-life patterns',
+      subtitle: 'Do you act similarly in other parts of your life?',
+      helperText: 'This helps identify the holistic impact of your habits and tendencies.',
+      keyboardHeight: keyboardHeight,
+      child: _buildExpandedTextField(
+        controller: _crossLifePatternsController,
+        hint: 'Work: ...\nRelationships: ...\nHealth: ...\nHobbies: ...',
+      ),
+    );
+  }
+
+  Widget _buildExperimentsPage(double keyboardHeight) {
+    return _buildPageLayout(
+      title: 'Experiments to try',
+      subtitle: 'List potential solutions and actions to experiment on',
+      helperText: 'Enter one experiment per line (max 3). Keep them concise, specific, and actionable.',
+      keyboardHeight: keyboardHeight,
+      child: _buildExpandedTextField(
+        controller: _experimentsController,
+        hint: '- Experiment 1: ...\n- Experiment 2: ...\n- Experiment 3: ...',
+      ),
+      showGuidelines: true,
+      guidelines: [
+        'Keep experiments concise, specific, and actionable',
+        'Avoid vague statements of intention',
+        'Imagine waking up tomorrow and seeing this list',
+        'Less than 3 experiments is ideal',
+      ],
+    );
+  }
+
+  // ============================================
+  // HELPER WIDGETS
+  // ============================================
+
+  Widget _buildPageLayout({
+    required String title,
+    required String subtitle,
+    required Widget child,
+    required double keyboardHeight,
+    String? helperText,
+    bool showGuidelines = false,
+    List<String>? guidelines,
+  }) {
+    return SingleChildScrollView(
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        top: 16,
+        bottom: keyboardHeight + 120,
+      ),
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Title
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+              height: 1.3,
+            ),
+          ),
+          const SizedBox(height: 8),
+          
+          // Subtitle
+          Text(
+            subtitle,
+            style: TextStyle(
+              fontSize: 14,
+              color: AppColors.textMuted,
+            ),
+          ),
+          
+          // Helper text
+          if (helperText != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.info.withAlpha(20),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.info.withAlpha(50)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.lightbulb_outline_rounded, size: 18, color: AppColors.info),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      helperText,
+                      style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          
+          // Guidelines
+          if (showGuidelines && guidelines != null) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceLight,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.glassBorder),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Guidelines',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  ...guidelines.map((g) => Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('• ', style: TextStyle(color: AppColors.textMuted)),
+                        Expanded(
+                          child: Text(
+                            g,
+                            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )),
+                ],
+              ),
+            ),
+          ],
+          
+          const SizedBox(height: 20),
+          
+          // Main input
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExpandedTextField({
+    required TextEditingController controller,
+    required String hint,
+  }) {
+    return TextField(
+      controller: controller,
+      maxLines: 10,
+      style: TextStyle(
+        color: AppColors.textPrimary,
+        fontSize: 16,
+        height: 1.5,
+      ),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: TextStyle(
+          color: AppColors.textMuted.withAlpha(150),
+          fontSize: 15,
+        ),
+        filled: true,
+        fillColor: AppColors.surfaceLight,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: AppColors.glassBorder),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: AppColors.glassBorder),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: AppColors.primary, width: 2),
+        ),
+        contentPadding: const EdgeInsets.all(18),
+      ),
+    );
   }
 }

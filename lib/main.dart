@@ -4,12 +4,14 @@ import 'package:provider/provider.dart';
 
 import 'core/theme/theme.dart';
 import 'providers/app_state.dart';
+import 'providers/theme_provider.dart';
 import 'services/storage_service.dart';
 import 'services/notification_service.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/strategy/strategy_screen.dart';
 import 'screens/habits/habits_screen.dart';
 import 'screens/reflection/reflection_screen.dart';
+import 'screens/onboarding/onboarding_screen.dart';
 import 'models/achievement.dart';
 import 'widgets/achievement_notification.dart';
 
@@ -56,15 +58,79 @@ class MarginalGainsApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => AppState()..loadData(),
-      child: MaterialApp(
-        title: 'Marginal Gains',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.darkTheme,
-        home: const MainNavigationShell(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AppState()..loadData()),
+        ChangeNotifierProvider(create: (_) => ThemeProvider()..initialize()),
+      ],
+      child: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, _) {
+          return MaterialApp(
+            title: 'Centile',
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
+            themeMode: themeProvider.systemThemeMode,
+            home: const AppRoot(),
+          );
+        },
       ),
     );
+  }
+}
+
+/// Root widget that checks onboarding status
+class AppRoot extends StatefulWidget {
+  const AppRoot({super.key});
+
+  @override
+  State<AppRoot> createState() => _AppRootState();
+}
+
+class _AppRootState extends State<AppRoot> {
+  bool _showOnboarding = false;
+  bool _isInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkOnboardingStatus();
+  }
+
+  Future<void> _checkOnboardingStatus() async {
+    try {
+      final hasCompleted = StorageService.hasCompletedOnboarding;
+      setState(() {
+        _showOnboarding = !hasCompleted;
+        _isInitialized = true;
+      });
+    } catch (e) {
+      // If error checking, skip onboarding
+      setState(() {
+        _showOnboarding = false;
+        _isInitialized = true;
+      });
+    }
+  }
+
+  void _completeOnboarding() {
+    setState(() => _showOnboarding = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_isInitialized) {
+      // Show loading while checking onboarding status
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_showOnboarding) {
+      return OnboardingScreen(onComplete: _completeOnboarding);
+    }
+
+    return const MainNavigationShell();
   }
 }
 
@@ -121,6 +187,10 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final borderColor = isDark ? AppColors.glassBorder : LightColors.glassBorder;
+    final navBarBgColor = isDark ? AppColors.surface : LightColors.surface;
+
     return Consumer<AppState>(
       builder: (context, state, _) {
         return Stack(
@@ -134,7 +204,7 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
                 decoration: BoxDecoration(
                   border: Border(
                     top: BorderSide(
-                      color: AppColors.glassBorder,
+                      color: borderColor,
                       width: 1,
                     ),
                   ),
@@ -146,7 +216,7 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
                       _currentIndex = index;
                     });
                   },
-                  backgroundColor: AppColors.surface,
+                  backgroundColor: navBarBgColor,
                   indicatorColor: AppColors.primary.withAlpha(50),
                   destinations: _destinations,
                   labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,

@@ -11,6 +11,8 @@ import '../../widgets/glass_card.dart';
 import '../../widgets/task_card.dart';
 import '../../widgets/xp_bar.dart';
 import '../../widgets/why_dialog.dart';
+import '../../widgets/fading_horizontal_scroll.dart';
+import '../../services/haptic_service.dart';
 import 'focus_mode_screen.dart';
 import '../audit/audit_screen.dart';
 import '../shop/shop_screen.dart';
@@ -42,92 +44,128 @@ class _HomeScreenState extends State<HomeScreen> {
         // Apply filters to backlog
         final filteredBacklog = _getFilteredBacklog(state);
 
-        return SafeArea(
-          child: CustomScrollView(
-            slivers: [
-              // Header with XP bar
-              SliverToBoxAdapter(
-                child: Padding(
+        return Scaffold(
+          backgroundColor: Colors.transparent,
+          floatingActionButton: state.canAddPriorityTask 
+            ? FloatingActionButton.extended(
+                onPressed: () => _showAddTaskDialog(context, isPriority: true),
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('Priority Task'),
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+              )
+            : null,
+          body: SafeArea(
+            child: CustomScrollView(
+              slivers: [
+                // Header with XP bar
+                SliverToBoxAdapter(
+                  child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Title on its own line (prevents word wrapping)
+                      Text(
+                            'Today\'s Focus',
+                            style: Theme.of(context).textTheme.displayMedium,
+                          )
+                          .animate()
+                          .fadeIn(duration: 400.ms)
+                          .slideY(begin: -0.1, end: 0),
+                      const SizedBox(height: 12),
+                      // XP bar and actions on second row
                       Row(
                         children: [
-                          Expanded(
-                            child:
-                                Text(
-                                      'Today\'s Focus',
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.displayMedium,
-                                    )
-                                    .animate()
-                                    .fadeIn(duration: 400.ms)
-                                    .slideY(begin: -0.1, end: 0),
-                          ),
-                          XPBar(stats: state.userStats, compact: true),
+                          Expanded(child: XPBar(stats: state.userStats, compact: true)),
                           const SizedBox(width: 8),
-                          // Weekly Audit Icon
-                          GestureDetector(
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const AuditScreen(),
-                              ),
-                            ),
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: AppColors.info.withAlpha(30),
+                          // Weekly Audit Icon - meets 44x44dp touch target
+                          Tooltip(
+                            message: 'Weekly Audit',
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
                                 borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Icon(
-                                Icons.analytics_rounded,
-                                size: 20,
-                                color: AppColors.info,
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const AuditScreen(),
+                                  ),
+                                ),
+                                child: Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color: (Theme.of(context).brightness == Brightness.dark ? AppColors.info : AppColors.info).withAlpha(30),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(
+                                    Icons.analytics_rounded,
+                                    size: 20,
+                                    color: AppColors.info,
+                                  ),
+                                ),
                               ),
                             ),
                           ),
                           const SizedBox(width: 8),
-                          GestureDetector(
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const ShopScreen(),
-                              ),
-                            ),
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: AppColors.warning.withAlpha(30),
+                          // Shop Icon - meets 44x44dp touch target
+                          Tooltip(
+                            message: 'Rewards Shop',
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
                                 borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Text(
-                                '🏪',
-                                style: TextStyle(fontSize: 20),
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const ShopScreen(),
+                                  ),
+                                ),
+                                child: Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color: (Theme.of(context).brightness == Brightness.dark ? AppColors.warning : AppColors.warning).withAlpha(30),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Center(
+                                    child: Text(
+                                      '🏪',
+                                      style: TextStyle(fontSize: 20),
+                                    ),
+                                  ),
+                                ),
                               ),
                             ),
                           ),
                           const SizedBox(width: 8),
-                          // Data Management Icon
-                          GestureDetector(
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const DataManagementScreen(),
-                              ),
-                            ),
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: AppColors.success.withAlpha(30),
+                          // Data Management Icon - meets 44x44dp touch target
+                          Tooltip(
+                            message: 'Backup & Restore',
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
                                 borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Icon(
-                                Icons.backup_rounded,
-                                size: 20,
-                                color: AppColors.success,
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const DataManagementScreen(),
+                                  ),
+                                ),
+                                child: Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color: (Theme.of(context).brightness == Brightness.dark ? AppColors.success : AppColors.success).withAlpha(30),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(
+                                    Icons.backup_rounded,
+                                    size: 20,
+                                    color: AppColors.success,
+                                  ),
+                                ),
                               ),
                             ),
                           ),
@@ -137,7 +175,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Text(
                         'What are the 2 most important tasks you need to do?',
                         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: AppColors.textSecondary,
+                          color: Theme.of(context).brightness == Brightness.dark ? AppColors.textSecondary : LightColors.textSecondary,
                         ),
                       ).animate().fadeIn(delay: 100.ms, duration: 400.ms),
                     ],
@@ -145,7 +183,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
 
-              // Priority Tasks Counter
+              // Priority Tasks Counter - removed duplicate Add Task button (FAB is used instead)
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
@@ -156,11 +194,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       _PriorityCounter(count: state.priorityTasks.length),
                       const Spacer(),
-                      if (state.canAddPriorityTask)
-                        _AddTaskButton(
-                          onPressed: () =>
-                              _showAddTaskDialog(context, isPriority: true),
-                        ),
+                      // No Add Task button here - FAB handles this
                     ],
                   ),
                 ).animate().fadeIn(delay: 200.ms, duration: 400.ms),
@@ -173,9 +207,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     icon: Icons.task_alt_rounded,
                     title: 'No Priority Tasks',
                     subtitle: 'Add your most important tasks for today',
-                    onAdd: state.canAddPriorityTask
-                        ? () => _showAddTaskDialog(context, isPriority: true)
-                        : null,
+                    // No onAdd - FAB handles task creation
+                    onAdd: null,
                   ),
                 )
               else
@@ -192,70 +225,87 @@ class _HomeScreenState extends State<HomeScreen> {
 
               // Backlog Section
               SliverToBoxAdapter(
-                child: GestureDetector(
-                  onTap: () => setState(() => _showBacklog = !_showBacklog),
-                  child: Container(
-                    margin: const EdgeInsets.fromLTRB(20, 24, 20, 8),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceLight.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.glassBorder),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          _showBacklog
-                              ? Icons.keyboard_arrow_down_rounded
-                              : Icons.keyboard_arrow_right_rounded,
-                          color: AppColors.textMuted,
+                child: Builder(
+                  builder: (context) {
+                    final isDark = Theme.of(context).brightness == Brightness.dark;
+                    final surfaceLight = isDark ? AppColors.surfaceLight : LightColors.surfaceLight;
+                    final glassBorder = isDark ? AppColors.glassBorder : LightColors.glassBorder;
+                    final textMuted = isDark ? AppColors.textMuted : LightColors.textMuted;
+                    final textSecondary = isDark ? AppColors.textSecondary : LightColors.textSecondary;
+                    
+                    return GestureDetector(
+                      onTap: () => setState(() => _showBacklog = !_showBacklog),
+                      child: Container(
+                        margin: const EdgeInsets.fromLTRB(20, 24, 20, 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
                         ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Less Important',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.textMuted.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            '${filteredBacklog.length}/${state.backlogTasks.length}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textMuted,
+                        decoration: BoxDecoration(
+                          color: surfaceLight.withAlpha(isDark ? 128 : 255),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: glassBorder),
+                          boxShadow: isDark ? null : [
+                            BoxShadow(
+                              color: Colors.black.withAlpha(8),
+                              blurRadius: 4,
+                              offset: const Offset(0, 1),
                             ),
-                          ),
+                          ],
                         ),
-                        const Spacer(),
-                        IconButton(
-                          icon: Icon(
-                            Icons.add_rounded,
-                            color: AppColors.textMuted,
-                            size: 20,
-                          ),
-                          onPressed: () =>
-                              _showAddTaskDialog(context, isPriority: false),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
+                        child: Row(
+                          children: [
+                            Icon(
+                              _showBacklog
+                                  ? Icons.keyboard_arrow_down_rounded
+                                  : Icons.keyboard_arrow_right_rounded,
+                              color: textMuted,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Less Important',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: textSecondary,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: textMuted.withAlpha(40),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                '${filteredBacklog.length}/${state.backlogTasks.length}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: textMuted,
+                                ),
+                              ),
+                            ),
+                            const Spacer(),
+                            IconButton(
+                              icon: Icon(
+                                Icons.add_rounded,
+                                color: textMuted,
+                                size: 20,
+                              ),
+                              onPressed: () =>
+                                  _showAddTaskDialog(context, isPriority: false),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  ),
+                      ),
+                    );
+                  },
                 ).animate().fadeIn(delay: 300.ms, duration: 400.ms),
               ),
 
@@ -268,8 +318,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Deadline filters
-                        SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
+                        FadingHorizontalScroll(
                           child: Row(
                             children: [
                               _FilterChip(
@@ -315,8 +364,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         const SizedBox(height: 8),
                         // Category filters
-                        SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
+                        FadingHorizontalScroll(
                           child: Row(
                             children: [
                               _FilterChip(
@@ -472,7 +520,8 @@ class _HomeScreenState extends State<HomeScreen> {
               const SliverToBoxAdapter(child: SizedBox(height: 100)),
             ],
           ),
-        );
+        ),
+      );
       },
     );
   }
@@ -492,16 +541,19 @@ class _HomeScreenState extends State<HomeScreen> {
       subtaskCompleted: completed,
       showActions: true,
       onTap: () => _showEditTaskDialog(context, task),
-      onComplete: () => state.toggleTaskComplete(task.id),
+      onComplete: () {
+        HapticService.success();
+        state.toggleTaskComplete(task.id);
+      },
       onDelete: () async {
         if (!task.isCompleted) {
           final reason = await showWhyDialog(context, task);
-          if (reason != null) {
+          if (reason != null && context.mounted) {
             task.abandonReason = reason;
-            state.deleteTask(task.id);
+            _deleteTaskWithUndo(context, task, state);
           }
         } else {
-          state.deleteTask(task.id);
+          _deleteTaskWithUndo(context, task, state);
         }
       },
       onPromote: (showPromote && state.canAddPriorityTask)
@@ -525,6 +577,53 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  /// Delete task with undo capability via SnackBar
+  void _deleteTaskWithUndo(BuildContext context, Task task, AppState state) {
+    // Store task data for potential restore
+    final taskCopy = Task(
+      id: task.id,
+      title: task.title,
+      description: task.description,
+      isPriority: task.isPriority,
+      isCompleted: task.isCompleted,
+      effort: task.effort,
+      impact: task.impact,
+      source: task.source,
+      category: task.category,
+      deadline: task.deadline,
+      customTag: task.customTag,
+      addedToPriorityAt: task.addedToPriorityAt,
+      abandonReason: task.abandonReason,
+    );
+    
+    // Haptic feedback for delete
+    HapticService.mediumImpact();
+    
+    // Delete the task
+    state.deleteTask(task.id);
+    
+    // Show SnackBar with undo action
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Task "${task.title.length > 20 ? '${task.title.substring(0, 20)}...' : task.title}" deleted',
+        ),
+        action: SnackBarAction(
+          label: 'Undo',
+          textColor: AppColors.primary,
+          onPressed: () {
+            // Restore the task
+            state.addTask(taskCopy);
+          },
+        ),
+        duration: const Duration(seconds: 5),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 80), // Above FAB
+      ),
+    );
+  }
+
   void _showAddTaskDialog(BuildContext context, {required bool isPriority}) {
     final controller = TextEditingController();
     TaskEffort effort = TaskEffort.quick;
@@ -532,7 +631,15 @@ class _HomeScreenState extends State<HomeScreen> {
     String category = 'General';
     DateTime? deadline;
     String? customTag;
+    String? titleError; // Validation error message
+    bool showAdvanced = false; // Progressive disclosure toggle
     final state = context.read<AppState>();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surfaceColor = isDark ? AppColors.surface : LightColors.surface;
+    final surfaceLight = isDark ? AppColors.surfaceLight : LightColors.surfaceLight;
+    final glassBorder = isDark ? AppColors.glassBorder : LightColors.glassBorder;
+    final textPrimary = isDark ? AppColors.textPrimary : LightColors.textPrimary;
+    final textMuted = isDark ? AppColors.textMuted : LightColors.textMuted;
 
     showModalBottomSheet(
       context: context,
@@ -547,9 +654,9 @@ class _HomeScreenState extends State<HomeScreen> {
             MediaQuery.of(context).viewInsets.bottom + 20,
           ),
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: surfaceColor,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-            border: Border.all(color: AppColors.glassBorder),
+            border: Border.all(color: glassBorder),
           ),
           child: SingleChildScrollView(
             child: Column(
@@ -564,7 +671,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       decoration: BoxDecoration(
                         color: isPriority
                             ? AppColors.primary
-                            : AppColors.textMuted,
+                            : textMuted,
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -579,11 +686,21 @@ class _HomeScreenState extends State<HomeScreen> {
                 TextField(
                   controller: controller,
                   autofocus: true,
-                  style: TextStyle(color: AppColors.textPrimary),
+                  textCapitalization: TextCapitalization.sentences,
+                  style: TextStyle(color: textPrimary),
+                  onChanged: (value) {
+                    // Clear error when user types
+                    if (titleError != null && value.trim().isNotEmpty) {
+                      setModalState(() => titleError = null);
+                    }
+                  },
                   decoration: InputDecoration(
+                    labelText: 'Task Title',
                     hintText: 'What needs to be done?',
                     filled: true,
-                    fillColor: AppColors.surfaceLight,
+                    fillColor: surfaceLight,
+                    errorText: titleError,
+                    errorStyle: TextStyle(color: AppColors.danger),
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -810,75 +927,120 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // Effort Selection
-                Text(
-                  'Effort Required:',
-                  style: TextStyle(color: AppColors.textMuted, fontSize: 13),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    _ChoiceChip(
-                      label: '⚡ Quick',
-                      selected: effort == TaskEffort.quick,
-                      onSelected: (s) =>
-                          setModalState(() => effort = TaskEffort.quick),
+                // Advanced Options (Collapsible for progressive disclosure)
+                GestureDetector(
+                  onTap: () => setModalState(() => showAdvanced = !showAdvanced),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceLight,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.glassBorder),
                     ),
-                    const SizedBox(width: 12),
-                    _ChoiceChip(
-                      label: '🐘 Deep',
-                      selected: effort == TaskEffort.deep,
-                      onSelected: (s) =>
-                          setModalState(() => effort = TaskEffort.deep),
+                    child: Row(
+                      children: [
+                        Icon(
+                          showAdvanced ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+                          color: AppColors.textMuted,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Advanced Options',
+                          style: TextStyle(color: AppColors.textMuted, fontWeight: FontWeight.w500),
+                        ),
+                        const Spacer(),
+                        if (!showAdvanced && (effort != TaskEffort.quick || impact != TaskImpact.high || customTag != null))
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withAlpha(30),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              'Modified',
+                              style: TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.w500),
+                            ),
+                          ),
+                      ],
                     ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                // Impact Selection
-                Text(
-                  'Expected Impact:',
-                  style: TextStyle(color: AppColors.textMuted, fontSize: 13),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    _ChoiceChip(
-                      label: '⭐ High',
-                      selected: impact == TaskImpact.high,
-                      onSelected: (s) =>
-                          setModalState(() => impact = TaskImpact.high),
-                    ),
-                    const SizedBox(width: 12),
-                    _ChoiceChip(
-                      label: '🧹 Maintenance',
-                      selected: impact == TaskImpact.maintenance,
-                      onSelected: (s) =>
-                          setModalState(() => impact = TaskImpact.maintenance),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 16),
-
-                // Custom Tag
-                Text(
-                  'Custom Tag (Optional):',
-                  style: TextStyle(color: AppColors.textMuted, fontSize: 13),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: TextEditingController(text: customTag)
-                    ..selection = TextSelection.collapsed(
-                      offset: customTag?.length ?? 0,
-                    ),
-                  onChanged: (v) => customTag = v,
-                  decoration: const InputDecoration(
-                    hintText: 'e.g., Urgent, Review',
-                    filled: true,
-                    fillColor: AppColors.surfaceLight,
                   ),
                 ),
+
+                // Collapsible Advanced Options
+                if (showAdvanced) ...[
+                  const SizedBox(height: 16),
+
+                  // Effort Selection
+                  Text(
+                    'Effort Required:',
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      _ChoiceChip(
+                        label: '⚡ Quick',
+                        selected: effort == TaskEffort.quick,
+                        onSelected: (s) =>
+                            setModalState(() => effort = TaskEffort.quick),
+                      ),
+                      const SizedBox(width: 12),
+                      _ChoiceChip(
+                        label: '🐘 Deep',
+                        selected: effort == TaskEffort.deep,
+                        onSelected: (s) =>
+                            setModalState(() => effort = TaskEffort.deep),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Impact Selection
+                  Text(
+                    'Expected Impact:',
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      _ChoiceChip(
+                        label: '⭐ High',
+                        selected: impact == TaskImpact.high,
+                        onSelected: (s) =>
+                            setModalState(() => impact = TaskImpact.high),
+                      ),
+                      const SizedBox(width: 12),
+                      _ChoiceChip(
+                        label: '🧹 Maintenance',
+                        selected: impact == TaskImpact.maintenance,
+                        onSelected: (s) =>
+                            setModalState(() => impact = TaskImpact.maintenance),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Custom Tag
+                  Text(
+                    'Custom Tag (Optional):',
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: TextEditingController(text: customTag)
+                      ..selection = TextSelection.collapsed(
+                        offset: customTag?.length ?? 0,
+                      ),
+                    onChanged: (v) => customTag = v.isEmpty ? null : v,
+                    decoration: const InputDecoration(
+                      hintText: 'e.g., Urgent, Review',
+                      filled: true,
+                      fillColor: AppColors.surfaceLight,
+                    ),
+                  ),
+                ],
 
                 const SizedBox(height: 16),
 
@@ -896,19 +1058,22 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(width: 12),
                     ElevatedButton(
                       onPressed: () {
-                        if (controller.text.trim().isNotEmpty) {
-                          _addTask(
-                            context,
-                            controller.text.trim(),
-                            isPriority,
-                            effort,
-                            impact,
-                            category,
-                            deadline,
-                            customTag,
-                          );
-                          Navigator.pop(context);
+                        final text = controller.text.trim();
+                        if (text.isEmpty) {
+                          setModalState(() => titleError = 'Please enter a task title');
+                          return;
                         }
+                        _addTask(
+                          context,
+                          text,
+                          isPriority,
+                          effort,
+                          impact,
+                          category,
+                          deadline,
+                          customTag,
+                        );
+                        Navigator.pop(context);
                       },
                       child: const Text('Add Task'),
                     ),
@@ -931,6 +1096,12 @@ class _HomeScreenState extends State<HomeScreen> {
     DateTime? deadline = task.deadline;
     String? customTag = task.customTag;
     final state = context.read<AppState>();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surfaceColor = isDark ? AppColors.surface : LightColors.surface;
+    final surfaceLight = isDark ? AppColors.surfaceLight : LightColors.surfaceLight;
+    final glassBorder = isDark ? AppColors.glassBorder : LightColors.glassBorder;
+    final textPrimary = isDark ? AppColors.textPrimary : LightColors.textPrimary;
+    final textMuted = isDark ? AppColors.textMuted : LightColors.textMuted;
 
     showModalBottomSheet(
       context: context,
@@ -945,9 +1116,9 @@ class _HomeScreenState extends State<HomeScreen> {
             MediaQuery.of(context).viewInsets.bottom + 20,
           ),
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: surfaceColor,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-            border: Border.all(color: AppColors.glassBorder),
+            border: Border.all(color: glassBorder),
           ),
           child: SingleChildScrollView(
             child: Column(
@@ -1440,6 +1611,11 @@ class _PriorityCounter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surfaceLight = isDark ? AppColors.surfaceLight : LightColors.surfaceLight;
+    final glassBorder = isDark ? AppColors.glassBorder : LightColors.glassBorder;
+    final textMuted = isDark ? AppColors.textMuted : LightColors.textMuted;
+
     return Row(
       children: List.generate(2, (index) {
         final isFilled = index < count;
@@ -1449,9 +1625,9 @@ class _PriorityCounter extends StatelessWidget {
           margin: const EdgeInsets.only(right: 8),
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: isFilled ? AppColors.primary : AppColors.surfaceLight,
+            color: isFilled ? AppColors.primary : surfaceLight,
             border: Border.all(
-              color: isFilled ? AppColors.primary : AppColors.glassBorder,
+              color: isFilled ? AppColors.primary : glassBorder,
               width: 2,
             ),
           ),
@@ -1460,7 +1636,7 @@ class _PriorityCounter extends StatelessWidget {
               '${index + 1}',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                color: isFilled ? Colors.white : AppColors.textMuted,
+                color: isFilled ? Colors.white : textMuted,
               ),
             ),
           ),
@@ -1470,46 +1646,7 @@ class _PriorityCounter extends StatelessWidget {
   }
 }
 
-class _AddTaskButton extends StatelessWidget {
-  final VoidCallback onPressed;
-
-  const _AddTaskButton({required this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onPressed,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          gradient: AppColors.primaryGradient,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primary.withValues(alpha: 0.3),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.add_rounded, color: Colors.white, size: 20),
-            const SizedBox(width: 6),
-            const Text(
-              'Add Task',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+// _AddTaskButton removed - FAB handles task creation now
 
 class _EmptyState extends StatelessWidget {
   final IconData icon;

@@ -15,20 +15,23 @@ class ShopScreen extends StatelessWidget {
     return Consumer<AppState>(
       builder: (context, state, _) {
         final userCoins = state.userStats.coins;
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final bgColor = isDark ? AppColors.background : LightColors.background;
+        final textPrimary = isDark ? AppColors.textPrimary : LightColors.textPrimary;
         
         return Scaffold(
-          backgroundColor: AppColors.background,
+          backgroundColor: bgColor,
           appBar: AppBar(
             backgroundColor: Colors.transparent,
             elevation: 0,
             title: Row(
               children: [
                 const Text('🌱 '),
-                Text('Tree Nursery', style: TextStyle(color: AppColors.textPrimary)),
+                Text('Tree Nursery', style: TextStyle(color: textPrimary)),
               ],
             ),
             leading: IconButton(
-              icon: Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
+              icon: Icon(Icons.arrow_back_rounded, color: textPrimary),
               onPressed: () => Navigator.pop(context),
             ),
             actions: [
@@ -209,6 +212,10 @@ class _SpeciesCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surfaceLight = isDark ? AppColors.surfaceLight : LightColors.surfaceLight;
+    final glassBorder = isDark ? AppColors.glassBorder : LightColors.glassBorder;
+    final textPrimary = isDark ? AppColors.textPrimary : LightColors.textPrimary;
     
     return GestureDetector(
       onTap: isUnlocked ? null : onPurchase,
@@ -217,12 +224,12 @@ class _SpeciesCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: isUnlocked 
               ? AppColors.success.withAlpha(15)
-              : AppColors.surfaceLight,
+              : surfaceLight,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isUnlocked 
                 ? AppColors.success.withAlpha(100)
-                : canAfford ? AppColors.warning.withAlpha(100) : AppColors.glassBorder,
+                : canAfford ? AppColors.warning.withAlpha(100) : glassBorder,
             width: isUnlocked ? 2 : 1,
           ),
         ),
@@ -259,7 +266,7 @@ class _SpeciesCard extends StatelessWidget {
               design.name,
               style: TextStyle(
                 fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+                color: textPrimary,
               ),
             ),
             const SizedBox(height: 4),

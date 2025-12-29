@@ -4,11 +4,11 @@ import 'package:provider/provider.dart';
 
 import '../../core/theme/theme.dart';
 import '../../models/reflection.dart';
-import '../../models/experiment.dart';
+
 import '../../providers/app_state.dart';
-import '../../services/storage_service.dart';
+
 import '../../widgets/glass_card.dart';
-import '../../widgets/manual_reflection_form.dart';
+
 import 'reflection_detail_screen.dart';
 import 'reflection_archive_screen.dart';
 import '../experiment/experiment_screen.dart';
@@ -39,54 +39,70 @@ class ReflectionScreen extends StatelessWidget {
                             child: Text('Reflection Forge', style: Theme.of(context).textTheme.displayMedium)
                                 .animate().fadeIn(duration: 400.ms),
                           ),
-                          // Experiments button
-                          GestureDetector(
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const ExperimentScreen()),
-                            ),
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: AppColors.warning.withAlpha(30),
+                          // Experiments button - meets 44x44dp touch target
+                          Tooltip(
+                            message: 'Pending Experiments',
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
                                 borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.science_rounded, size: 20, color: AppColors.warning),
-                                  if (state.pendingExperiments.isNotEmpty) ...[
-                                    const SizedBox(width: 4),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.warning,
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      child: Text(
-                                        '${state.pendingExperiments.length}',
-                                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
-                                      ),
-                                    ),
-                                  ],
-                                ],
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => const ExperimentScreen()),
+                                ),
+                                child: Container(
+                                  constraints: const BoxConstraints(minHeight: 44, minWidth: 44),
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.warning.withAlpha(30),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.science_rounded, size: 20, color: AppColors.warning),
+                                      if (state.pendingExperiments.isNotEmpty) ...[
+                                        const SizedBox(width: 4),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.warning,
+                                            borderRadius: BorderRadius.circular(10),
+                                          ),
+                                          child: Text(
+                                            '${state.pendingExperiments.length}',
+                                            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
                               ),
                             ),
                           ),
                           const SizedBox(width: 8),
-                          // Archive button
-                          GestureDetector(
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const ReflectionArchiveScreen()),
-                            ),
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: AppColors.textMuted.withAlpha(30),
+                          // Archive button - meets 44x44dp touch target
+                          Tooltip(
+                            message: 'Reflection Archive',
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
                                 borderRadius: BorderRadius.circular(12),
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => const ReflectionArchiveScreen()),
+                                ),
+                                child: Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.textMuted.withAlpha(30),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(Icons.archive_outlined, size: 20, color: AppColors.textMuted),
+                                ),
                               ),
-                              child: const Icon(Icons.archive_outlined, size: 20, color: AppColors.textMuted),
                             ),
                           ),
                         ],
@@ -265,14 +281,57 @@ class ReflectionScreen extends StatelessWidget {
     final groups = state.activeReflectionGroups;
     if (groups.isEmpty) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Preparing full export...')),
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          backgroundColor: AppColors.surface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          content: Row(
+            children: [
+              const CircularProgressIndicator(color: AppColors.primary),
+              const SizedBox(width: 20),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Exporting PDF...', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 4),
+                    Text('${groups.length} reflection chain(s)', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
 
     try {
       await PdfExportService.exportMultipleGroups(groups, state);
+      if (context.mounted) {
+        Navigator.of(context).pop(); // Close loading dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                const SizedBox(width: 12),
+                Text('Export completed successfully!'),
+              ],
+            ),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     } catch (e) {
       if (context.mounted) {
+        Navigator.of(context).pop(); // Close loading dialog
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Export failed: $e'), backgroundColor: AppColors.danger),
         );
@@ -281,13 +340,13 @@ class ReflectionScreen extends StatelessWidget {
   }
 
   void _showNewReflectionDialog(BuildContext context, {Reflection? previousReflection, String? groupId}) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => NewReflectionSheet(
-        previousReflection: previousReflection,
-        groupId: groupId,
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => NewReflectionSheet(
+          previousReflection: previousReflection,
+          groupId: groupId,
+        ),
       ),
     );
   }
@@ -599,21 +658,10 @@ class _ReflectionReminderBanner extends StatelessWidget {
   }
 
   void _showNewReflectionDialog(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => DraggableScrollableSheet(
-        initialChildSize: 0.9,
-        minChildSize: 0.5,
-        maxChildSize: 0.95,
-        builder: (_, controller) => Container(
-          decoration: BoxDecoration(
-            color: AppColors.background,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: const NewReflectionSheet(),
-        ),
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => const NewReflectionSheet(),
       ),
     );
   }

@@ -50,7 +50,7 @@ class StrategyScreen extends StatelessWidget {
                 .animate().fadeIn(duration: 400.ms),
             const SizedBox(height: 8),
             Text('Anchor your goal and plan your direction',
-                style: TextStyle(color: AppColors.textSecondary)),
+                style: Theme.of(context).textTheme.bodyMedium),
           ],
         ),
       ),
@@ -69,7 +69,7 @@ class StrategyScreen extends StatelessWidget {
                 children: [
                   Icon(Icons.add_circle_rounded, color: AppColors.primary),
                   const SizedBox(width: 12),
-                  Text('Set Your Medium-Term Goal', style: TextStyle(color: AppColors.textPrimary)),
+                  Text('Set Your Medium-Term Goal', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textPrimary)),
                 ],
               ),
             )
@@ -89,7 +89,7 @@ class StrategyScreen extends StatelessWidget {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(state.activeGoal!.title, 
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 18)),
                       ),
                       Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
                     ],
@@ -135,10 +135,10 @@ class StrategyScreen extends StatelessWidget {
                 child: Column(
                   children: [
                     Text('🎯 Select up to 2 Trees to focus on', 
-                        style: TextStyle(color: AppColors.textMuted)),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textMuted)),
                     const SizedBox(height: 8),
                     Text('Only active Trees grow or decay',
-                        style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMuted)),
                   ],
                 ),
               ),
@@ -213,7 +213,7 @@ class StrategyScreen extends StatelessWidget {
                     Icon(Icons.add_circle_rounded, color: AppColors.textMuted),
                     const SizedBox(width: 12),
                     Text('Add Trees from Goal Dissection', 
-                        style: TextStyle(color: AppColors.textMuted)),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textMuted)),
                   ],
                 ),
               ),
@@ -265,7 +265,7 @@ class StrategyScreen extends StatelessWidget {
                       children: [
                         Text(f.treeEmoji, style: const TextStyle(fontSize: 16)),
                         const SizedBox(width: 8),
-                        Text(f.name, style: TextStyle(color: AppColors.textSecondary)),
+                        Text(f.name, style: Theme.of(context).textTheme.bodyMedium),
                       ],
                     ),
                   ),
@@ -278,9 +278,12 @@ class StrategyScreen extends StatelessWidget {
   }
 
   void _showSelectFactorToActivate(BuildContext context, AppState state) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surfaceColor = isDark ? AppColors.surface : LightColors.surface;
+
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.surface,
+      backgroundColor: surfaceColor,
       builder: (ctx) => Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -352,7 +355,7 @@ class StrategyScreen extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Weekly Budget', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                            Text('Weekly Budget', style: Theme.of(context).textTheme.labelLarge),
                             Text(
                               hoursPerWeek == 0 ? 'No time set' : '$hoursPerWeek+ hours/week',
                               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.warning),
@@ -389,29 +392,36 @@ class StrategyScreen extends StatelessWidget {
           // Time availability options
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Text('Set your availability:', style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
+            child: Text('Set your availability:', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMuted)),
           ),
           const SizedBox(height: 8),
-          ...TimeAvailability.values.map((a) => GestureDetector(
-            onTap: () => state.setTimeAvailability(a),
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: state.timeAvailability == a ? AppColors.primary.withOpacity(0.1) : AppColors.surface,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: state.timeAvailability == a ? AppColors.primary : AppColors.glassBorder),
+          ...TimeAvailability.values.map((a) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+            final isSelected = state.timeAvailability == a;
+            final surfaceColor = isDark ? AppColors.surface : LightColors.surface;
+            final glassBorder = isDark ? AppColors.glassBorder : LightColors.glassBorder;
+            
+            return GestureDetector(
+              onTap: () => state.setTimeAvailability(a),
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isSelected ? AppColors.primary.withAlpha(26) : surfaceColor,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: isSelected ? AppColors.primary : glassBorder),
+                ),
+                child: Row(
+                  children: [
+                    Icon(isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
+                        color: isSelected ? AppColors.primary : AppColors.textMuted, size: 20),
+                    const SizedBox(width: 12),
+                    Expanded(child: Text(a.label, style: Theme.of(context).textTheme.bodyMedium)),
+                  ],
+                ),
               ),
-              child: Row(
-                children: [
-                  Icon(state.timeAvailability == a ? Icons.radio_button_checked : Icons.radio_button_off,
-                      color: state.timeAvailability == a ? AppColors.primary : AppColors.textMuted, size: 20),
-                  const SizedBox(width: 12),
-                  Expanded(child: Text(a.label, style: TextStyle(color: AppColors.textPrimary))),
-                ],
-              ),
-            ),
-          )),
+            );
+          }),
         ],
       ),
     );
@@ -434,7 +444,7 @@ class StrategyScreen extends StatelessWidget {
           if (thirtyDayGoals.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text('No 30-day goals set', style: TextStyle(color: AppColors.textMuted)),
+              child: Text('No 30-day goals set', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textMuted)),
             )
           else
             ...thirtyDayGoals.map((t) => _SprintGoalCard(target: t, factors: state.factors)),
@@ -451,7 +461,7 @@ class StrategyScreen extends StatelessWidget {
           if (fourteenDayGoals.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text('No 14-day goals set', style: TextStyle(color: AppColors.textMuted)),
+              child: Text('No 14-day goals set', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textMuted)),
             )
           else
             ...fourteenDayGoals.map((t) => _SprintGoalCard(target: t, factors: state.factors)),
@@ -462,9 +472,12 @@ class StrategyScreen extends StatelessWidget {
 
   void _showAddGoalDialog(BuildContext context) {
     final controller = TextEditingController();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surfaceColor = isDark ? AppColors.surface : LightColors.surface;
+
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.surface,
+      backgroundColor: surfaceColor,
       builder: (ctx) => Padding(
         padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
         child: Column(
@@ -493,9 +506,12 @@ class StrategyScreen extends StatelessWidget {
 
   void _showAddFactorDialog(BuildContext context, String goalId) {
     final controller = TextEditingController();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surfaceColor = isDark ? AppColors.surface : LightColors.surface;
+
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.surface,
+      backgroundColor: surfaceColor,
       builder: (ctx) => Padding(
         padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
         child: Column(
@@ -526,10 +542,12 @@ class StrategyScreen extends StatelessWidget {
   void _showAddSprintDialog(BuildContext context, AppState state, SprintDuration duration) {
     final controller = TextEditingController();
     List<String> selectedFactorIds = [];
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surfaceColor = isDark ? AppColors.surface : LightColors.surface;
     
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.surface,
+      backgroundColor: surfaceColor,
       isScrollControlled: true,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => Padding(
@@ -614,7 +632,7 @@ class _SectionHeader extends StatelessWidget {
         children: [
           Icon(icon, color: color, size: 20),
           const SizedBox(width: 12),
-          Expanded(child: Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary))),
+          Expanded(child: Text(title, style: Theme.of(context).textTheme.titleMedium)),
           if (onAdd != null) IconButton(onPressed: onAdd, icon: Icon(Icons.add_rounded, color: color)),
         ],
       ),
@@ -647,7 +665,7 @@ class _SprintGoalCard extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(target.title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                child: Text(target.title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: 15)),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

@@ -2,7 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../core/theme/theme.dart';
 
-/// Glassmorphism card with blur effect
+/// Glassmorphism card with blur effect - theme-aware
 class GlassCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry? padding;
@@ -23,6 +23,19 @@ class GlassCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    // Theme-aware colors
+    final glassBackground = isDark 
+        ? AppColors.glassBackground 
+        : LightColors.glassBackground;
+    final glassBorder = isDark 
+        ? AppColors.glassBorder 
+        : LightColors.glassBorder;
+    final surfaceColor = isDark
+        ? AppColors.surface
+        : LightColors.surface;
+    
     return Container(
       margin: margin ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: ClipRRect(
@@ -37,26 +50,34 @@ class GlassCard extends StatelessWidget {
               child: Container(
                 padding: padding ?? const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
+                  color: isDark ? null : surfaceColor,
+                  gradient: isDark ? LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: highlighted
                         ? [
-                            AppColors.primary.withOpacity(0.15),
-                            AppColors.primary.withOpacity(0.05),
+                            AppColors.primary.withAlpha(38),
+                            AppColors.primary.withAlpha(13),
                           ]
                         : [
-                            AppColors.glassBackground,
-                            AppColors.glassBackground.withOpacity(0.05),
+                            glassBackground,
+                            glassBackground.withAlpha(13),
                           ],
-                  ),
+                  ) : null,
                   borderRadius: BorderRadius.circular(borderRadius),
                   border: Border.all(
                     color: highlighted 
-                        ? AppColors.primary.withOpacity(0.5) 
-                        : AppColors.glassBorder,
+                        ? AppColors.primary.withAlpha(128)
+                        : glassBorder,
                     width: 1,
                   ),
+                  boxShadow: isDark ? null : [
+                    BoxShadow(
+                      color: Colors.black.withAlpha(12),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
                 child: child,
               ),

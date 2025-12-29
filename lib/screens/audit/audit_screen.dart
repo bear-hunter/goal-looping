@@ -13,13 +13,17 @@ class AuditScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? AppColors.background : LightColors.background;
+    final textPrimary = isDark ? AppColors.textPrimary : LightColors.textPrimary;
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: bgColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
+          icon: Icon(Icons.arrow_back_rounded, color: textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -259,10 +263,13 @@ class AuditScreen extends StatelessWidget {
   void _showEditDialog(BuildContext context, factor, AppState state) {
     int target = factor.targetLevel;
     int current = factor.currentLevel;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surfaceColor = isDark ? AppColors.surface : LightColors.surface;
+    final textMuted = isDark ? AppColors.textMuted : LightColors.textMuted;
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.surface,
+      backgroundColor: surfaceColor,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setModalState) => Padding(
           padding: const EdgeInsets.all(20),
@@ -274,7 +281,7 @@ class AuditScreen extends StatelessWidget {
               const SizedBox(height: 20),
               Text(
                 'Target Level: $target',
-                style: TextStyle(color: AppColors.textMuted),
+                style: TextStyle(color: textMuted),
               ),
               Slider(
                 value: target.toDouble(),
@@ -285,7 +292,7 @@ class AuditScreen extends StatelessWidget {
               ),
               Text(
                 'Current Level: $current',
-                style: TextStyle(color: AppColors.textMuted),
+                style: TextStyle(color: textMuted),
               ),
               Slider(
                 value: current.toDouble(),

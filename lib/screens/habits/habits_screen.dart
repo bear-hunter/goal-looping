@@ -6,6 +6,7 @@ import '../../core/theme/theme.dart';
 import '../../models/habit.dart';
 import '../../providers/app_state.dart';
 import '../../services/storage_service.dart';
+import '../../services/haptic_service.dart';
 import '../../widgets/glass_card.dart';
 import '../../widgets/progress_ring.dart';
 import '../../widgets/habit_calendar.dart';
@@ -592,19 +593,62 @@ class _HabitCardWithCalendarState extends State<_HabitCardWithCalendar>
                             ),
                           ),
                           
-                          // Status or swipe hint
+                          // Status or swipe hint (with menu alternative)
                           if (habit.isLoggedToday)
                             Icon(
                               habit.todayLog?.completed == true ? Icons.check_circle_rounded : Icons.cancel_rounded,
                               color: habit.todayLog?.completed == true ? AppColors.success : AppColors.danger,
                               size: 22,
                             )
-                          else if (!_isRevealed)
+                          else
                             Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.chevron_left_rounded, size: 16, color: AppColors.textMuted.withAlpha(100)),
-                                Text('swipe', style: TextStyle(fontSize: 10, color: AppColors.textMuted.withAlpha(100))),
+                                if (!_isRevealed) ...[
+                                  Icon(Icons.chevron_left_rounded, size: 18, color: AppColors.textMuted),
+                                  Text('swipe', style: TextStyle(fontSize: 12, color: AppColors.textMuted, fontWeight: FontWeight.w500)),
+                                  const SizedBox(width: 8),
+                                ],
+                                // Popup menu as alternative to swipe
+                                PopupMenuButton<bool>(
+                                  tooltip: 'Log habit',
+                                  icon: Icon(
+                                    Icons.more_vert_rounded,
+                                    color: AppColors.textMuted,
+                                    size: 20,
+                                  ),
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+                                  position: PopupMenuPosition.under,
+                                  color: AppColors.surface,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    side: BorderSide(color: AppColors.glassBorder),
+                                  ),
+                                  onSelected: (completed) => _logWithMood(context, completed),
+                                  itemBuilder: (context) => [
+                                    PopupMenuItem(
+                                      value: true,
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.check_circle_rounded, color: AppColors.success, size: 20),
+                                          const SizedBox(width: 12),
+                                          Text('Done', style: TextStyle(color: AppColors.textPrimary)),
+                                        ],
+                                      ),
+                                    ),
+                                    PopupMenuItem(
+                                      value: false,
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.cancel_rounded, color: AppColors.danger, size: 20),
+                                          const SizedBox(width: 12),
+                                          Text('Failed', style: TextStyle(color: AppColors.textPrimary)),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ],
                             ),
                           
@@ -617,7 +661,7 @@ class _HabitCardWithCalendarState extends State<_HabitCardWithCalendar>
                             ),
                             onPressed: () => setState(() => _showCalendar = !_showCalendar),
                             padding: const EdgeInsets.all(4),
-                            constraints: const BoxConstraints(),
+                            constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
                           ),
                         ],
                       ),
@@ -649,6 +693,8 @@ class _HabitCardWithCalendarState extends State<_HabitCardWithCalendar>
       habitCompleted: completed,
       habitName: widget.habit.name,
       onSubmit: (mood, barrier) {
+        // Haptic feedback for habit logging
+        completed ? HapticService.success() : HapticService.lightImpact();
         context.read<AppState>().logHabit(
           widget.habit.id,
           completed: completed,
@@ -690,19 +736,23 @@ class _SwipeActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 42,
-        height: 42,
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(color: color.withAlpha(80), blurRadius: 8, offset: const Offset(0, 2)),
-          ],
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          width: 44, // WCAG minimum touch target
+          height: 44, // WCAG minimum touch target
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(color: color.withAlpha(80), blurRadius: 8, offset: const Offset(0, 2)),
+            ],
+          ),
+          child: Icon(icon, color: Colors.white, size: 22),
         ),
-        child: Icon(icon, color: Colors.white, size: 22),
       ),
     );
   }

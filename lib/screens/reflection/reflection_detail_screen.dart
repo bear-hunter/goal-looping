@@ -170,13 +170,13 @@ class _ReflectionDetailScreenState extends State<ReflectionDetailScreen> {
     final reflection = state.getReflectionById(reflectionId);
     if (reflection == null) return;
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => NewReflectionSheet(
-        previousReflection: reflection,
-        groupId: reflection.groupId,
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => NewReflectionSheet(
+          previousReflection: reflection,
+          groupId: reflection.groupId,
+        ),
       ),
     );
     // Note: State updates will trigger rebuilds automatically via Consumer
@@ -189,12 +189,12 @@ class _ReflectionDetailScreenState extends State<ReflectionDetailScreen> {
     
     final reflection = bookReflections[page];
     
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => NewReflectionSheet(
-        reflectionToEdit: reflection,
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => NewReflectionSheet(
+          reflectionToEdit: reflection,
+        ),
       ),
     );
   }
