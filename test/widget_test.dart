@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:firstmobileapp/main.dart';
+import 'package:centile/main.dart';
 
 void main() {
   testWidgets('App launches successfully', (WidgetTester tester) async {

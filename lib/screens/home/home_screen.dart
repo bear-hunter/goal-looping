@@ -15,6 +15,7 @@ import 'focus_mode_screen.dart';
 import '../audit/audit_screen.dart';
 import '../shop/shop_screen.dart';
 import '../settings/category_management_screen.dart';
+import '../settings/data_management_screen.dart';
 
 /// Module 2: Priority Task Engine (Home Screen)
 /// "What are the 2 most important tasks you need to do?"
@@ -105,6 +106,28 @@ class _HomeScreenState extends State<HomeScreen> {
                               child: const Text(
                                 '🏪',
                                 style: TextStyle(fontSize: 20),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          // Data Management Icon
+                          GestureDetector(
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const DataManagementScreen(),
+                              ),
+                            ),
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppColors.success.withAlpha(30),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(
+                                Icons.backup_rounded,
+                                size: 20,
+                                color: AppColors.success,
                               ),
                             ),
                           ),
