@@ -113,6 +113,13 @@ class Task extends HiveObject {
   @HiveField(18)
   String? customTag;
 
+  // Phase 7: Marginal Gains Framework - 1% Improvement Tracking
+  @HiveField(19)
+  String? marginalGainDescription; // "What 1% improvement does this task represent?"
+
+  @HiveField(20)
+  bool isResearchTask; // True if task is about gaining knowledge (framework key principle)
+
   Task({
     required this.id,
     required this.title,
@@ -133,6 +140,8 @@ class Task extends HiveObject {
     this.category = 'General',
     this.deadline,
     this.customTag,
+    this.marginalGainDescription,
+    this.isResearchTask = false,
   })  : createdAt = createdAt ?? DateTime.now(),
         linkedFactorIds = linkedFactorIds ?? [];
 

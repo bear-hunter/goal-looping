@@ -272,6 +272,7 @@ class AppState extends ChangeNotifier {
     await StorageService.saveFactor(factor);
     final index = _factors.indexWhere((f) => f.id == factor.id);
     if (index != -1) _factors[index] = factor;
+    invalidateGoalProgressCache(); // Re-calculate Goal progress after Factor update
     notifyListeners();
   }
 
@@ -477,6 +478,22 @@ class AppState extends ChangeNotifier {
           coinReward: XPRewards.coinsBacklogTask,
         );
       }
+      
+      // FEEDBACK LOOP: Update health of all linked Factors
+      for (final factorId in task.linkedFactorIds) {
+        try {
+          final factor = _factors.firstWhere((f) => f.id == factorId);
+          if (factor.isActiveFocus) {
+            factor.logWork();
+            // Persist factor update in background
+            StorageService.saveFactor(factor).catchError((e) {
+              debugPrint('Factor health update failed: $e');
+            });
+          }
+        } catch (_) {
+          // Factor not found, skip
+        }
+      }
     }
     
     // Notify UI BEFORE storage - makes completion feel instant
@@ -606,6 +623,19 @@ class AppState extends ChangeNotifier {
         xp: XPRewards.logHabitCompleted,
         coinReward: XPRewards.coinsHabitCompleted,
       );
+      
+      // FEEDBACK LOOP: Update health of linked Factor
+      if (habit.factorId != null) {
+        try {
+          final factor = _factors.firstWhere((f) => f.id == habit.factorId);
+          if (factor.isActiveFocus) {
+            factor.logWork();
+            await StorageService.saveFactor(factor);
+          }
+        } catch (_) {
+          // Factor not found, skip
+        }
+      }
     } else {
       _userStats.earnReward(xp: XPRewards.logHabitFailed, coinReward: 0);
     }
@@ -995,6 +1025,70 @@ Future<void> addExperiment(Experiment experiment) async {
     ).fold<int>(0, (sum, h) => sum + h.logs.where((l) => l.completed).length);
     final reflectionCount = getReflectionsForFactor(factorId).length;
     return taskCount + habitLogs + reflectionCount;
+  }
+
+  // ========== GOAL PROGRESS AGGREGATION (Marginal Gains Feedback Loop) ==========
+  
+  // Cache for goal progress calculations (performance optimization)
+  final Map<String, double> _goalProgressCache = {};
+  DateTime? _goalProgressCacheTime;
+  
+  /// Get weighted progress for a Goal based on all linked Factor progress
+  /// This aggregates the "dissected" components back to the "anchor" goal
+  double getGoalProgress(String goalId) {
+    // Check cache (valid for 30 seconds)
+    final now = DateTime.now();
+    if (_goalProgressCacheTime != null && 
+        now.difference(_goalProgressCacheTime!).inSeconds < 30 &&
+        _goalProgressCache.containsKey(goalId)) {
+      return _goalProgressCache[goalId]!;
+    }
+    
+    final factors = getFactorsForGoal(goalId);
+    if (factors.isEmpty) return 0.0;
+    
+    double weightedProgress = 0.0;
+    double totalWeight = 0.0;
+    
+    for (final factor in factors) {
+      // Weight by gap size - bigger gaps are more important to close
+      final weight = factor.gap > 0 ? factor.gap.toDouble() : 1.0;
+      weightedProgress += factor.progressPercent * weight;
+      totalWeight += weight;
+    }
+    
+    final progress = totalWeight > 0 ? weightedProgress / totalWeight : 0.0;
+    
+    // Update cache
+    _goalProgressCache[goalId] = progress;
+    _goalProgressCacheTime = now;
+    
+    return progress;
+  }
+  
+  /// Invalidate goal progress cache (call after Factor updates)
+  void invalidateGoalProgressCache() {
+    _goalProgressCache.clear();
+    _goalProgressCacheTime = null;
+  }
+  
+  /// Get smart level recommendation based on effort invested
+  /// Returns a suggested level based on work volume
+  int getRecommendedLevel(String factorId) {
+    final effort = getEffortUnitsForFactor(factorId);
+    // Every 10 effort units suggests considering a level increase
+    // Capped at 10 (max level)
+    return (effort ~/ 10 + 1).clamp(1, 10);
+  }
+  
+  /// Check if a Factor's actual level is below the recommended level
+  bool isFactorLevelBehindEffort(String factorId) {
+    final factor = _factors.cast<Factor?>().firstWhere(
+      (f) => f?.id == factorId,
+      orElse: () => null,
+    );
+    if (factor == null) return false;
+    return factor.currentLevel < getRecommendedLevel(factorId);
   }
 
   /// Get reflection by ID

@@ -32,13 +32,15 @@ class GrowthAreaAdapter extends TypeAdapter<GrowthArea> {
       lastWorkedOn: fields[12] as DateTime?,
       healthPercent: fields[13] as double,
       treeDesignId: fields[14] as String,
+      confidenceLevel: fields[15] as int,
+      needsResearch: fields[16] as bool,
     );
   }
 
   @override
   void write(BinaryWriter writer, GrowthArea obj) {
     writer
-      ..writeByte(15)
+      ..writeByte(17)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -68,7 +70,11 @@ class GrowthAreaAdapter extends TypeAdapter<GrowthArea> {
       ..writeByte(13)
       ..write(obj.healthPercent)
       ..writeByte(14)
-      ..write(obj.treeDesignId);
+      ..write(obj.treeDesignId)
+      ..writeByte(15)
+      ..write(obj.confidenceLevel)
+      ..writeByte(16)
+      ..write(obj.needsResearch);
   }
 
   @override

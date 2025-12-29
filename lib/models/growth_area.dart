@@ -74,6 +74,13 @@ class GrowthArea extends HiveObject {
   @HiveField(14)
   String treeDesignId; // Which tree design to use
 
+  // Phase 7: Marginal Gains Framework - Uncertainty Flagging
+  @HiveField(15)
+  int confidenceLevel; // 1-5: How confident are you about this Factor? (1=uncertain, 5=certain)
+
+  @HiveField(16)
+  bool needsResearch; // True if knowledge gap identified (Step 5 of framework)
+
   GrowthArea({
     required this.id,
     required this.name,
@@ -90,6 +97,8 @@ class GrowthArea extends HiveObject {
     this.lastWorkedOn,
     this.healthPercent = 100.0,
     this.treeDesignId = 'oak',
+    this.confidenceLevel = 3,
+    this.needsResearch = false,
   }) : lastUpdated = lastUpdated ?? DateTime.now(),
        linkedHabitIds = linkedHabitIds ?? [];
 
