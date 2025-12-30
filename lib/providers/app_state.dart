@@ -337,7 +337,7 @@ class AppState extends ChangeNotifier {
     // OPTIMISTIC: Add to local state first
     _sprintTargets.add(target);
     notifyListeners();
-    
+
     // Persist in background
     StorageService.saveSprintTarget(target).catchError((e) {
       debugPrint('Sprint target save failed: $e');
@@ -350,7 +350,7 @@ class AppState extends ChangeNotifier {
     final index = _sprintTargets.indexWhere((t) => t.id == target.id);
     if (index != -1) _sprintTargets[index] = target;
     notifyListeners();
-    
+
     // Persist in background
     StorageService.saveSprintTarget(target).catchError((e) {
       debugPrint('Sprint target update failed: $e');
@@ -362,7 +362,7 @@ class AppState extends ChangeNotifier {
     // OPTIMISTIC: Remove from local state first
     _sprintTargets.removeWhere((t) => t.id == id);
     notifyListeners();
-    
+
     // Persist in background
     StorageService.deleteSprintTarget(id).catchError((e) {
       debugPrint('Sprint target delete failed: $e');
@@ -377,7 +377,7 @@ class AppState extends ChangeNotifier {
     target.isFailed = false;
     target.completedAt = DateTime.now();
     notifyListeners();
-    
+
     // Persist in background
     StorageService.saveSprintTarget(target).catchError((e) {
       debugPrint('Sprint target complete failed: $e');
@@ -392,7 +392,7 @@ class AppState extends ChangeNotifier {
     target.isCompleted = false;
     target.completedAt = DateTime.now();
     notifyListeners();
-    
+
     // Persist in background
     StorageService.saveSprintTarget(target).catchError((e) {
       debugPrint('Sprint target fail failed: $e');
@@ -407,7 +407,7 @@ class AppState extends ChangeNotifier {
     target.isFailed = false;
     target.completedAt = null;
     notifyListeners();
-    
+
     // Persist in background
     StorageService.saveSprintTarget(target).catchError((e) {
       debugPrint('Sprint target reset failed: $e');
@@ -446,7 +446,7 @@ class AppState extends ChangeNotifier {
     final index = _tasks.indexWhere((t) => t.id == task.id);
     if (index != -1) _tasks[index] = task;
     notifyListeners();
-    
+
     // Persist in background
     StorageService.saveTask(task).catchError((e) {
       debugPrint('Task update failed: $e');
@@ -454,17 +454,17 @@ class AppState extends ChangeNotifier {
   }
 
   /// Toggle task completion with optimistic UI pattern
-  /// 
+  ///
   /// The UI updates INSTANTLY - storage persistence happens in the background.
   /// This makes the app feel responsive even on slow storage operations.
   Future<void> toggleTaskComplete(String id) async {
     final task = _tasks.firstWhere((t) => t.id == id);
     final wasCompleted = task.isCompleted;
-    
+
     // OPTIMISTIC UPDATE: Change state and notify UI immediately
     task.isCompleted = !task.isCompleted;
     task.completedAt = task.isCompleted ? DateTime.now() : null;
-    
+
     // Award XP if completing (not uncompleting)
     if (task.isCompleted && !wasCompleted) {
       if (task.isPriority) {
@@ -478,7 +478,7 @@ class AppState extends ChangeNotifier {
           coinReward: XPRewards.coinsBacklogTask,
         );
       }
-      
+
       // FEEDBACK LOOP: Update health of all linked Factors
       for (final factorId in task.linkedFactorIds) {
         try {
@@ -495,10 +495,10 @@ class AppState extends ChangeNotifier {
         }
       }
     }
-    
+
     // Notify UI BEFORE storage - makes completion feel instant
     notifyListeners();
-    
+
     // Persist to storage in background (fire-and-forget pattern)
     // If storage fails, the in-memory state is still correct for this session
     StorageService.saveTask(task).catchError((e) {
@@ -517,7 +517,7 @@ class AppState extends ChangeNotifier {
     task.isPriority = true;
     task.addedToPriorityAt = DateTime.now();
     notifyListeners();
-    
+
     // Persist in background
     StorageService.saveTask(task).catchError((e) {
       debugPrint('Task promote failed: $e');
@@ -531,7 +531,7 @@ class AppState extends ChangeNotifier {
     task.isPriority = false;
     task.addedToPriorityAt = null;
     notifyListeners();
-    
+
     // Persist in background
     StorageService.saveTask(task).catchError((e) {
       debugPrint('Task demote failed: $e');
@@ -543,11 +543,40 @@ class AppState extends ChangeNotifier {
     // OPTIMISTIC: Remove from local state first
     _tasks.removeWhere((t) => t.id == id);
     notifyListeners();
-    
+
     // Persist in background
     StorageService.deleteTask(id).catchError((e) {
       debugPrint('Task delete failed: $e');
     });
+  }
+
+  /// Reorder priority tasks with optimistic UI pattern
+  /// Called when user drags a priority task to a new position
+  Future<void> reorderPriorityTasks(int oldIndex, int newIndex) async {
+    // Get current priority tasks in order
+    final priorityList = priorityTasks;
+    if (priorityList.length <= 1) return;
+
+    // Adjust index if moving down (Flutter's reorder callback quirk)
+    final adjustedNewIndex = newIndex > oldIndex ? newIndex - 1 : newIndex;
+    if (oldIndex == adjustedNewIndex) return;
+
+    // OPTIMISTIC: Reorder in local state first
+    final task = priorityList.removeAt(oldIndex);
+    priorityList.insert(adjustedNewIndex, task);
+
+    // Update sortOrder for all priority tasks
+    for (int i = 0; i < priorityList.length; i++) {
+      priorityList[i].sortOrder = i;
+    }
+    notifyListeners();
+
+    // Persist in background
+    for (final t in priorityList) {
+      StorageService.saveTask(t).catchError((e) {
+        debugPrint('Task reorder save failed: $e');
+      });
+    }
   }
 
   // --- Focus Session Logs ---
@@ -623,7 +652,7 @@ class AppState extends ChangeNotifier {
         xp: XPRewards.logHabitCompleted,
         coinReward: XPRewards.coinsHabitCompleted,
       );
-      
+
       // FEEDBACK LOOP: Update health of linked Factor
       if (habit.factorId != null) {
         try {
@@ -684,18 +713,23 @@ class AppState extends ChangeNotifier {
 
   Future<void> deleteReflection(String id) async {
     // Get reflection before deletion to check group/links
-    final reflection = _reflections.firstWhere((r) => r.id == id, orElse: () => Reflection(
-      id: 'dummy', 
-      createdAt: DateTime.now(), 
-      experience: '',
-      reflection: '',
-      abstraction: '',
-    ));
-    
+    final reflection = _reflections.firstWhere(
+      (r) => r.id == id,
+      orElse: () => Reflection(
+        id: 'dummy',
+        createdAt: DateTime.now(),
+        experience: '',
+        reflection: '',
+        abstraction: '',
+      ),
+    );
+
     if (reflection.id == 'dummy') return;
 
     // 1. Chain Repair: Update next links to point to previous
-    final nextReflections = _reflections.where((r) => r.previousReflectionId == id).toList();
+    final nextReflections = _reflections
+        .where((r) => r.previousReflectionId == id)
+        .toList();
     for (final next in nextReflections) {
       next.previousReflectionId = reflection.previousReflectionId;
       await StorageService.saveReflection(next);
@@ -721,10 +755,13 @@ class AppState extends ChangeNotifier {
   }
 
   /// Add a reflection that is part of a cycle (linked to previous)
-  Future<void> addLinkedReflection(Reflection newReflection, {Reflection? previousReflection}) async {
+  Future<void> addLinkedReflection(
+    Reflection newReflection, {
+    Reflection? previousReflection,
+  }) async {
     if (previousReflection != null) {
       ReflectionGroup group;
-      
+
       if (previousReflection.groupId != null) {
         // Use existing group
         final existing = getReflectionGroup(previousReflection.groupId!);
@@ -746,12 +783,12 @@ class AppState extends ChangeNotifier {
           title: 'Reflection Cycle',
           targetFactorId: previousReflection.targetFactorId,
         );
-        
+
         // Add previous reflection to this new group
         group.addReflection(previousReflection.id);
         previousReflection.groupId = group.id;
         await updateReflection(previousReflection); // Saves and updates list
-        
+
         await StorageService.saveReflectionGroup(group);
         _reflectionGroups.add(group);
       }
@@ -760,7 +797,7 @@ class AppState extends ChangeNotifier {
       newReflection.groupId = group.id;
       newReflection.previousReflectionId = previousReflection.id;
       newReflection.isFollowUp = true;
-      
+
       // Update group
       group.addReflection(newReflection.id);
       await StorageService.saveReflectionGroup(group);
@@ -790,16 +827,15 @@ class AppState extends ChangeNotifier {
       (r) => r.id == reflectionId,
       orElse: () => throw Exception('Reflection not found'),
     );
-    
+
     // Get or create the group
     ReflectionGroup group;
     if (original.groupId != null) {
       // Try to find existing group
-      final existingGroup = _reflectionGroups.cast<ReflectionGroup?>().firstWhere(
-        (g) => g?.id == original.groupId,
-        orElse: () => null,
-      );
-      
+      final existingGroup = _reflectionGroups
+          .cast<ReflectionGroup?>()
+          .firstWhere((g) => g?.id == original.groupId, orElse: () => null);
+
       if (existingGroup != null) {
         group = existingGroup;
       } else {
@@ -855,14 +891,13 @@ class AppState extends ChangeNotifier {
       (r) => r.id == reflectionId,
       orElse: () => throw Exception('Reflection not found'),
     );
-    
+
     if (reflection.groupId != null) {
       // Try to find existing group
-      final existingGroup = _reflectionGroups.cast<ReflectionGroup?>().firstWhere(
-        (g) => g?.id == reflection.groupId,
-        orElse: () => null,
-      );
-      
+      final existingGroup = _reflectionGroups
+          .cast<ReflectionGroup?>()
+          .firstWhere((g) => g?.id == reflection.groupId, orElse: () => null);
+
       if (existingGroup != null) {
         // Archive the existing group
         existingGroup.archive();
@@ -891,7 +926,7 @@ class AppState extends ChangeNotifier {
       group.addReflection(reflection.id);
       reflection.groupId = group.id;
       group.archive();
-      
+
       await StorageService.saveReflection(reflection);
       await StorageService.saveReflectionGroup(group);
       _reflectionGroups.add(group);
@@ -906,16 +941,13 @@ class AppState extends ChangeNotifier {
       (g) => g?.id == groupId,
       orElse: () => null,
     );
-    
+
     if (group == null) {
       // Group not in memory, create a placeholder and archive it
-      group = ReflectionGroup(
-        id: groupId,
-        title: 'Archived Reflection',
-      );
+      group = ReflectionGroup(id: groupId, title: 'Archived Reflection');
       _reflectionGroups.add(group);
     }
-    
+
     group.archive();
     await StorageService.saveReflectionGroup(group);
     notifyListeners();
@@ -927,18 +959,18 @@ class AppState extends ChangeNotifier {
       (g) => g?.id == groupId,
       orElse: () => null,
     );
-    
+
     if (group == null) {
       throw Exception('Cannot restore: reflection group not found');
     }
-    
+
     group.restore();
     await StorageService.saveReflectionGroup(group);
     notifyListeners();
   }
 
   // ========== EXPERIMENTS ==========
-Future<void> addExperiment(Experiment experiment) async {
+  Future<void> addExperiment(Experiment experiment) async {
     await StorageService.saveExperiment(experiment);
     _experiments.add(experiment);
     notifyListeners();
@@ -963,7 +995,7 @@ Future<void> addExperiment(Experiment experiment) async {
     final experiment = _experiments.firstWhere((e) => e.id == experimentId);
     experiment.complete();
     await StorageService.saveExperiment(experiment);
-    
+
     // Award XP for completing experiment
     _userStats.earnReward(xp: 30, coinReward: 10);
     notifyListeners();
@@ -1028,50 +1060,50 @@ Future<void> addExperiment(Experiment experiment) async {
   }
 
   // ========== GOAL PROGRESS AGGREGATION (Marginal Gains Feedback Loop) ==========
-  
+
   // Cache for goal progress calculations (performance optimization)
   final Map<String, double> _goalProgressCache = {};
   DateTime? _goalProgressCacheTime;
-  
+
   /// Get weighted progress for a Goal based on all linked Factor progress
   /// This aggregates the "dissected" components back to the "anchor" goal
   double getGoalProgress(String goalId) {
     // Check cache (valid for 30 seconds)
     final now = DateTime.now();
-    if (_goalProgressCacheTime != null && 
+    if (_goalProgressCacheTime != null &&
         now.difference(_goalProgressCacheTime!).inSeconds < 30 &&
         _goalProgressCache.containsKey(goalId)) {
       return _goalProgressCache[goalId]!;
     }
-    
+
     final factors = getFactorsForGoal(goalId);
     if (factors.isEmpty) return 0.0;
-    
+
     double weightedProgress = 0.0;
     double totalWeight = 0.0;
-    
+
     for (final factor in factors) {
       // Weight by gap size - bigger gaps are more important to close
       final weight = factor.gap > 0 ? factor.gap.toDouble() : 1.0;
       weightedProgress += factor.progressPercent * weight;
       totalWeight += weight;
     }
-    
+
     final progress = totalWeight > 0 ? weightedProgress / totalWeight : 0.0;
-    
+
     // Update cache
     _goalProgressCache[goalId] = progress;
     _goalProgressCacheTime = now;
-    
+
     return progress;
   }
-  
+
   /// Invalidate goal progress cache (call after Factor updates)
   void invalidateGoalProgressCache() {
     _goalProgressCache.clear();
     _goalProgressCacheTime = null;
   }
-  
+
   /// Get smart level recommendation based on effort invested
   /// Returns a suggested level based on work volume
   int getRecommendedLevel(String factorId) {
@@ -1080,7 +1112,7 @@ Future<void> addExperiment(Experiment experiment) async {
     // Capped at 10 (max level)
     return (effort ~/ 10 + 1).clamp(1, 10);
   }
-  
+
   /// Check if a Factor's actual level is below the recommended level
   bool isFactorLevelBehindEffort(String factorId) {
     final factor = _factors.cast<Factor?>().firstWhere(

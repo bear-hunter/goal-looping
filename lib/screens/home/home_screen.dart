@@ -9,6 +9,8 @@ import '../../providers/app_state.dart';
 import '../../services/storage_service.dart';
 import '../../widgets/glass_card.dart';
 import '../../widgets/task_card.dart';
+import '../../widgets/swipeable_task_card.dart';
+import '../../widgets/completion_animation.dart';
 import '../../widgets/xp_bar.dart';
 import '../../widgets/why_dialog.dart';
 import '../../widgets/fading_horizontal_scroll.dart';
@@ -32,6 +34,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _showBacklog = false;
   String? _selectedCategoryFilter;
   String _deadlineFilter = 'all'; // 'all', 'today', 'week', 'later', 'none'
+  final GlobalKey _xpBarKey = GlobalKey();
 
   @override
   Widget build(BuildContext context) {
@@ -43,18 +46,30 @@ class _HomeScreenState extends State<HomeScreen> {
 
         // Apply filters to backlog
         final filteredBacklog = _getFilteredBacklog(state);
-        
+
         // Theme variables
         final isDark = Theme.of(context).brightness == Brightness.dark;
-        final surfaceLight = isDark ? AppColors.surfaceLight : LightColors.surfaceLight;
-        final glassBorder = isDark ? AppColors.glassBorder : LightColors.glassBorder;
+        final surfaceLight = isDark
+            ? AppColors.surfaceLight
+            : LightColors.surfaceLight;
+        final glassBorder = isDark
+            ? AppColors.glassBorder
+            : LightColors.glassBorder;
         final textMuted = isDark ? AppColors.textMuted : LightColors.textMuted;
-        final textSecondary = isDark ? AppColors.textSecondary : LightColors.textSecondary;
+        final textSecondary = isDark
+            ? AppColors.textSecondary
+            : LightColors.textSecondary;
+        final textPrimary = isDark
+            ? AppColors.textPrimary
+            : LightColors.textPrimary;
 
         return Scaffold(
           backgroundColor: Colors.transparent,
           floatingActionButton: FloatingActionButton.extended(
-            onPressed: () => _showAddTaskDialog(context, isPriority: state.canAddPriorityTask),
+            onPressed: () => _showAddTaskDialog(
+              context,
+              isPriority: state.canAddPriorityTask,
+            ),
             icon: const Icon(Icons.add_rounded),
             label: const Text('Add Task'),
             backgroundColor: AppColors.primary,
@@ -66,443 +81,464 @@ class _HomeScreenState extends State<HomeScreen> {
                 // Header with XP bar
                 SliverToBoxAdapter(
                   child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Title on its own line (prevents word wrapping)
-                      Text(
-                            'Today\'s Focus',
-                            style: Theme.of(context).textTheme.displayMedium,
-                          )
-                          .animate()
-                          .fadeIn(duration: 400.ms)
-                          .slideY(begin: -0.1, end: 0),
-                      const SizedBox(height: 12),
-                      // XP bar and actions on second row
-                      Row(
+                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Title on its own line (prevents word wrapping)
+                        Text(
+                              'Today\'s Focus',
+                              style: Theme.of(context).textTheme.displayMedium,
+                            )
+                            .animate()
+                            .fadeIn(duration: 400.ms)
+                            .slideY(begin: -0.1, end: 0),
+                        const SizedBox(height: 12),
+                        // XP bar and actions on second row
+                        Row(
+                          children: [
+                            Expanded(
+                              child: XPBar(
+                                key: _xpBarKey,
+                                stats: state.userStats,
+                                compact: true,
+                              ),
+                            ),
+                            const SizedBox(width: AppSpacing.sm),
+                            // Admin Overflow Menu - consolidated from 3 separate icons
+                            PopupMenuButton<String>(
+                              icon: Icon(
+                                Icons.more_vert_rounded,
+                                color: textMuted,
+                              ),
+                              tooltip: 'More options',
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(
+                                  AppRadius.lg,
+                                ),
+                              ),
+                              color: surfaceLight,
+                              onSelected: (value) {
+                                switch (value) {
+                                  case 'audit':
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => const AuditScreen(),
+                                      ),
+                                    );
+                                    break;
+                                  case 'shop':
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => const ShopScreen(),
+                                      ),
+                                    );
+                                    break;
+                                  case 'data':
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            const DataManagementScreen(),
+                                      ),
+                                    );
+                                    break;
+                                }
+                              },
+                              itemBuilder: (context) => [
+                                PopupMenuItem(
+                                  value: 'audit',
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.analytics_rounded,
+                                        size: 20,
+                                        color: AppColors.info,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Text(
+                                        'Weekly Audit',
+                                        style: TextStyle(color: textPrimary),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                PopupMenuItem(
+                                  value: 'shop',
+                                  child: Row(
+                                    children: [
+                                      const Text(
+                                        '🏪',
+                                        style: TextStyle(fontSize: 18),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Text(
+                                        'Rewards Shop',
+                                        style: TextStyle(color: textPrimary),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                PopupMenuItem(
+                                  value: 'data',
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.backup_rounded,
+                                        size: 20,
+                                        color: AppColors.success,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Text(
+                                        'Backup & Restore',
+                                        style: TextStyle(color: textPrimary),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'What are the 2 most important tasks you need to do?',
+                          style: Theme.of(context).textTheme.bodyLarge
+                              ?.copyWith(
+                                color:
+                                    Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? AppColors.textSecondary
+                                    : LightColors.textSecondary,
+                              ),
+                        ).animate().fadeIn(delay: 100.ms, duration: 400.ms),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Priority Tasks Counter - removed duplicate Add Task button (FAB is used instead)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
+                    child: Row(
+                      children: [
+                        _PriorityCounter(count: state.priorityTasks.length),
+                        const Spacer(),
+                        // No Add Task button here - FAB handles this
+                      ],
+                    ),
+                  ).animate().fadeIn(delay: 200.ms, duration: 400.ms),
+                ),
+
+                // Priority Tasks (Top 2)
+                if (state.priorityTasks.isEmpty)
+                  SliverToBoxAdapter(
+                    child: _EmptyState(
+                      icon: Icons.task_alt_rounded,
+                      title: 'No Priority Tasks',
+                      subtitle: 'Add your most important tasks for today',
+                      // No onAdd - FAB handles task creation
+                      onAdd: null,
+                    ),
+                  )
+                else
+                  SliverReorderableList(
+                    itemCount: state.priorityTasks.length,
+                    onReorder: (oldIndex, newIndex) {
+                      state.reorderPriorityTasks(oldIndex, newIndex);
+                    },
+                    itemBuilder: (context, index) {
+                      final task = state.priorityTasks[index];
+                      return ReorderableDelayedDragStartListener(
+                        key: ValueKey(task.id),
+                        index: index,
+                        child: _buildTaskCard(context, task, state),
+                      );
+                    },
+                  ),
+
+                // Backlog Section
+                SliverToBoxAdapter(
+                  child: GestureDetector(
+                    onTap: () => setState(() => _showBacklog = !_showBacklog),
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: AppSpacing.lg,
+                      ),
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      decoration: BoxDecoration(
+                        color: surfaceLight,
+                        borderRadius: BorderRadius.circular(AppRadius.lg),
+                        border: Border.all(color: glassBorder),
+                        boxShadow: AppShadows.card,
+                      ),
+                      child: Row(
                         children: [
-                          Expanded(child: XPBar(stats: state.userStats, compact: true)),
-                          const SizedBox(width: AppSpacing.sm),
-                          // Weekly Audit Icon
-                          Tooltip(
-                            message: 'Weekly Audit',
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(AppRadius.md),
-                                onTap: () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => const AuditScreen(),
-                                  ),
-                                ),
-                                child: Container(
-                                  width: 44,
-                                  height: 44,
-                                  decoration: BoxDecoration(
-                                    color: AppColors.info.withAlpha(20), // Subtler
-                                    borderRadius: BorderRadius.circular(AppRadius.md),
-                                    border: Border.all(color: AppColors.info.withAlpha(30)),
-                                  ),
-                                  child: const Icon(
-                                    Icons.analytics_rounded,
-                                    size: 20,
-                                    color: AppColors.info,
-                                  ),
-                                ),
+                          Icon(
+                            _showBacklog
+                                ? Icons.keyboard_arrow_down_rounded
+                                : Icons.keyboard_arrow_right_rounded,
+                            color: textMuted,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Less Important',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: textSecondary,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: textMuted.withAlpha(40),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              '${filteredBacklog.length}/${state.backlogTasks.length}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: textMuted,
                               ),
                             ),
                           ),
-                          const SizedBox(width: AppSpacing.sm),
-                          // Shop Icon
-                          Tooltip(
-                            message: 'Rewards Shop',
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(AppRadius.md),
-                                onTap: () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => const ShopScreen(),
+                          const Spacer(),
+                          // IconButton removed
+                          const SizedBox(width: 8),
+                        ],
+                      ),
+                    ),
+                  ).animate().fadeIn(delay: 300.ms, duration: 400.ms),
+                ),
+
+                // Backlog Filters
+                if (_showBacklog)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Deadline filters
+                          FadingHorizontalScroll(
+                            child: Row(
+                              children: [
+                                _FilterChip(
+                                  label: 'All',
+                                  selected: _deadlineFilter == 'all',
+                                  onSelected: () =>
+                                      setState(() => _deadlineFilter = 'all'),
+                                ),
+                                const SizedBox(width: 8),
+                                _FilterChip(
+                                  label: 'Today',
+                                  icon: Icons.today_rounded,
+                                  selected: _deadlineFilter == 'today',
+                                  onSelected: () =>
+                                      setState(() => _deadlineFilter = 'today'),
+                                ),
+                                const SizedBox(width: 8),
+                                _FilterChip(
+                                  label: 'This Week',
+                                  icon: Icons.date_range_rounded,
+                                  selected: _deadlineFilter == 'week',
+                                  onSelected: () =>
+                                      setState(() => _deadlineFilter = 'week'),
+                                ),
+                                const SizedBox(width: 8),
+                                _FilterChip(
+                                  label: 'Later',
+                                  icon: Icons.schedule_rounded,
+                                  selected: _deadlineFilter == 'later',
+                                  onSelected: () =>
+                                      setState(() => _deadlineFilter = 'later'),
+                                ),
+                                const SizedBox(width: 8),
+                                _FilterChip(
+                                  label: 'No Deadline',
+                                  icon: Icons.event_busy_rounded,
+                                  selected: _deadlineFilter == 'none',
+                                  onSelected: () =>
+                                      setState(() => _deadlineFilter = 'none'),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          // Category filters
+                          FadingHorizontalScroll(
+                            child: Row(
+                              children: [
+                                _FilterChip(
+                                  label: 'All Categories',
+                                  selected: _selectedCategoryFilter == null,
+                                  onSelected: () => setState(
+                                    () => _selectedCategoryFilter = null,
                                   ),
                                 ),
-                                child: Container(
-                                  width: 44,
-                                  height: 44,
-                                  decoration: BoxDecoration(
-                                    color: AppColors.warning.withAlpha(20),
-                                    borderRadius: BorderRadius.circular(AppRadius.md),
-                                    border: Border.all(color: AppColors.warning.withAlpha(30)),
-                                  ),
-                                  child: const Center(
-                                    child: Text(
-                                      '🏪',
-                                      style: TextStyle(fontSize: 20),
+                                const SizedBox(width: 8),
+                                ...state.taskCategories.map(
+                                  (cat) => Padding(
+                                    padding: const EdgeInsets.only(right: 8),
+                                    child: _FilterChip(
+                                      label: cat,
+                                      selected: _selectedCategoryFilter == cat,
+                                      onSelected: () => setState(
+                                        () => _selectedCategoryFilter = cat,
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: AppSpacing.sm),
-                          // Data Management Icon
-                          Tooltip(
-                            message: 'Backup & Restore',
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(AppRadius.md),
-                                onTap: () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => const DataManagementScreen(),
-                                  ),
-                                ),
-                                child: Container(
-                                  width: 44,
-                                  height: 44,
-                                  decoration: BoxDecoration(
-                                    color: AppColors.success.withAlpha(20),
-                                    borderRadius: BorderRadius.circular(AppRadius.md),
-                                    border: Border.all(color: AppColors.success.withAlpha(30)),
-                                  ),
-                                  child: const Icon(
-                                    Icons.backup_rounded,
-                                    size: 20,
-                                    color: AppColors.success,
-                                  ),
-                                ),
-                              ),
+                              ],
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'What are the 2 most important tasks you need to do?',
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: Theme.of(context).brightness == Brightness.dark ? AppColors.textSecondary : LightColors.textSecondary,
-                        ),
-                      ).animate().fadeIn(delay: 100.ms, duration: 400.ms),
-                    ],
-                  ),
-                ),
-              ),
-
-              // Priority Tasks Counter - removed duplicate Add Task button (FAB is used instead)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 12,
-                  ),
-                  child: Row(
-                    children: [
-                      _PriorityCounter(count: state.priorityTasks.length),
-                      const Spacer(),
-                      // No Add Task button here - FAB handles this
-                    ],
-                  ),
-                ).animate().fadeIn(delay: 200.ms, duration: 400.ms),
-              ),
-
-              // Priority Tasks (Top 2)
-              if (state.priorityTasks.isEmpty)
-                SliverToBoxAdapter(
-                  child: _EmptyState(
-                    icon: Icons.task_alt_rounded,
-                    title: 'No Priority Tasks',
-                    subtitle: 'Add your most important tasks for today',
-                    // No onAdd - FAB handles task creation
-                    onAdd: null,
-                  ),
-                )
-              else
-                SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) => _buildTaskCard(
-                      context,
-                      state.priorityTasks[index],
-                      state,
                     ),
-                    childCount: state.priorityTasks.length,
                   ),
-                ),
 
-              // Backlog Section
-              SliverToBoxAdapter(
-                child: GestureDetector(
-                  onTap: () => setState(() => _showBacklog = !_showBacklog),
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 20, vertical: AppSpacing.lg),
-                    padding: const EdgeInsets.all(AppSpacing.md),
-                    decoration: BoxDecoration(
-                      color: surfaceLight,
-                      borderRadius: BorderRadius.circular(AppRadius.lg),
-                      border: Border.all(color: glassBorder),
-                      boxShadow: AppShadows.card,
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          _showBacklog
-                              ? Icons.keyboard_arrow_down_rounded
-                              : Icons.keyboard_arrow_right_rounded,
-                          color: textMuted,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Less Important',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: textSecondary,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: textMuted.withAlpha(40),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            '${filteredBacklog.length}/${state.backlogTasks.length}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: textMuted,
+                // Backlog Items (Categorized)
+                if (_showBacklog)
+                  ..._getCategorizedFilteredBacklog(
+                    filteredBacklog,
+                  ).entries.map(
+                    (group) => SliverMainAxisGroup(
+                      slivers: [
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(28, 16, 20, 8),
+                            child: Text(
+                              group.key.toUpperCase(),
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textMuted,
+                                letterSpacing: 1.2,
+                              ),
                             ),
                           ),
                         ),
-                        const Spacer(),
-                        // IconButton removed
-                        const SizedBox(width: 8),
-                      ],
-                    ),
-                  ),
-                ).animate().fadeIn(delay: 300.ms, duration: 400.ms),
-              ),
-
-
-              // Backlog Filters
-              if (_showBacklog)
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Deadline filters
-                        FadingHorizontalScroll(
-                          child: Row(
-                            children: [
-                              _FilterChip(
-                                label: 'All',
-                                selected: _deadlineFilter == 'all',
-                                onSelected: () =>
-                                    setState(() => _deadlineFilter = 'all'),
-                              ),
-                              const SizedBox(width: 8),
-                              _FilterChip(
-                                label: 'Today',
-                                icon: Icons.today_rounded,
-                                selected: _deadlineFilter == 'today',
-                                onSelected: () =>
-                                    setState(() => _deadlineFilter = 'today'),
-                              ),
-                              const SizedBox(width: 8),
-                              _FilterChip(
-                                label: 'This Week',
-                                icon: Icons.date_range_rounded,
-                                selected: _deadlineFilter == 'week',
-                                onSelected: () =>
-                                    setState(() => _deadlineFilter = 'week'),
-                              ),
-                              const SizedBox(width: 8),
-                              _FilterChip(
-                                label: 'Later',
-                                icon: Icons.schedule_rounded,
-                                selected: _deadlineFilter == 'later',
-                                onSelected: () =>
-                                    setState(() => _deadlineFilter = 'later'),
-                              ),
-                              const SizedBox(width: 8),
-                              _FilterChip(
-                                label: 'No Deadline',
-                                icon: Icons.event_busy_rounded,
-                                selected: _deadlineFilter == 'none',
-                                onSelected: () =>
-                                    setState(() => _deadlineFilter = 'none'),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        // Category filters
-                        FadingHorizontalScroll(
-                          child: Row(
-                            children: [
-                              _FilterChip(
-                                label: 'All Categories',
-                                selected: _selectedCategoryFilter == null,
-                                onSelected: () => setState(
-                                  () => _selectedCategoryFilter = null,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              ...state.taskCategories.map(
-                                (cat) => Padding(
-                                  padding: const EdgeInsets.only(right: 8),
-                                  child: _FilterChip(
-                                    label: cat,
-                                    selected: _selectedCategoryFilter == cat,
-                                    onSelected: () => setState(
-                                      () => _selectedCategoryFilter = cat,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
+                        SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) => _buildTaskCard(
+                              context,
+                              group.value[index],
+                              state,
+                              showPromote: true,
+                            ),
+                            childCount: group.value.length,
                           ),
                         ),
                       ],
                     ),
                   ),
-                ),
 
-              // Backlog Items (Categorized)
-              if (_showBacklog)
-                ..._getCategorizedFilteredBacklog(filteredBacklog).entries.map(
-                  (group) => SliverMainAxisGroup(
-                    slivers: [
-                      SliverToBoxAdapter(
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(28, 16, 20, 8),
-                          child: Text(
-                            group.key.toUpperCase(),
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.textMuted,
-                              letterSpacing: 1.2,
-                            ),
-                          ),
-                        ),
-                      ),
-                      SliverList(
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) => _buildTaskCard(
-                            context,
-                            group.value[index],
-                            state,
-                            showPromote: true,
-                          ),
-                          childCount: group.value.length,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-              // Pending Experiments
-              if (state.pendingExperiments.isNotEmpty)
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.science_rounded,
-                          color: AppColors.warning,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Pending Experiments',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
+                // Pending Experiments
+                if (state.pendingExperiments.isNotEmpty)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.science_rounded,
                             color: AppColors.warning,
+                            size: 20,
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.warning.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            '${state.pendingExperiments.length}',
+                          const SizedBox(width: 8),
+                          Text(
+                            'Pending Experiments',
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 14,
                               fontWeight: FontWeight.w600,
                               color: AppColors.warning,
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-              if (state.pendingExperiments.isNotEmpty)
-                SliverList(
-                  delegate: SliverChildBuilderDelegate((context, index) {
-                    final exp = state.pendingExperiments[index];
-                    return GlassCard(
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              exp.description,
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          _MiniButton(
-                            label: 'Top 2',
-                            color: AppColors.primary,
-                            onTap: state.canAddPriorityTask
-                                ? () => state.promoteExperimentToTask(
-                                    exp.id,
-                                    toPriority: true,
-                                  )
-                                : null,
-                          ),
                           const SizedBox(width: 8),
-                          _MiniButton(
-                            label: 'Backlog',
-                            color: AppColors.textMuted,
-                            onTap: () => state.promoteExperimentToTask(
-                              exp.id,
-                              toPriority: false,
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.warning.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              '${state.pendingExperiments.length}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.warning,
+                              ),
                             ),
                           ),
                         ],
                       ),
-                    );
-                  }, childCount: state.pendingExperiments.length),
-                ),
+                    ),
+                  ),
 
-              // Bottom padding
-              const SliverToBoxAdapter(child: SizedBox(height: 100)),
-            ],
+                if (state.pendingExperiments.isNotEmpty)
+                  SliverList(
+                    delegate: SliverChildBuilderDelegate((context, index) {
+                      final exp = state.pendingExperiments[index];
+                      return GlassCard(
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                exp.description,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            _MiniButton(
+                              label: 'Top 2',
+                              color: AppColors.primary,
+                              onTap: state.canAddPriorityTask
+                                  ? () => state.promoteExperimentToTask(
+                                      exp.id,
+                                      toPriority: true,
+                                    )
+                                  : null,
+                            ),
+                            const SizedBox(width: 8),
+                            _MiniButton(
+                              label: 'Backlog',
+                              color: AppColors.textMuted,
+                              onTap: () => state.promoteExperimentToTask(
+                                exp.id,
+                                toPriority: false,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }, childCount: state.pendingExperiments.length),
+                  ),
+
+                // Bottom padding
+                const SliverToBoxAdapter(child: SizedBox(height: 100)),
+              ],
+            ),
           ),
-        ),
-      );
+        );
       },
     );
   }
@@ -516,14 +552,29 @@ class _HomeScreenState extends State<HomeScreen> {
     final subtasks = state.getSubtasksForTask(task.id);
     final completed = subtasks.where((s) => s.isCompleted).length;
 
-    return TaskCard(
+    // Use SwipeableTaskCard for gesture-based progressive disclosure
+    return SwipeableTaskCard(
       task: task,
       subtaskCount: subtasks.length,
       subtaskCompleted: completed,
-      showActions: true,
       onTap: () => _showEditTaskDialog(context, task),
       onComplete: () {
         HapticService.success();
+
+        // Show completion animation (Principle 4: Dopamine Feedback Loop)
+        // Calculate position from task card context
+        final box = context.findRenderObject() as RenderBox?;
+        if (box != null) {
+          final position = box.localToGlobal(Offset(24, box.size.height / 2));
+          final xpAmount = task.isPriority ? 15 : 10;
+          CompletionOverlay.show(
+            context,
+            position: position,
+            xpBarKey: _xpBarKey,
+            xpAmount: xpAmount,
+          );
+        }
+
         state.toggleTaskComplete(task.id);
       },
       onDelete: () async {
@@ -576,13 +627,13 @@ class _HomeScreenState extends State<HomeScreen> {
       addedToPriorityAt: task.addedToPriorityAt,
       abandonReason: task.abandonReason,
     );
-    
+
     // Haptic feedback for delete
     HapticService.mediumImpact();
-    
+
     // Delete the task
     state.deleteTask(task.id);
-    
+
     // Show SnackBar with undo action
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
@@ -618,9 +669,15 @@ class _HomeScreenState extends State<HomeScreen> {
     final state = context.read<AppState>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final surfaceColor = isDark ? AppColors.surface : LightColors.surface;
-    final surfaceLight = isDark ? AppColors.surfaceLight : LightColors.surfaceLight;
-    final glassBorder = isDark ? AppColors.glassBorder : LightColors.glassBorder;
-    final textPrimary = isDark ? AppColors.textPrimary : LightColors.textPrimary;
+    final surfaceLight = isDark
+        ? AppColors.surfaceLight
+        : LightColors.surfaceLight;
+    final glassBorder = isDark
+        ? AppColors.glassBorder
+        : LightColors.glassBorder;
+    final textPrimary = isDark
+        ? AppColors.textPrimary
+        : LightColors.textPrimary;
     final textMuted = isDark ? AppColors.textMuted : LightColors.textMuted;
 
     showModalBottomSheet(
@@ -662,7 +719,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         const SizedBox(width: 12),
                         Text(
-                          currentIsPriority ? 'Add Priority Task' : 'Add to Backlog',
+                          currentIsPriority
+                              ? 'Add Priority Task'
+                              : 'Add to Backlog',
                           style: Theme.of(context).textTheme.titleLarge,
                         ),
                       ],
@@ -674,7 +733,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
-                            color: currentIsPriority ? AppColors.primary : textMuted,
+                            color: currentIsPriority
+                                ? AppColors.primary
+                                : textMuted,
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -683,14 +744,22 @@ class _HomeScreenState extends State<HomeScreen> {
                           activeTrackColor: AppColors.primary,
                           onChanged: (val) {
                             if (val && !state.canAddPriorityTask) {
-                              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                              ScaffoldMessenger.of(
+                                context,
+                              ).hideCurrentSnackBar();
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: const Text('Priority list is full (Max 2)'),
+                                  content: const Text(
+                                    'Priority list is full (Max 2)',
+                                  ),
                                   backgroundColor: AppColors.danger,
                                   behavior: SnackBarBehavior.floating,
                                   margin: EdgeInsets.only(
-                                    bottom: MediaQuery.of(context).viewInsets.bottom + 80,
+                                    bottom:
+                                        MediaQuery.of(
+                                          context,
+                                        ).viewInsets.bottom +
+                                        80,
                                     left: 16,
                                     right: 16,
                                   ),
@@ -952,9 +1021,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 // Advanced Options (Collapsible for progressive disclosure)
                 GestureDetector(
-                  onTap: () => setModalState(() => showAdvanced = !showAdvanced),
+                  onTap: () =>
+                      setModalState(() => showAdvanced = !showAdvanced),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 12,
+                      horizontal: 16,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.surfaceLight,
                       borderRadius: BorderRadius.circular(12),
@@ -963,26 +1036,41 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Row(
                       children: [
                         Icon(
-                          showAdvanced ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+                          showAdvanced
+                              ? Icons.expand_less_rounded
+                              : Icons.expand_more_rounded,
                           color: AppColors.textMuted,
                           size: 20,
                         ),
                         const SizedBox(width: 8),
                         Text(
                           'Advanced Options',
-                          style: TextStyle(color: AppColors.textMuted, fontWeight: FontWeight.w500),
+                          style: TextStyle(
+                            color: AppColors.textMuted,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                         const Spacer(),
-                        if (!showAdvanced && (effort != TaskEffort.quick || impact != TaskImpact.high || customTag != null))
+                        if (!showAdvanced &&
+                            (effort != TaskEffort.quick ||
+                                impact != TaskImpact.high ||
+                                customTag != null))
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: AppColors.primary.withAlpha(30),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
                               'Modified',
-                              style: TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.w500),
+                              style: TextStyle(
+                                color: AppColors.primary,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ),
                       ],
@@ -1037,8 +1125,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       _ChoiceChip(
                         label: '🧹 Maintenance',
                         selected: impact == TaskImpact.maintenance,
-                        onSelected: (s) =>
-                            setModalState(() => impact = TaskImpact.maintenance),
+                        onSelected: (s) => setModalState(
+                          () => impact = TaskImpact.maintenance,
+                        ),
                       ),
                     ],
                   ),
@@ -1083,7 +1172,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       onPressed: () {
                         final text = controller.text.trim();
                         if (text.isEmpty) {
-                          setModalState(() => titleError = 'Please enter a task title');
+                          setModalState(
+                            () => titleError = 'Please enter a task title',
+                          );
                           return;
                         }
                         _addTask(
@@ -1121,9 +1212,15 @@ class _HomeScreenState extends State<HomeScreen> {
     final state = context.read<AppState>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final surfaceColor = isDark ? AppColors.surface : LightColors.surface;
-    final surfaceLight = isDark ? AppColors.surfaceLight : LightColors.surfaceLight;
-    final glassBorder = isDark ? AppColors.glassBorder : LightColors.glassBorder;
-    final textPrimary = isDark ? AppColors.textPrimary : LightColors.textPrimary;
+    final surfaceLight = isDark
+        ? AppColors.surfaceLight
+        : LightColors.surfaceLight;
+    final glassBorder = isDark
+        ? AppColors.glassBorder
+        : LightColors.glassBorder;
+    final textPrimary = isDark
+        ? AppColors.textPrimary
+        : LightColors.textPrimary;
     final textMuted = isDark ? AppColors.textMuted : LightColors.textMuted;
 
     showModalBottomSheet(
@@ -1635,8 +1732,12 @@ class _PriorityCounter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final surfaceLight = isDark ? AppColors.surfaceLight : LightColors.surfaceLight;
-    final glassBorder = isDark ? AppColors.glassBorder : LightColors.glassBorder;
+    final surfaceLight = isDark
+        ? AppColors.surfaceLight
+        : LightColors.surfaceLight;
+    final glassBorder = isDark
+        ? AppColors.glassBorder
+        : LightColors.glassBorder;
     final textMuted = isDark ? AppColors.textMuted : LightColors.textMuted;
 
     return Row(
