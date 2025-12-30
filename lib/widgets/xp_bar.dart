@@ -28,7 +28,7 @@ class XPBar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: surfaceLight,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(AppRadius.full),
         border: Border.all(color: glassBorder),
       ),
       child: Row(
@@ -42,11 +42,11 @@ class XPBar extends StatelessWidget {
             ),
             child: Text('${stats.level}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary)),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpacing.sm),
           SizedBox(
             width: 60,
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(AppRadius.sm),
               child: LinearProgressIndicator(
                 value: stats.levelProgress,
                 backgroundColor: surfaceLight,
@@ -55,7 +55,7 @@ class XPBar extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpacing.sm),
           Text('${stats.coins}', style: TextStyle(fontSize: 12, color: AppColors.warning, fontWeight: FontWeight.w600)),
           const SizedBox(width: 2),
           Text('🪙', style: TextStyle(fontSize: 10)),
@@ -66,10 +66,11 @@ class XPBar extends StatelessWidget {
 
   Widget _buildFull() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         gradient: AppColors.primaryGradient,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        boxShadow: AppShadows.primaryGlow, // Add glow
       ),
       child: Column(
         children: [
@@ -167,7 +168,7 @@ class StreakBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final surfaceLight = isDark ? AppColors.surfaceLight : LightColors.surfaceLight;
+
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),

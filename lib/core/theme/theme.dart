@@ -1,54 +1,135 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Marginal Gains App Color Palette
+/// Marginal Gains App Color Palette - Dark Charcoal & Slate Theme
 class AppColors {
-  // Primary Colors - Electric Indigo gradient
-  static const Color primary = Color(0xFF6366F1);
-  static const Color primaryLight = Color(0xFF818CF8);
-  static const Color primaryDark = Color(0xFF4F46E5);
 
-  // Background Colors - Deep navy/charcoal
-  static const Color background = Color(0xFF0F172A);
-  static const Color surface = Color(0xFF1E293B);
-  static const Color surfaceLight = Color(0xFF334155);
+  // =========================
+  // Core Brand (Focus & Systems)
+  // =========================
+  static const Color primary = Color(0xFF4DB6AC); // Soft Teal
+  static const Color primaryLight = Color(0xFF80CBC4);
+  static const Color primaryDark = Color(0xFF00897B);
 
-  // Accent Colors
-  static const Color success = Color(0xFF10B981); // Emerald
-  static const Color warning = Color(0xFFF59E0B); // Amber
-  static const Color danger = Color(0xFFF43F5E); // Rose
-  static const Color info = Color(0xFF0EA5E9); // Sky
+  // =========================
+  // Backgrounds (Low Eye Strain)
+  // =========================
+  static const Color background = Color(0xFF101415); // Warm graphite
+  static const Color surface = Color(0xFF161B1D);
+  static const Color surfaceLight = Color(0xFF1E2528);
 
-  // Text Colors
-  static const Color textPrimary = Color(0xFFF8FAFC);
-  static const Color textSecondary = Color(0xFF94A3B8);
-  static const Color textMuted = Color(0xFF8899AA); // Updated for WCAG AA contrast (4.6:1)
+  // =========================
+  // Feedback & Progress
+  // =========================
+  static const Color success = Color(0xFF81C784); // Growth green
+  static const Color warning = Color(0xFFFFC107); // Insight amber
+  static const Color danger = Color(0xFFE57373); // Soft red
+  static const Color info = Color(0xFF64B5F6); // Calm blue
 
-  // Glass effect colors
-  static const Color glassBorder = Color(0x20FFFFFF);
-  static const Color divider = glassBorder;
-  static const Color glassBackground = Color(0x10FFFFFF);
+  // =========================
+  // Text (Readable, Calm)
+  // =========================
+  static const Color textPrimary = Color(0xFFECEFF1); // Soft white
+  static const Color textSecondary = Color(0xFFB0BEC5);
+  static const Color textMuted = Color(0xFF78909C);
 
-  // Gradients
+  // =========================
+  // Dividers / Glass Effects
+  // =========================
+  static const Color divider = Color(0x1FFFFFFF);
+  static const Color glassBorder = Color(0x25FFFFFF);
+  static const Color glassBackground = Color(0x12FFFFFF);
+
+  // =========================
+  // Gradients (Subtle Only)
+  // =========================
   static const LinearGradient primaryGradient = LinearGradient(
-    colors: [primary, Color(0xFF8B5CF6)],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-
-  static const LinearGradient successGradient = LinearGradient(
-    colors: [success, Color(0xFF34D399)],
+    colors: [
+      primary,
+      Color(0xFF26A69A),
+    ],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
   static const LinearGradient backgroundGradient = LinearGradient(
-    colors: [background, Color(0xFF1A1F35)],
+    colors: [
+      background,
+      Color(0xFF14191B),
+    ],
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
   );
+
+  static const LinearGradient successGradient = LinearGradient(
+    colors: [
+      success,
+      Color(0xFFA5D6A7),
+    ],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
 }
 
+/// Premium Shadow Gradients & Ambient Occlusion
+class AppShadows {
+  // Soft ambient shadow for cards (Depth 1)
+  static List<BoxShadow> get card => [
+    BoxShadow(
+      color: Colors.black.withAlpha(5),
+      blurRadius: 4,
+      offset: const Offset(0, 1),
+    ),
+    BoxShadow(
+      color: Colors.black.withAlpha(10),
+      blurRadius: 12,
+      offset: const Offset(0, 6),
+    ),
+  ];
+
+  // Elevated shadow for floating elements (Depth 2)
+  static List<BoxShadow> get elevated => [
+    BoxShadow(
+      color: Colors.black.withAlpha(8),
+      blurRadius: 8,
+      offset: const Offset(0, 2),
+    ),
+    BoxShadow(
+      color: Colors.black.withAlpha(12),
+      blurRadius: 24,
+      offset: const Offset(0, 12),
+    ),
+  ];
+  
+  // Colorful glow for primary actions
+  static List<BoxShadow> get primaryGlow => [
+    BoxShadow(
+      color: AppColors.primary.withAlpha(80),
+      blurRadius: 20,
+      offset: const Offset(0, 4),
+    ),
+  ];
+}
+
+/// The 8pt Grid System
+class AppSpacing {
+  static const double xs = 4;
+  static const double sm = 8;
+  static const double md = 16;
+  static const double lg = 24;
+  static const double xl = 32;
+  static const double xxl = 48;
+  static const double xxxl = 64;
+}
+
+/// Premium Corner Radii
+class AppRadius {
+  static const double sm = 8;
+  static const double md = 12;
+  static const double lg = 16;
+  static const double xl = 24;
+  static const double full = 999;
+}
 /// App Theme Configuration
 class AppTheme {
   static ThemeData get darkTheme {

@@ -376,20 +376,20 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
+      padding: const EdgeInsets.fromLTRB(20, AppSpacing.lg, 20, AppSpacing.sm),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: color.withAlpha(25), borderRadius: BorderRadius.circular(10)),
+            decoration: BoxDecoration(color: color.withAlpha(25), borderRadius: BorderRadius.circular(AppRadius.md)),
             child: Icon(icon, color: color, size: 20),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                 Text(subtitle, style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
               ],
             ),
@@ -740,16 +740,14 @@ class _SwipeActionButton extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadius.md),
         child: Container(
           width: 44, // WCAG minimum touch target
           height: 44, // WCAG minimum touch target
           decoration: BoxDecoration(
             color: color,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(color: color.withAlpha(80), blurRadius: 8, offset: const Offset(0, 2)),
-            ],
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            boxShadow: AppShadows.elevated,
           ),
           child: Icon(icon, color: Colors.white, size: 22),
         ),

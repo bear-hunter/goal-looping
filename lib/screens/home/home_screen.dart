@@ -43,18 +43,23 @@ class _HomeScreenState extends State<HomeScreen> {
 
         // Apply filters to backlog
         final filteredBacklog = _getFilteredBacklog(state);
+        
+        // Theme variables
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final surfaceLight = isDark ? AppColors.surfaceLight : LightColors.surfaceLight;
+        final glassBorder = isDark ? AppColors.glassBorder : LightColors.glassBorder;
+        final textMuted = isDark ? AppColors.textMuted : LightColors.textMuted;
+        final textSecondary = isDark ? AppColors.textSecondary : LightColors.textSecondary;
 
         return Scaffold(
           backgroundColor: Colors.transparent,
-          floatingActionButton: state.canAddPriorityTask 
-            ? FloatingActionButton.extended(
-                onPressed: () => _showAddTaskDialog(context, isPriority: true),
-                icon: const Icon(Icons.add_rounded),
-                label: const Text('Priority Task'),
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-              )
-            : null,
+          floatingActionButton: FloatingActionButton.extended(
+            onPressed: () => _showAddTaskDialog(context, isPriority: state.canAddPriorityTask),
+            icon: const Icon(Icons.add_rounded),
+            label: const Text('Add Task'),
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.white,
+          ),
           body: SafeArea(
             child: CustomScrollView(
               slivers: [
@@ -78,14 +83,14 @@ class _HomeScreenState extends State<HomeScreen> {
                       Row(
                         children: [
                           Expanded(child: XPBar(stats: state.userStats, compact: true)),
-                          const SizedBox(width: 8),
-                          // Weekly Audit Icon - meets 44x44dp touch target
+                          const SizedBox(width: AppSpacing.sm),
+                          // Weekly Audit Icon
                           Tooltip(
                             message: 'Weekly Audit',
                             child: Material(
                               color: Colors.transparent,
                               child: InkWell(
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(AppRadius.md),
                                 onTap: () => Navigator.push(
                                   context,
                                   MaterialPageRoute(
@@ -96,8 +101,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                   width: 44,
                                   height: 44,
                                   decoration: BoxDecoration(
-                                    color: (Theme.of(context).brightness == Brightness.dark ? AppColors.info : AppColors.info).withAlpha(30),
-                                    borderRadius: BorderRadius.circular(12),
+                                    color: AppColors.info.withAlpha(20), // Subtler
+                                    borderRadius: BorderRadius.circular(AppRadius.md),
+                                    border: Border.all(color: AppColors.info.withAlpha(30)),
                                   ),
                                   child: const Icon(
                                     Icons.analytics_rounded,
@@ -108,14 +114,14 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          // Shop Icon - meets 44x44dp touch target
+                          const SizedBox(width: AppSpacing.sm),
+                          // Shop Icon
                           Tooltip(
                             message: 'Rewards Shop',
                             child: Material(
                               color: Colors.transparent,
                               child: InkWell(
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(AppRadius.md),
                                 onTap: () => Navigator.push(
                                   context,
                                   MaterialPageRoute(
@@ -126,8 +132,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                   width: 44,
                                   height: 44,
                                   decoration: BoxDecoration(
-                                    color: (Theme.of(context).brightness == Brightness.dark ? AppColors.warning : AppColors.warning).withAlpha(30),
-                                    borderRadius: BorderRadius.circular(12),
+                                    color: AppColors.warning.withAlpha(20),
+                                    borderRadius: BorderRadius.circular(AppRadius.md),
+                                    border: Border.all(color: AppColors.warning.withAlpha(30)),
                                   ),
                                   child: const Center(
                                     child: Text(
@@ -139,14 +146,14 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          // Data Management Icon - meets 44x44dp touch target
+                          const SizedBox(width: AppSpacing.sm),
+                          // Data Management Icon
                           Tooltip(
                             message: 'Backup & Restore',
                             child: Material(
                               color: Colors.transparent,
                               child: InkWell(
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(AppRadius.md),
                                 onTap: () => Navigator.push(
                                   context,
                                   MaterialPageRoute(
@@ -157,8 +164,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                   width: 44,
                                   height: 44,
                                   decoration: BoxDecoration(
-                                    color: (Theme.of(context).brightness == Brightness.dark ? AppColors.success : AppColors.success).withAlpha(30),
-                                    borderRadius: BorderRadius.circular(12),
+                                    color: AppColors.success.withAlpha(20),
+                                    borderRadius: BorderRadius.circular(AppRadius.md),
+                                    border: Border.all(color: AppColors.success.withAlpha(30)),
                                   ),
                                   child: const Icon(
                                     Icons.backup_rounded,
@@ -225,89 +233,62 @@ class _HomeScreenState extends State<HomeScreen> {
 
               // Backlog Section
               SliverToBoxAdapter(
-                child: Builder(
-                  builder: (context) {
-                    final isDark = Theme.of(context).brightness == Brightness.dark;
-                    final surfaceLight = isDark ? AppColors.surfaceLight : LightColors.surfaceLight;
-                    final glassBorder = isDark ? AppColors.glassBorder : LightColors.glassBorder;
-                    final textMuted = isDark ? AppColors.textMuted : LightColors.textMuted;
-                    final textSecondary = isDark ? AppColors.textSecondary : LightColors.textSecondary;
-                    
-                    return GestureDetector(
-                      onTap: () => setState(() => _showBacklog = !_showBacklog),
-                      child: Container(
-                        margin: const EdgeInsets.fromLTRB(20, 24, 20, 8),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
+                child: GestureDetector(
+                  onTap: () => setState(() => _showBacklog = !_showBacklog),
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 20, vertical: AppSpacing.lg),
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    decoration: BoxDecoration(
+                      color: surfaceLight,
+                      borderRadius: BorderRadius.circular(AppRadius.lg),
+                      border: Border.all(color: glassBorder),
+                      boxShadow: AppShadows.card,
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          _showBacklog
+                              ? Icons.keyboard_arrow_down_rounded
+                              : Icons.keyboard_arrow_right_rounded,
+                          color: textMuted,
                         ),
-                        decoration: BoxDecoration(
-                          color: surfaceLight.withAlpha(isDark ? 128 : 255),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: glassBorder),
-                          boxShadow: isDark ? null : [
-                            BoxShadow(
-                              color: Colors.black.withAlpha(8),
-                              blurRadius: 4,
-                              offset: const Offset(0, 1),
-                            ),
-                          ],
+                        const SizedBox(width: 8),
+                        Text(
+                          'Less Important',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: textSecondary,
+                          ),
                         ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              _showBacklog
-                                  ? Icons.keyboard_arrow_down_rounded
-                                  : Icons.keyboard_arrow_right_rounded,
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: textMuted.withAlpha(40),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            '${filteredBacklog.length}/${state.backlogTasks.length}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
                               color: textMuted,
                             ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Less Important',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: textSecondary,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: textMuted.withAlpha(40),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Text(
-                                '${filteredBacklog.length}/${state.backlogTasks.length}',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: textMuted,
-                                ),
-                              ),
-                            ),
-                            const Spacer(),
-                            IconButton(
-                              icon: Icon(
-                                Icons.add_rounded,
-                                color: textMuted,
-                                size: 20,
-                              ),
-                              onPressed: () =>
-                                  _showAddTaskDialog(context, isPriority: false),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                            ),
-                          ],
+                          ),
                         ),
-                      ),
-                    );
-                  },
+                        const Spacer(),
+                        // IconButton removed
+                        const SizedBox(width: 8),
+                      ],
+                    ),
+                  ),
                 ).animate().fadeIn(delay: 300.ms, duration: 400.ms),
               ),
+
 
               // Backlog Filters
               if (_showBacklog)
@@ -625,6 +606,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showAddTaskDialog(BuildContext context, {required bool isPriority}) {
+    bool currentIsPriority = isPriority;
     final controller = TextEditingController();
     TaskEffort effort = TaskEffort.quick;
     TaskImpact impact = TaskImpact.high;
@@ -664,21 +646,62 @@ class _HomeScreenState extends State<HomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Container(
-                      width: 4,
-                      height: 24,
-                      decoration: BoxDecoration(
-                        color: isPriority
-                            ? AppColors.primary
-                            : textMuted,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
+                    Row(
+                      children: [
+                        Container(
+                          width: 4,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            color: currentIsPriority
+                                ? AppColors.primary
+                                : textMuted,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          currentIsPriority ? 'Add Priority Task' : 'Add to Backlog',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 12),
-                    Text(
-                      isPriority ? 'Add Priority Task' : 'Add to Backlog',
-                      style: Theme.of(context).textTheme.titleLarge,
+                    Row(
+                      children: [
+                        Text(
+                          'High Priority',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: currentIsPriority ? AppColors.primary : textMuted,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Switch(
+                          value: currentIsPriority,
+                          activeTrackColor: AppColors.primary,
+                          onChanged: (val) {
+                            if (val && !state.canAddPriorityTask) {
+                              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: const Text('Priority list is full (Max 2)'),
+                                  backgroundColor: AppColors.danger,
+                                  behavior: SnackBarBehavior.floating,
+                                  margin: EdgeInsets.only(
+                                    bottom: MediaQuery.of(context).viewInsets.bottom + 80,
+                                    left: 16,
+                                    right: 16,
+                                  ),
+                                ),
+                              );
+                              return;
+                            }
+                            setModalState(() => currentIsPriority = val);
+                          },
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -1066,7 +1089,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         _addTask(
                           context,
                           text,
-                          isPriority,
+                          currentIsPriority,
                           effort,
                           impact,
                           category,

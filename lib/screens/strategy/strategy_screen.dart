@@ -50,7 +50,9 @@ class StrategyScreen extends StatelessWidget {
                 .animate().fadeIn(duration: 400.ms),
             const SizedBox(height: 8),
             Text('Anchor your goal and plan your direction',
-                style: Theme.of(context).textTheme.bodyMedium),
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: Theme.of(context).textTheme.bodySmall?.color, // Muted
+                )),
           ],
         ),
       ),
@@ -327,15 +329,16 @@ class StrategyScreen extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(AppSpacing.md),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [AppColors.warning.withAlpha(30), AppColors.primary.withAlpha(20)],
+                  colors: [AppColors.warning.withAlpha(20), AppColors.primary.withAlpha(15)], // Subtler
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.warning.withAlpha(50)),
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+                border: Border.all(color: AppColors.warning.withAlpha(30)),
+                boxShadow: AppShadows.card,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -405,11 +408,11 @@ class StrategyScreen extends StatelessWidget {
               onTap: () => state.setTimeAvailability(a),
               child: Container(
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(AppSpacing.md),
                 decoration: BoxDecoration(
-                  color: isSelected ? AppColors.primary.withAlpha(26) : surfaceColor,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: isSelected ? AppColors.primary : glassBorder),
+                  color: isSelected ? AppColors.primary.withAlpha(20) : surfaceColor,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  border: Border.all(color: isSelected ? AppColors.primary.withAlpha(50) : glassBorder),
                 ),
                 child: Row(
                   children: [
@@ -756,12 +759,21 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
+      padding: const EdgeInsets.fromLTRB(20, AppSpacing.lg, 20, AppSpacing.sm), // More top padding
       child: Row(
         children: [
-          Icon(icon, color: color, size: 20),
-          const SizedBox(width: 12),
-          Expanded(child: Text(title, style: Theme.of(context).textTheme.titleMedium)),
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: color.withAlpha(20),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: color, size: 18),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(child: Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w700, // Bold headers
+          ))),
           if (onAdd != null) IconButton(onPressed: onAdd, icon: Icon(Icons.add_rounded, color: color)),
         ],
       ),

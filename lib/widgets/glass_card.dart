@@ -56,16 +56,12 @@ class GlassCard extends StatelessWidget {
               border: Border.all(
                 color: highlighted 
                     ? AppColors.primary.withAlpha(128)
-                    : glassBorder,
+                    : glassBorder.withAlpha(15), // Reduced from default opacity for subtler glass look
                 width: 1,
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withAlpha(isDark ? 30 : 12),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+              boxShadow: highlighted 
+                  ? AppShadows.primaryGlow 
+                  : AppShadows.card,
             ),
             child: child,
           ),

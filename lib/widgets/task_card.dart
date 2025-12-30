@@ -80,7 +80,7 @@ class TaskCard extends StatelessWidget {
             onTap: onTap,
             borderRadius: BorderRadius.circular(16),
           child: Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(AppSpacing.md),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
@@ -88,148 +88,201 @@ class TaskCard extends StatelessWidget {
                 colors: task.isPriority
                     ? [
                         isStale
-                            ? AppColors.warning.withAlpha(30)
-                            : AppColors.primary.withAlpha(30),
+                            ? AppColors.warning.withAlpha(25) // Reduced from 30
+                            : AppColors.primary.withAlpha(25),
                         isStale
-                            ? AppColors.warning.withAlpha(12)
-                            : AppColors.primary.withAlpha(12),
+                            ? AppColors.warning.withAlpha(5) // Reduced from 12
+                            : AppColors.primary.withAlpha(5),
                       ]
                     : [
                         surfaceColor,
-                        surfaceColor.withAlpha(isDark ? 200 : 255),
+                        surfaceColor.withAlpha(isDark ? 230 : 255), // More solid
                       ],
               ),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(AppRadius.lg),
               border: Border.all(
                 color: isStale
-                    ? AppColors.warning.withAlpha(100)
+                    ? AppColors.warning.withAlpha(80)
                     : task.isPriority 
-                        ? AppColors.primary.withAlpha(100) 
-                        : glassBorder,
-                width: task.isPriority ? 1.5 : 1,
+                        ? AppColors.primary.withAlpha(80) 
+                        : glassBorder.withAlpha(15), // Subtler border
+                width: task.isPriority ? 1 : 1, // Thinner border (was 1.5/1)
               ),
+              boxShadow: task.isPriority 
+                  ? AppShadows.primaryGlow 
+                  : AppShadows.card, // Multi-layer shadow
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start, // Align top for multi-line titles
                   children: [
                     // Checkbox
-                    GestureDetector(
-                      onTap: onComplete,
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        width: 24,
-                        height: 24,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: task.isCompleted 
-                              ? AppColors.success 
-                              : Colors.transparent,
-                          border: Border.all(
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2), // Visual alignment with text
+                      child: GestureDetector(
+                        onTap: onComplete,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          width: 24,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
                             color: task.isCompleted 
                                 ? AppColors.success 
-                                : textMuted,
-                            width: 2,
+                                : Colors.transparent,
+                            border: Border.all(
+                              color: task.isCompleted 
+                                  ? AppColors.success 
+                                  : textMuted.withAlpha(100), // More subtle border
+                              width: 2,
+                            ),
                           ),
-                        ),
-                        child: task.isCompleted
-                            ? const Icon(
-                                Icons.check_rounded,
-                                size: 16,
-                                color: Colors.white,
-                              )
-                            : null,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    
-                    // Title
-                    Expanded(
-                      child: Text(
-                        task.title,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: task.isCompleted 
-                              ? textMuted 
-                              : textPrimary,
-                          decoration: task.isCompleted 
-                              ? TextDecoration.lineThrough 
+                          child: task.isCompleted
+                              ? const Icon(
+                                  Icons.check_rounded,
+                                  size: 16,
+                                  color: Colors.white,
+                                )
                               : null,
                         ),
                       ),
                     ),
-
-                    // Effort/Impact tags
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: surfaceLight,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        '${task.effortEmoji} ${task.impactEmoji}',
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                    ),
+                    const SizedBox(width: AppSpacing.md), // Was 12
                     
-                    const SizedBox(width: 6),
+                    // Title & Tags Column
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            task.title,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700, // Bold for hierarchy
+                              color: task.isCompleted 
+                                  ? textMuted 
+                                  : textPrimary,
+                              decoration: task.isCompleted 
+                                  ? TextDecoration.lineThrough 
+                                  : null,
+                              height: 1.3,
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.xs), // Spacing between title and metadata
+                          
+                          // Metadata Row (Tags + Source)
+                          Wrap(
+                            spacing: AppSpacing.sm,
+                            runSpacing: 4,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              // Effort/Impact tags
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: surfaceLight,
+                                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                                ),
+                                child: Text(
+                                  '${task.effortEmoji} ${task.impactEmoji}',
+                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
+                                ),
+                              ),
 
-                    // Source indicator
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: sourceColor.withAlpha(25),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        sourceIcon,
-                        size: 16,
-                        color: sourceColor,
+                              // Source indicator
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: sourceColor.withAlpha(15), // Softer background
+                                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      sourceIcon,
+                                      size: 12,
+                                      color: sourceColor,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      task.source.name.toUpperCase(), // Stylized source name? Or just icon? 
+                                      // Actually existing code just showed icon. Let's keep it minimal or descriptive.
+                                      // Original code just had Icon.
+                                      // Let's stick to Icon but maybe cleaner. 
+                                      // Wait, original had Icon inside container.
+                                      // I will keep just the Icon but in a nice pill.
+                                     ),
+                                  ],
+                                ),
+                              ),
+                              // Wait, I broke the 'Icon' only logic in my thought. The original code:
+                              /*
+                                Container(
+                                  padding: ...,
+                                  child: Icon(sourceIcon, size: 16, color: sourceColor),
+                                )
+                              */
+                              // I will revert to just the icon in the container.
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: sourceColor.withAlpha(20),
+                                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                                ),
+                                child: Icon(
+                                  sourceIcon,
+                                  size: 14, // Smaller
+                                  color: sourceColor,
+                                ),
+                              ),
+
+                              if (task.customTag != null && task.customTag!.isNotEmpty) ...[
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary.withAlpha(15),
+                                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                                    border: Border.all(color: AppColors.primary.withAlpha(30)),
+                                  ),
+                                  child: Text(
+                                    task.customTag!,
+                                    style: const TextStyle(
+                                      fontSize: 11, 
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ],
                       ),
                     ),
-
-                    if (task.customTag != null && task.customTag!.isNotEmpty) ...[
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withAlpha(20),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: AppColors.primary.withAlpha(50)),
-                        ),
-                        child: Text(
-                          task.customTag!,
-                          style: TextStyle(
-                            fontSize: 11, 
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ),
-                    ],
                   ],
                 ),
 
                 // Staleness warning
                 if (isStale && task.isPriority && !task.isCompleted) ...[
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.sm),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
-                      color: AppColors.warning.withAlpha(30),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.warning.withAlpha(60)),
+                      color: AppColors.warning.withAlpha(20),
+                      borderRadius: BorderRadius.circular(AppRadius.sm),
+                      border: Border.all(color: AppColors.warning.withAlpha(40)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.hourglass_bottom_rounded, size: 14, color: AppColors.warning),
+                        const Icon(Icons.hourglass_bottom_rounded, size: 14, color: AppColors.warning),
                         const SizedBox(width: 6),
                         Text(
-                          '⚡ Stuck for ${task.hoursInPriority}h - Break it down?',
-                          style: TextStyle(fontSize: 11, color: AppColors.warning, fontWeight: FontWeight.w500),
+                          'Stuck for ${task.hoursInPriority}h', // Shortened text
+                          style: const TextStyle(fontSize: 11, color: AppColors.warning, fontWeight: FontWeight.w600),
                         ),
                       ],
                     ),
@@ -238,12 +291,12 @@ class TaskCard extends StatelessWidget {
 
                 // Subtask progress
                 if (subtaskCount > 0) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   Row(
                     children: [
                       Expanded(
                         child: ClipRRect(
-                          borderRadius: BorderRadius.circular(4),
+                          borderRadius: BorderRadius.circular(2),
                           child: LinearProgressIndicator(
                             value: subtaskCount > 0 
                                 ? subtaskCompleted / subtaskCount 
