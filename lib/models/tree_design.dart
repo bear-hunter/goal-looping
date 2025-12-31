@@ -77,7 +77,7 @@ class TreeDesigns {
       id: 'pine',
       name: 'Pine',
       emoji: '🌲',
-      cost: 100,
+      cost: 500, // 5x increase
       colorHex: '2E7D32', // Deep green
       trunkColorHex: '5D4037',
       description: 'An evergreen conifer',
@@ -87,7 +87,7 @@ class TreeDesigns {
       id: 'cherry',
       name: 'Cherry Blossom',
       emoji: '🌸',
-      cost: 200,
+      cost: 1500, // 7.5x increase
       colorHex: 'F48FB1', // Pink blossoms
       trunkColorHex: '6D4C41',
       description: 'Delicate pink flowering tree',
@@ -97,7 +97,7 @@ class TreeDesigns {
       id: 'willow',
       name: 'Weeping Willow',
       emoji: '🌿',
-      cost: 300,
+      cost: 2500, // 8.3x increase
       colorHex: '8BC34A', // Light green
       trunkColorHex: '795548',
       description: 'Graceful drooping branches',
@@ -107,7 +107,7 @@ class TreeDesigns {
       id: 'maple',
       name: 'Maple',
       emoji: '🍁',
-      cost: 500,
+      cost: 4000, // 8x increase
       colorHex: 'FF7043', // Orange fall color
       trunkColorHex: '5D4037',
       description: 'Brilliant autumn colors',
@@ -117,7 +117,7 @@ class TreeDesigns {
       id: 'baobab',
       name: 'Baobab',
       emoji: '🏝️',
-      cost: 1000,
+      cost: 10000, // 10x increase
       colorHex: '66BB6A', // Sparse green
       trunkColorHex: '8D6E63',
       description: 'Exotic African tree of life',

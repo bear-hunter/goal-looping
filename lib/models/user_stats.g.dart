@@ -31,13 +31,18 @@ class UserStatsAdapter extends TypeAdapter<UserStats> {
       lastResetDate: fields[11] as DateTime?,
       lastReflectionAt: fields[12] as DateTime?,
       reminderFrequency: fields[13] as ReflectionReminderFrequency,
+      totalTasksCompleted: fields[14] as int,
+      priorityTasksCompleted: fields[15] as int,
+      backlogTasksCompleted: fields[16] as int,
+      tasksCompletedToday: fields[17] as int,
+      lastTaskCompletionReset: fields[18] as DateTime?,
     );
   }
 
   @override
   void write(BinaryWriter writer, UserStats obj) {
     writer
-      ..writeByte(14)
+      ..writeByte(19)
       ..writeByte(0)
       ..write(obj.totalXP)
       ..writeByte(1)
@@ -65,7 +70,17 @@ class UserStatsAdapter extends TypeAdapter<UserStats> {
       ..writeByte(12)
       ..write(obj.lastReflectionAt)
       ..writeByte(13)
-      ..write(obj.reminderFrequency);
+      ..write(obj.reminderFrequency)
+      ..writeByte(14)
+      ..write(obj.totalTasksCompleted)
+      ..writeByte(15)
+      ..write(obj.priorityTasksCompleted)
+      ..writeByte(16)
+      ..write(obj.backlogTasksCompleted)
+      ..writeByte(17)
+      ..write(obj.tasksCompletedToday)
+      ..writeByte(18)
+      ..write(obj.lastTaskCompletionReset);
   }
 
   @override

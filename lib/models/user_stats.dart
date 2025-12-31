@@ -51,6 +51,22 @@ class UserStats extends HiveObject {
   @HiveField(13)
   ReflectionReminderFrequency reminderFrequency;
 
+  // Task completion statistics
+  @HiveField(14)
+  int totalTasksCompleted;
+
+  @HiveField(15)
+  int priorityTasksCompleted;
+
+  @HiveField(16)
+  int backlogTasksCompleted;
+
+  @HiveField(17)
+  int tasksCompletedToday;
+
+  @HiveField(18)
+  DateTime? lastTaskCompletionReset;
+
   UserStats({
     this.totalXP = 0,
     this.coins = 0,
@@ -66,8 +82,13 @@ class UserStats extends HiveObject {
     this.lastResetDate,
     this.lastReflectionAt,
     this.reminderFrequency = ReflectionReminderFrequency.daily,
-  })  : unlockedBadgeIds = unlockedBadgeIds ?? [],
-        createdAt = createdAt ?? DateTime.now();
+    this.totalTasksCompleted = 0,
+    this.priorityTasksCompleted = 0,
+    this.backlogTasksCompleted = 0,
+    this.tasksCompletedToday = 0,
+    this.lastTaskCompletionReset,
+  }) : unlockedBadgeIds = unlockedBadgeIds ?? [],
+       createdAt = createdAt ?? DateTime.now();
 
   /// Current level based on XP (sqrt progression)
   int get level => (sqrt(totalXP / 100)).floor() + 1;
@@ -89,9 +110,14 @@ class UserStats extends HiveObject {
   void _checkDailyReset() {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    
-    if (lastResetDate == null || 
-        DateTime(lastResetDate!.year, lastResetDate!.month, lastResetDate!.day) != today) {
+
+    if (lastResetDate == null ||
+        DateTime(
+              lastResetDate!.year,
+              lastResetDate!.month,
+              lastResetDate!.day,
+            ) !=
+            today) {
       xpEarnedToday = 0;
       coinsEarnedToday = 0;
       actionsToday = 0;
@@ -113,19 +139,52 @@ class UserStats extends HiveObject {
   /// Add XP and coins with diminishing returns, update streak
   void earnReward({required int xp, required int coinReward}) {
     _checkDailyReset();
-    
+
     // Apply diminishing returns
     final adjustedXP = (xp * _diminishingMultiplier).round();
     final adjustedCoins = (coinReward * _diminishingMultiplier).round();
-    
+
     totalXP += adjustedXP;
     coins += adjustedCoins;
     xpEarnedToday += adjustedXP;
     coinsEarnedToday += adjustedCoins;
     actionsToday++;
-    
+
     _updateStreak();
     save();
+  }
+
+  /// Record task completion for statistics
+  void recordTaskCompletion({required bool isPriority}) {
+    _checkTaskCompletionReset();
+
+    totalTasksCompleted++;
+    tasksCompletedToday++;
+
+    if (isPriority) {
+      priorityTasksCompleted++;
+    } else {
+      backlogTasksCompleted++;
+    }
+
+    save();
+  }
+
+  /// Check and reset daily task completion counter if new day
+  void _checkTaskCompletionReset() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    if (lastTaskCompletionReset == null ||
+        DateTime(
+              lastTaskCompletionReset!.year,
+              lastTaskCompletionReset!.month,
+              lastTaskCompletionReset!.day,
+            ) !=
+            today) {
+      tasksCompletedToday = 0;
+      lastTaskCompletionReset = now;
+    }
   }
 
   /// Spend coins (returns false if not enough)
@@ -163,11 +222,15 @@ class UserStats extends HiveObject {
   void _updateStreak() {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    
+
     if (lastActiveDate != null) {
-      final lastActive = DateTime(lastActiveDate!.year, lastActiveDate!.month, lastActiveDate!.day);
+      final lastActive = DateTime(
+        lastActiveDate!.year,
+        lastActiveDate!.month,
+        lastActiveDate!.day,
+      );
       final daysDiff = today.difference(lastActive).inDays;
-      
+
       if (daysDiff == 0) {
         // Same day, no change
         return;
@@ -186,12 +249,12 @@ class UserStats extends HiveObject {
       // First activity
       currentStreak = 1;
     }
-    
+
     // Update longest streak
     if (currentStreak > longestStreak) {
       longestStreak = currentStreak;
     }
-    
+
     lastActiveDate = now;
   }
 
@@ -200,7 +263,11 @@ class UserStats extends HiveObject {
     if (lastActiveDate == null) return false;
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final lastActive = DateTime(lastActiveDate!.year, lastActiveDate!.month, lastActiveDate!.day);
+    final lastActive = DateTime(
+      lastActiveDate!.year,
+      lastActiveDate!.month,
+      lastActiveDate!.day,
+    );
     return today.difference(lastActive).inDays >= 1;
   }
 
@@ -224,7 +291,7 @@ class UserStats extends HiveObject {
   /// Check if reflection is overdue based on reminder frequency
   bool get isReflectionOverdue {
     if (reminderFrequency == ReflectionReminderFrequency.disabled) return false;
-    
+
     // If never reflected, check against account creation
     final referenceDate = lastReflectionAt ?? createdAt;
 
@@ -236,7 +303,7 @@ class UserStats extends HiveObject {
   bool get isReflectionCriticallyOverdue {
     // If never reflected, check against account creation
     final referenceDate = lastReflectionAt ?? createdAt;
-    
+
     return DateTime.now().difference(referenceDate).inDays >= 7;
   }
 
@@ -263,7 +330,7 @@ class XPRewards {
   static const int completeReflection = 100;
   static const int improveFactorLevel = 200;
   static const int dailyStreakBonus = 10; // Multiplied by streak days
-  
+
   // Coin rewards
   static const int coinsPriorityTask = 10;
   static const int coinsBacklogTask = 5;

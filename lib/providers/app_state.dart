@@ -479,6 +479,9 @@ class AppState extends ChangeNotifier {
         );
       }
 
+      // Record task completion for statistics
+      _userStats.recordTaskCompletion(isPriority: task.isPriority);
+
       // FEEDBACK LOOP: Update health of all linked Factors
       for (final factorId in task.linkedFactorIds) {
         try {

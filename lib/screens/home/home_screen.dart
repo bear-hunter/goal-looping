@@ -14,6 +14,7 @@ import '../../widgets/completion_animation.dart';
 import '../../widgets/xp_bar.dart';
 import '../../widgets/why_dialog.dart';
 import '../../widgets/fading_horizontal_scroll.dart';
+import '../../widgets/task_stats_card.dart';
 import '../../services/haptic_service.dart';
 import 'focus_mode_screen.dart';
 import '../audit/audit_screen.dart';
@@ -32,6 +33,8 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   bool _showBacklog = false;
+  bool _showCompleted = false;
+  bool _showStats = true;
   String? _selectedCategoryFilter;
   String _deadlineFilter = 'all'; // 'all', 'today', 'week', 'later', 'none'
   final GlobalKey _xpBarKey = GlobalKey();
@@ -533,6 +536,154 @@ class _HomeScreenState extends State<HomeScreen> {
                     }, childCount: state.pendingExperiments.length),
                   ),
 
+                // Task Statistics Card (collapsible)
+                SliverToBoxAdapter(
+                  child: GestureDetector(
+                    onTap: () => setState(() => _showStats = !_showStats),
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: AppSpacing.lg,
+                      ),
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      decoration: BoxDecoration(
+                        color: surfaceLight,
+                        borderRadius: BorderRadius.circular(AppRadius.lg),
+                        border: Border.all(color: glassBorder),
+                        boxShadow: AppShadows.card,
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            _showStats
+                                ? Icons.keyboard_arrow_down_rounded
+                                : Icons.keyboard_arrow_right_rounded,
+                            color: textMuted,
+                          ),
+                          const SizedBox(width: 8),
+                          Icon(
+                            Icons.bar_chart_rounded,
+                            color: AppColors.primary,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Task Statistics',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ).animate().fadeIn(delay: 350.ms, duration: 400.ms),
+                ),
+
+                if (_showStats)
+                  SliverToBoxAdapter(
+                    child: TaskStatsCard(stats: state.userStats),
+                  ),
+
+                // Completed Tasks Section
+                SliverToBoxAdapter(
+                  child: GestureDetector(
+                    onTap: () =>
+                        setState(() => _showCompleted = !_showCompleted),
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: AppSpacing.md,
+                      ),
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      decoration: BoxDecoration(
+                        color: surfaceLight,
+                        borderRadius: BorderRadius.circular(AppRadius.lg),
+                        border: Border.all(color: glassBorder),
+                        boxShadow: AppShadows.card,
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            _showCompleted
+                                ? Icons.keyboard_arrow_down_rounded
+                                : Icons.keyboard_arrow_right_rounded,
+                            color: textMuted,
+                          ),
+                          const SizedBox(width: 8),
+                          Icon(
+                            Icons.check_circle_rounded,
+                            color: AppColors.success,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Completed',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: textSecondary,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.success.withAlpha(40),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              '${state.completedTasks.length}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.success,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ).animate().fadeIn(delay: 400.ms, duration: 400.ms),
+                ),
+
+                // Completed Tasks List
+                if (_showCompleted && state.completedTasks.isNotEmpty)
+                  SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final task = state.completedTasks[index];
+                        return Opacity(
+                          opacity: 0.7,
+                          child: _buildTaskCard(context, task, state),
+                        );
+                      },
+                      childCount: state.completedTasks.length > 20
+                          ? 20 // Limit to 20 to prevent performance issues
+                          : state.completedTasks.length,
+                    ),
+                  ),
+
+                if (_showCompleted && state.completedTasks.isEmpty)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Center(
+                        child: Text(
+                          'No completed tasks yet',
+                          style: TextStyle(
+                            color: textMuted,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
                 // Bottom padding
                 const SliverToBoxAdapter(child: SizedBox(height: 100)),
               ],
@@ -666,6 +817,7 @@ class _HomeScreenState extends State<HomeScreen> {
     String? customTag;
     String? titleError; // Validation error message
     bool showAdvanced = false; // Progressive disclosure toggle
+    List<String> selectedFactorIds = []; // Linked factors
     final state = context.read<AppState>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final surfaceColor = isDark ? AppColors.surface : LightColors.surface;
@@ -1152,6 +1304,48 @@ class _HomeScreenState extends State<HomeScreen> {
                       fillColor: AppColors.surfaceLight,
                     ),
                   ),
+
+                  // Factor Connection (Optional)
+                  if (state.activeFocusFactors.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Text(
+                      'Link to Focus Factors (Optional):',
+                      style: TextStyle(
+                        color: AppColors.textMuted,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        // "None" chip for no factor link
+                        _ChoiceChip(
+                          label: '✕ None',
+                          selected: selectedFactorIds.isEmpty,
+                          onSelected: (_) =>
+                              setModalState(() => selectedFactorIds = []),
+                        ),
+                        // Chips for each active focus factor
+                        ...state.activeFocusFactors.map(
+                          (factor) => _ChoiceChip(
+                            label: factor.name,
+                            selected: selectedFactorIds.contains(factor.id),
+                            onSelected: (selected) {
+                              setModalState(() {
+                                if (selected) {
+                                  selectedFactorIds.add(factor.id);
+                                } else {
+                                  selectedFactorIds.remove(factor.id);
+                                }
+                              });
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
 
                 const SizedBox(height: 16),
@@ -1186,6 +1380,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           category,
                           deadline,
                           customTag,
+                          selectedFactorIds,
                         );
                         Navigator.pop(context);
                       },
@@ -1209,6 +1404,7 @@ class _HomeScreenState extends State<HomeScreen> {
     String category = task.category;
     DateTime? deadline = task.deadline;
     String? customTag = task.customTag;
+    List<String> selectedFactorIds = List.from(task.linkedFactorIds);
     final state = context.read<AppState>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final surfaceColor = isDark ? AppColors.surface : LightColors.surface;
@@ -1582,6 +1778,45 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
 
+                // Factor Connection (Optional)
+                if (state.activeFocusFactors.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  Text(
+                    'Link to Focus Factors (Optional):',
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      // "None" chip for no factor link
+                      _ChoiceChip(
+                        label: '✕ None',
+                        selected: selectedFactorIds.isEmpty,
+                        onSelected: (_) =>
+                            setModalState(() => selectedFactorIds = []),
+                      ),
+                      // Chips for each active focus factor
+                      ...state.activeFocusFactors.map(
+                        (factor) => _ChoiceChip(
+                          label: factor.name,
+                          selected: selectedFactorIds.contains(factor.id),
+                          onSelected: (selected) {
+                            setModalState(() {
+                              if (selected) {
+                                selectedFactorIds.add(factor.id);
+                              } else {
+                                selectedFactorIds.remove(factor.id);
+                              }
+                            });
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+
                 const SizedBox(height: 24),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
@@ -1604,6 +1839,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           task.category = category;
                           task.deadline = deadline;
                           task.customTag = customTag;
+                          task.linkedFactorIds = selectedFactorIds;
                           state.updateTask(task);
                           Navigator.pop(context);
                         }
@@ -1629,6 +1865,7 @@ class _HomeScreenState extends State<HomeScreen> {
     String category,
     DateTime? deadline,
     String? customTag,
+    List<String> linkedFactorIds,
   ) {
     final state = context.read<AppState>();
     final task = Task(
@@ -1642,6 +1879,7 @@ class _HomeScreenState extends State<HomeScreen> {
       category: category,
       deadline: deadline,
       customTag: customTag,
+      linkedFactorIds: linkedFactorIds,
     );
     state.addTask(task);
   }
