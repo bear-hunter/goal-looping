@@ -7,6 +7,9 @@ import '../models/sprint_target.dart';
 import '../models/task.dart';
 import '../models/subtask.dart';
 import '../models/habit.dart';
+import '../models/habit_enums.dart';
+import '../models/category_model.dart';
+import '../models/recurring_task.dart';
 import '../models/reflection.dart';
 import '../models/reflection_group.dart';
 import '../models/reflection_reminder.dart';
@@ -32,12 +35,14 @@ class StorageService {
   static const String achievementsBox = 'achievements';
   static const String focusLogsBox = 'focusLogs';
   static const String reflectionGroupsBox = 'reflectionGroups';
+  static const String categoriesBox = 'categories';
+  static const String recurringTasksBox = 'recurringTasks';
 
   static final Uuid _uuid = const Uuid();
-  
+
   /// Track if storage has been initialized
   static bool _isInitialized = false;
-  
+
   /// Check if storage is initialized
   static bool get isInitialized => _isInitialized;
 
@@ -50,6 +55,7 @@ class StorageService {
     await Hive.deleteFromDisk();
     _isInitialized = false;
   }
+
   /// Register all type adapters (only once)
   static void _registerAdapters() {
     // Use try-catch to handle already registered adapters
@@ -60,7 +66,7 @@ class StorageService {
         // Adapter already registered, ignore
       }
     }
-    
+
     tryRegister(GoalAdapter());
     tryRegister(GrowthAreaAdapter());
     tryRegister(GrowthAreaTypeAdapter());
@@ -88,8 +94,15 @@ class StorageService {
     tryRegister(FocusLogAdapter());
     // Register ReflectionGroup adapter
     tryRegister(ReflectionGroupAdapter());
+    // Phase 3: New model adapters for Today page
+    tryRegister(CategoryModelAdapter());
+    tryRegister(RecurringTaskAdapter());
+    tryRegister(RecurringTaskLogAdapter());
+    tryRegister(HabitEvaluationTypeAdapter());
+    tryRegister(HabitFrequencyTypeAdapter());
+    tryRegister(PriorityLevelAdapter());
   }
-  
+
   /// Ensure a box is open (used for defensive access)
   static Future<Box<T>> _ensureBoxOpen<T>(String boxName) async {
     if (!Hive.isBoxOpen(boxName)) {
@@ -97,7 +110,7 @@ class StorageService {
     }
     return Hive.box<T>(boxName);
   }
-  
+
   /// Ensure settings box is open (untyped)
   static Future<Box<dynamic>> _ensureSettingsBoxOpen() async {
     if (!Hive.isBoxOpen(settingsBox)) {
@@ -105,7 +118,7 @@ class StorageService {
     }
     return Hive.box(settingsBox);
   }
-  
+
   /// Reopen all boxes (recovery method for hot reload issues)
   static Future<void> reopenBoxes() async {
     await Hive.initFlutter();
@@ -113,7 +126,7 @@ class StorageService {
     await _openAllBoxes();
     _isInitialized = true;
   }
-  
+
   /// Open all boxes
   static Future<void> _openAllBoxes() async {
     await _ensureBoxOpen<Goal>(goalsBox);
@@ -130,24 +143,28 @@ class StorageService {
     await _ensureBoxOpen<Achievement>(achievementsBox);
     await _ensureBoxOpen<FocusLog>(focusLogsBox);
     await _ensureBoxOpen<ReflectionGroup>(reflectionGroupsBox);
+    await _ensureBoxOpen<CategoryModel>(categoriesBox);
+    await _ensureBoxOpen<RecurringTask>(recurringTasksBox);
   }
 
   /// Initialize Hive and register all adapters
   static Future<void> initialize() async {
     if (_isInitialized) return;
-    
+
     await Hive.initFlutter();
     _registerAdapters();
     await _openAllBoxes();
-    
+
     _isInitialized = true;
   }
 
   // ========== GOALS ==========
-  
+
   static Box<Goal> get _goalsBox {
     if (!Hive.isBoxOpen(goalsBox)) {
-      throw StateError('Goals box not open. Ensure StorageService.initialize() is called.');
+      throw StateError(
+        'Goals box not open. Ensure StorageService.initialize() is called.',
+      );
     }
     return Hive.box<Goal>(goalsBox);
   }
@@ -171,7 +188,9 @@ class StorageService {
 
   static Box<Factor> get _factorsBox {
     if (!Hive.isBoxOpen(factorsBox)) {
-      throw StateError('Factors box not open. Ensure StorageService.initialize() is called.');
+      throw StateError(
+        'Factors box not open. Ensure StorageService.initialize() is called.',
+      );
     }
     return Hive.box<Factor>(factorsBox);
   }
@@ -198,7 +217,9 @@ class StorageService {
 
   static Box<SprintTarget> get _sprintTargetsBox {
     if (!Hive.isBoxOpen(sprintTargetsBox)) {
-      throw StateError('SprintTargets box not open. Ensure StorageService.initialize() is called.');
+      throw StateError(
+        'SprintTargets box not open. Ensure StorageService.initialize() is called.',
+      );
     }
     return Hive.box<SprintTarget>(sprintTargetsBox);
   }
@@ -208,8 +229,9 @@ class StorageService {
     return _sprintTargetsBox.values.toList();
   }
 
-  static List<SprintTarget> getActiveSprintTargets() =>
-      _sprintTargetsBox.values.where((t) => !t.isCompleted && !t.isOverdue).toList();
+  static List<SprintTarget> getActiveSprintTargets() => _sprintTargetsBox.values
+      .where((t) => !t.isCompleted && !t.isOverdue)
+      .toList();
 
   static Future<void> saveSprintTarget(SprintTarget target) async {
     await _sprintTargetsBox.put(target.id, target);
@@ -223,7 +245,9 @@ class StorageService {
 
   static Box<Task> get _tasksBox {
     if (!Hive.isBoxOpen(tasksBox)) {
-      throw StateError('Tasks box not open. Ensure StorageService.initialize() is called.');
+      throw StateError(
+        'Tasks box not open. Ensure StorageService.initialize() is called.',
+      );
     }
     return Hive.box<Task>(tasksBox);
   }
@@ -273,7 +297,9 @@ class StorageService {
 
   static Box<Subtask> get _subtasksBox {
     if (!Hive.isBoxOpen(subtasksBox)) {
-      throw StateError('Subtasks box not open. Ensure StorageService.initialize() is called.');
+      throw StateError(
+        'Subtasks box not open. Ensure StorageService.initialize() is called.',
+      );
     }
     return Hive.box<Subtask>(subtasksBox);
   }
@@ -282,9 +308,7 @@ class StorageService {
     if (!Hive.isBoxOpen(subtasksBox)) {
       return [];
     }
-    return _subtasksBox.values
-        .where((s) => s.parentTaskId == taskId)
-        .toList()
+    return _subtasksBox.values.where((s) => s.parentTaskId == taskId).toList()
       ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
   }
 
@@ -300,7 +324,9 @@ class StorageService {
 
   static Box<Habit> get _habitsBox {
     if (!Hive.isBoxOpen(habitsBox)) {
-      throw StateError('Habits box not open. Ensure StorageService.initialize() is called.');
+      throw StateError(
+        'Habits box not open. Ensure StorageService.initialize() is called.',
+      );
     }
     return Hive.box<Habit>(habitsBox);
   }
@@ -313,15 +339,13 @@ class StorageService {
   static List<Habit> getActiveHabits() =>
       _habitsBox.values.where((h) => h.isActive).toList();
 
-  static List<Habit> getLimitingHabits() =>
-      _habitsBox.values
-          .where((h) => h.type == HabitType.quit && h.isActive)
-          .toList();
+  static List<Habit> getLimitingHabits() => _habitsBox.values
+      .where((h) => h.type == HabitType.quit && h.isActive)
+      .toList();
 
-  static List<Habit> getScriptedActions() =>
-      _habitsBox.values
-          .where((h) => h.type == HabitType.build && h.isActive)
-          .toList();
+  static List<Habit> getScriptedActions() => _habitsBox.values
+      .where((h) => h.type == HabitType.build && h.isActive)
+      .toList();
 
   static Future<void> saveHabit(Habit habit) async {
     await _habitsBox.put(habit.id, habit);
@@ -335,7 +359,9 @@ class StorageService {
 
   static Box<BarrierEntry> get _barriersBox {
     if (!Hive.isBoxOpen(barriersBox)) {
-      throw StateError('Barriers box not open. Ensure StorageService.initialize() is called.');
+      throw StateError(
+        'Barriers box not open. Ensure StorageService.initialize() is called.',
+      );
     }
     return Hive.box<BarrierEntry>(barriersBox);
   }
@@ -365,7 +391,9 @@ class StorageService {
 
   static Box<Reflection> get _reflectionsBox {
     if (!Hive.isBoxOpen(reflectionsBox)) {
-      throw StateError('Reflections box not open. Ensure StorageService.initialize() is called.');
+      throw StateError(
+        'Reflections box not open. Ensure StorageService.initialize() is called.',
+      );
     }
     return Hive.box<Reflection>(reflectionsBox);
   }
@@ -390,7 +418,9 @@ class StorageService {
 
   static Box<ReflectionGroup> get _reflectionGroupsBox {
     if (!Hive.isBoxOpen(reflectionGroupsBox)) {
-      throw StateError('ReflectionGroups box not open. Ensure StorageService.initialize() is called.');
+      throw StateError(
+        'ReflectionGroups box not open. Ensure StorageService.initialize() is called.',
+      );
     }
     return Hive.box<ReflectionGroup>(reflectionGroupsBox);
   }
@@ -422,7 +452,9 @@ class StorageService {
 
   static Box<Experiment> get _experimentsBox {
     if (!Hive.isBoxOpen(experimentsBox)) {
-      throw StateError('Experiments box not open. Ensure StorageService.initialize() is called.');
+      throw StateError(
+        'Experiments box not open. Ensure StorageService.initialize() is called.',
+      );
     }
     return Hive.box<Experiment>(experimentsBox);
   }
@@ -432,20 +464,16 @@ class StorageService {
     return _experimentsBox.values.toList();
   }
 
-  static List<Experiment> getPendingExperiments() =>
-      _experimentsBox.values
-          .where((e) => e.status == ExperimentStatus.pending)
-          .toList();
+  static List<Experiment> getPendingExperiments() => _experimentsBox.values
+      .where((e) => e.status == ExperimentStatus.pending)
+      .toList();
 
   static List<Experiment> getActiveExperiments() =>
-      _experimentsBox.values
-          .where((e) => e.isActionable)
-          .toList();
+      _experimentsBox.values.where((e) => e.isActionable).toList();
 
-  static List<Experiment> getArchivedExperiments() =>
-      _experimentsBox.values
-          .where((e) => e.status == ExperimentStatus.archived)
-          .toList();
+  static List<Experiment> getArchivedExperiments() => _experimentsBox.values
+      .where((e) => e.status == ExperimentStatus.archived)
+      .toList();
 
   static List<Experiment> getExperimentsForReflection(String reflectionId) =>
       _experimentsBox.values
@@ -453,9 +481,7 @@ class StorageService {
           .toList();
 
   static List<Experiment> getExperimentsForGroup(String groupId) =>
-      _experimentsBox.values
-          .where((e) => e.groupId == groupId)
-          .toList();
+      _experimentsBox.values.where((e) => e.groupId == groupId).toList();
 
   static Future<void> saveExperiment(Experiment experiment) async {
     await _experimentsBox.put(experiment.id, experiment);
@@ -469,7 +495,9 @@ class StorageService {
 
   static Box<dynamic> get _settingsBox {
     if (!Hive.isBoxOpen(settingsBox)) {
-      throw StateError('Settings box not open. Ensure StorageService.initialize() is called.');
+      throw StateError(
+        'Settings box not open. Ensure StorageService.initialize() is called.',
+      );
     }
     return Hive.box(settingsBox);
   }
@@ -494,16 +522,21 @@ class StorageService {
 
   static List<String> getTaskCategories() {
     if (!Hive.isBoxOpen(settingsBox)) return [];
-    return List<String>.from(_settingsBox.get('taskCategories', defaultValue: <String>[
-      'General',
-      'Assignment',
-      'Activity',
-      'Quiz', 
-      'Exam',
-      'Project',
-      'Deadline',
-      'Chore',
-    ]));
+    return List<String>.from(
+      _settingsBox.get(
+        'taskCategories',
+        defaultValue: <String>[
+          'General',
+          'Assignment',
+          'Activity',
+          'Quiz',
+          'Exam',
+          'Project',
+          'Deadline',
+          'Chore',
+        ],
+      ),
+    );
   }
 
   static Future<void> saveTaskCategories(List<String> categories) async {
@@ -514,7 +547,9 @@ class StorageService {
 
   static Box<UserStats> get _userStatsBox {
     if (!Hive.isBoxOpen(userStatsBox)) {
-      throw StateError('UserStats box not open. Ensure StorageService.initialize() is called.');
+      throw StateError(
+        'UserStats box not open. Ensure StorageService.initialize() is called.',
+      );
     }
     return Hive.box<UserStats>(userStatsBox);
   }
@@ -537,7 +572,9 @@ class StorageService {
 
   static Box<Achievement> get _achievementsBox {
     if (!Hive.isBoxOpen(achievementsBox)) {
-      throw StateError('Achievements box not open. Ensure StorageService.initialize() is called.');
+      throw StateError(
+        'Achievements box not open. Ensure StorageService.initialize() is called.',
+      );
     }
     return Hive.box<Achievement>(achievementsBox);
   }
@@ -563,5 +600,78 @@ class StorageService {
     if (!Hive.isBoxOpen(focusLogsBox)) return [];
     return Hive.box<FocusLog>(focusLogsBox).values.toList();
   }
-}
 
+  // ========== CATEGORIES (Phase 3) ==========
+
+  static Box<CategoryModel> get _categoriesBox {
+    if (!Hive.isBoxOpen(categoriesBox)) {
+      throw StateError(
+        'Categories box not open. Ensure StorageService.initialize() is called.',
+      );
+    }
+    return Hive.box<CategoryModel>(categoriesBox);
+  }
+
+  static List<CategoryModel> getAllCategories() {
+    if (!Hive.isBoxOpen(categoriesBox)) return [];
+    return _categoriesBox.values.toList()
+      ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+  }
+
+  static CategoryModel? getCategory(String id) => _categoriesBox.get(id);
+
+  static Future<void> saveCategory(CategoryModel category) async {
+    await _categoriesBox.put(category.id, category);
+  }
+
+  static Future<void> deleteCategory(String id) async {
+    await _categoriesBox.delete(id);
+  }
+
+  /// Initialize default categories if none exist
+  static Future<void> initializeDefaultCategories() async {
+    if (getAllCategories().isEmpty) {
+      for (final category in DefaultCategories.all) {
+        await saveCategory(category);
+      }
+    }
+  }
+
+  // ========== RECURRING TASKS (Phase 3) ==========
+
+  static Box<RecurringTask> get _recurringTasksBox {
+    if (!Hive.isBoxOpen(recurringTasksBox)) {
+      throw StateError(
+        'RecurringTasks box not open. Ensure StorageService.initialize() is called.',
+      );
+    }
+    return Hive.box<RecurringTask>(recurringTasksBox);
+  }
+
+  static List<RecurringTask> getAllRecurringTasks() {
+    if (!Hive.isBoxOpen(recurringTasksBox)) return [];
+    return _recurringTasksBox.values.toList()
+      ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+  }
+
+  static List<RecurringTask> getActiveRecurringTasks() {
+    return getAllRecurringTasks().where((t) => !t.isArchived).toList();
+  }
+
+  static List<RecurringTask> getRecurringTasksForDate(DateTime date) {
+    return getActiveRecurringTasks()
+        .where((t) => t.isScheduledFor(date))
+        .toList();
+  }
+
+  static RecurringTask? getRecurringTask(String id) =>
+      _recurringTasksBox.get(id);
+
+  static Future<void> saveRecurringTask(RecurringTask task) async {
+    await _recurringTasksBox.put(task.id, task);
+  }
+
+  static Future<void> deleteRecurringTask(String id) async {
+    await _recurringTasksBox.delete(id);
+  }
+}

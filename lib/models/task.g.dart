@@ -38,13 +38,22 @@ class TaskAdapter extends TypeAdapter<Task> {
       customTag: fields[18] as String?,
       marginalGainDescription: fields[19] as String?,
       isResearchTask: fields[20] as bool,
+      categoryId: fields[21] as String?,
+      checklistItems: (fields[22] as List?)?.cast<String>(),
+      checklistCompleted: (fields[23] as List?)?.cast<bool>(),
+      priorityLevel: fields[24] as PriorityLevel,
+      note: fields[25] as String?,
+      isPending: fields[26] as bool,
+      reminderTimes: (fields[27] as List?)?.cast<String>(),
+      scheduledDate: fields[28] as DateTime?,
+      scheduledTime: fields[29] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Task obj) {
     writer
-      ..writeByte(21)
+      ..writeByte(30)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -86,7 +95,25 @@ class TaskAdapter extends TypeAdapter<Task> {
       ..writeByte(19)
       ..write(obj.marginalGainDescription)
       ..writeByte(20)
-      ..write(obj.isResearchTask);
+      ..write(obj.isResearchTask)
+      ..writeByte(21)
+      ..write(obj.categoryId)
+      ..writeByte(22)
+      ..write(obj.checklistItems)
+      ..writeByte(23)
+      ..write(obj.checklistCompleted)
+      ..writeByte(24)
+      ..write(obj.priorityLevel)
+      ..writeByte(25)
+      ..write(obj.note)
+      ..writeByte(26)
+      ..write(obj.isPending)
+      ..writeByte(27)
+      ..write(obj.reminderTimes)
+      ..writeByte(28)
+      ..write(obj.scheduledDate)
+      ..writeByte(29)
+      ..write(obj.scheduledTime);
   }
 
   @override

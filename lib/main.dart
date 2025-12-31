@@ -7,17 +7,16 @@ import 'providers/app_state.dart';
 import 'providers/theme_provider.dart';
 import 'services/storage_service.dart';
 import 'services/notification_service.dart';
-import 'screens/home/home_screen.dart';
+import 'screens/today/today_screen.dart';
 import 'screens/strategy/strategy_screen.dart';
 import 'screens/habits/habits_screen.dart';
 import 'screens/reflection/reflection_screen.dart';
 import 'screens/onboarding/onboarding_screen.dart';
-import 'models/achievement.dart';
 import 'widgets/achievement_notification.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   try {
     await StorageService.initialize();
   } catch (e) {
@@ -31,7 +30,7 @@ void main() async {
       // Continue anyway - app will work without persistence
     }
   }
-  
+
   // Ensure boxes are open (handles hot restart scenarios)
   if (!StorageService.isInitialized) {
     try {
@@ -40,7 +39,7 @@ void main() async {
       debugPrint('Failed to reopen boxes: $e');
     }
   }
-  
+
   // Initialize notifications
   try {
     await NotificationService.initialize();
@@ -48,10 +47,9 @@ void main() async {
   } catch (e) {
     debugPrint('Notification init failed: $e');
   }
-  
+
   runApp(const MarginalGainsApp());
 }
-
 
 class MarginalGainsApp extends StatelessWidget {
   const MarginalGainsApp({super.key});
@@ -108,7 +106,7 @@ class _AppRootState extends State<AppRoot> {
   void _precacheTreeAssets() {
     final treeTypes = ['oak', 'cherry', 'maple', 'pine', 'willow', 'baobab'];
     final stages = ['sprout', 'sapling', 'mature'];
-    
+
     for (final tree in treeTypes) {
       for (final stage in stages) {
         precacheImage(
@@ -143,9 +141,7 @@ class _AppRootState extends State<AppRoot> {
   Widget build(BuildContext context) {
     if (!_isInitialized) {
       // Show loading while checking onboarding status
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     if (_showOnboarding) {
@@ -168,7 +164,7 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
   int _currentIndex = 0;
 
   final List<Widget> _screens = const [
-    HomeScreen(),
+    TodayScreen(),
     StrategyScreen(),
     HabitsScreen(),
     ReflectionScreen(),
@@ -176,9 +172,9 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
 
   final List<NavigationDestination> _destinations = const [
     NavigationDestination(
-      icon: Icon(Icons.home_outlined),
-      selectedIcon: Icon(Icons.home_rounded),
-      label: 'Home',
+      icon: Icon(Icons.today_outlined),
+      selectedIcon: Icon(Icons.today_rounded),
+      label: 'Today',
     ),
     NavigationDestination(
       icon: Icon(Icons.flag_outlined),
@@ -210,7 +206,9 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final borderColor = isDark ? AppColors.glassBorder : LightColors.glassBorder;
+    final borderColor = isDark
+        ? AppColors.glassBorder
+        : LightColors.glassBorder;
     final navBarBgColor = isDark ? AppColors.surface : LightColors.surface;
 
     return Consumer<AppState>(
@@ -224,12 +222,7 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
               ),
               bottomNavigationBar: Container(
                 decoration: BoxDecoration(
-                  border: Border(
-                    top: BorderSide(
-                      color: borderColor,
-                      width: 1,
-                    ),
-                  ),
+                  border: Border(top: BorderSide(color: borderColor, width: 1)),
                 ),
                 child: NavigationBar(
                   selectedIndex: _currentIndex,

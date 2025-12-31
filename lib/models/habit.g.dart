@@ -22,13 +22,16 @@ class HabitLogAdapter extends TypeAdapter<HabitLog> {
       note: fields[2] as String?,
       moodRating: fields[3] as int?,
       barrierTag: fields[4] as String?,
+      numericValue: fields[5] as int?,
+      checklistCompleted: (fields[6] as List?)?.cast<bool>(),
+      timerSeconds: fields[7] as int?,
     );
   }
 
   @override
   void write(BinaryWriter writer, HabitLog obj) {
     writer
-      ..writeByte(5)
+      ..writeByte(8)
       ..writeByte(0)
       ..write(obj.date)
       ..writeByte(1)
@@ -38,7 +41,13 @@ class HabitLogAdapter extends TypeAdapter<HabitLog> {
       ..writeByte(3)
       ..write(obj.moodRating)
       ..writeByte(4)
-      ..write(obj.barrierTag);
+      ..write(obj.barrierTag)
+      ..writeByte(5)
+      ..write(obj.numericValue)
+      ..writeByte(6)
+      ..write(obj.checklistCompleted)
+      ..writeByte(7)
+      ..write(obj.timerSeconds);
   }
 
   @override
@@ -80,13 +89,30 @@ class HabitAdapter extends TypeAdapter<Habit> {
       timerMinutes: fields[14] as int?,
       streakFreezes: fields[15] as int,
       freezesUsed: fields[16] as int,
+      categoryId: fields[17] as String?,
+      evaluationType: fields[18] as HabitEvaluationType?,
+      frequencyType: fields[19] as HabitFrequencyType?,
+      targetValue: fields[20] as int?,
+      unit: fields[21] as String?,
+      checklistItems: (fields[22] as List?)?.cast<String>(),
+      priorityLevel: fields[23] as PriorityLevel?,
+      startDate: fields[24] as DateTime?,
+      endDate: fields[25] as DateTime?,
+      reminderTimes: (fields[26] as List?)?.cast<String>(),
+      isArchived: fields[27] as bool,
+      daysPerPeriod: fields[28] as int?,
+      repeatInterval: fields[29] as int?,
+      specificDates: (fields[30] as List?)?.cast<DateTime>(),
+      description: fields[31] as String?,
+      extraGoal: fields[32] as int?,
+      sortOrder: fields[33] as int,
     );
   }
 
   @override
   void write(BinaryWriter writer, Habit obj) {
     writer
-      ..writeByte(17)
+      ..writeByte(34)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -120,7 +146,41 @@ class HabitAdapter extends TypeAdapter<Habit> {
       ..writeByte(15)
       ..write(obj.streakFreezes)
       ..writeByte(16)
-      ..write(obj.freezesUsed);
+      ..write(obj.freezesUsed)
+      ..writeByte(17)
+      ..write(obj.categoryId)
+      ..writeByte(18)
+      ..write(obj.evaluationType)
+      ..writeByte(19)
+      ..write(obj.frequencyType)
+      ..writeByte(20)
+      ..write(obj.targetValue)
+      ..writeByte(21)
+      ..write(obj.unit)
+      ..writeByte(22)
+      ..write(obj.checklistItems)
+      ..writeByte(23)
+      ..write(obj.priorityLevel)
+      ..writeByte(24)
+      ..write(obj.startDate)
+      ..writeByte(25)
+      ..write(obj.endDate)
+      ..writeByte(26)
+      ..write(obj.reminderTimes)
+      ..writeByte(27)
+      ..write(obj.isArchived)
+      ..writeByte(28)
+      ..write(obj.daysPerPeriod)
+      ..writeByte(29)
+      ..write(obj.repeatInterval)
+      ..writeByte(30)
+      ..write(obj.specificDates)
+      ..writeByte(31)
+      ..write(obj.description)
+      ..writeByte(32)
+      ..write(obj.extraGoal)
+      ..writeByte(33)
+      ..write(obj.sortOrder);
   }
 
   @override

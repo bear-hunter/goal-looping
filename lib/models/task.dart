@@ -1,4 +1,5 @@
 import 'package:hive/hive.dart';
+import 'habit_enums.dart';
 
 part 'task.g.dart';
 
@@ -15,21 +16,21 @@ enum TaskSource {
   backlog, // Promoted from Less Important
 }
 
-/// Effort level for a task
+/// Effort level for a task (legacy - kept for migration)
 @HiveType(typeId: 26)
 enum TaskEffort {
   @HiveField(0)
-  quick,  // ⚡ Low effort, quick win
+  quick, // ⚡ Low effort, quick win
 
   @HiveField(1)
-  deep,   // 🐘 Deep work, heavy effort
+  deep, // 🐘 Deep work, heavy effort
 }
 
-/// Impact level for a task
+/// Impact level for a task (legacy - kept for migration)
 @HiveType(typeId: 27)
 enum TaskImpact {
   @HiveField(0)
-  high,        // ⭐ High value outcome
+  high, // ⭐ High value outcome
 
   @HiveField(1)
   maintenance, // 🧹 Routine/maintenance
@@ -39,19 +40,20 @@ enum TaskImpact {
 @HiveType(typeId: 28)
 enum TaskAbandonReason {
   @HiveField(0)
-  noTime,       // 🕐 Ran out of time
+  noTime, // 🕐 Ran out of time
 
-  @HiveField(1) 
-  tooHard,      // 🧗 Too difficult
+  @HiveField(1)
+  tooHard, // 🧗 Too difficult
 
   @HiveField(2)
   notImportant, // ❌ Not important anymore
 
   @HiveField(3)
-  completed,    // ✅ Actually completed
+  completed, // ✅ Actually completed
 }
 
-/// Task - Top 2 priority tasks or backlog items
+/// Task - Single-instance activities (one-time tasks)
+/// Enhanced for Today page with date-based filtering
 @HiveType(typeId: 3)
 class Task extends HiveObject {
   @HiveField(0)
@@ -64,7 +66,7 @@ class Task extends HiveObject {
   String description;
 
   @HiveField(3)
-  bool isPriority; // True = Top 2, False = Less Important
+  bool isPriority; // Legacy: True = Top 2, False = Less Important
 
   @HiveField(4)
   bool isCompleted;
@@ -87,8 +89,8 @@ class Task extends HiveObject {
   @HiveField(10)
   int sortOrder;
 
-  // New fields for smart task management
-  
+  // Legacy fields (kept for migration)
+
   @HiveField(11)
   TaskEffort effort;
 
@@ -105,7 +107,7 @@ class Task extends HiveObject {
   String? blockedByTaskId; // Task dependency
 
   @HiveField(16)
-  String category;
+  String category; // Legacy string-based category
 
   @HiveField(17)
   DateTime? deadline;
@@ -113,12 +115,41 @@ class Task extends HiveObject {
   @HiveField(18)
   String? customTag;
 
-  // Phase 7: Marginal Gains Framework - 1% Improvement Tracking
+  // Legacy fields (kept for migration)
   @HiveField(19)
-  String? marginalGainDescription; // "What 1% improvement does this task represent?"
+  String? marginalGainDescription;
 
   @HiveField(20)
-  bool isResearchTask; // True if task is about gaining knowledge (framework key principle)
+  bool isResearchTask;
+
+  // === Phase 3: Today page enhancements ===
+
+  @HiveField(21)
+  String? categoryId; // Link to CategoryModel
+
+  @HiveField(22)
+  List<String>? checklistItems; // Optional checklist
+
+  @HiveField(23)
+  List<bool>? checklistCompleted; // Completion state for each checklist item
+
+  @HiveField(24)
+  PriorityLevel priorityLevel; // Priority (none, low, medium, high)
+
+  @HiveField(25)
+  String? note; // Additional notes
+
+  @HiveField(26)
+  bool isPending; // Show each day until completed
+
+  @HiveField(27)
+  List<String> reminderTimes; // Stored as "HH:MM" strings
+
+  @HiveField(28)
+  DateTime scheduledDate; // The date this task is scheduled for
+
+  @HiveField(29)
+  String? scheduledTime; // Time of day as "HH:MM"
 
   Task({
     required this.id,
@@ -142,8 +173,37 @@ class Task extends HiveObject {
     this.customTag,
     this.marginalGainDescription,
     this.isResearchTask = false,
-  })  : createdAt = createdAt ?? DateTime.now(),
-        linkedFactorIds = linkedFactorIds ?? [];
+    // Phase 3 fields
+    this.categoryId,
+    this.checklistItems,
+    this.checklistCompleted,
+    this.priorityLevel = PriorityLevel.none,
+    this.note,
+    this.isPending = false,
+    List<String>? reminderTimes,
+    DateTime? scheduledDate,
+    this.scheduledTime,
+  }) : createdAt = createdAt ?? DateTime.now(),
+       linkedFactorIds = linkedFactorIds ?? [],
+       reminderTimes = reminderTimes ?? [],
+       scheduledDate = scheduledDate ?? DateTime.now();
+
+  /// Check if task is scheduled for a specific date
+  bool isScheduledFor(DateTime date) {
+    // If pending and not completed, show on all dates from scheduledDate onwards
+    if (isPending && !isCompleted) {
+      return !date.isBefore(
+        DateTime(scheduledDate.year, scheduledDate.month, scheduledDate.day),
+      );
+    }
+    // Otherwise, only show on the scheduled date
+    return date.year == scheduledDate.year &&
+        date.month == scheduledDate.month &&
+        date.day == scheduledDate.day;
+  }
+
+  /// Check if task is scheduled for today
+  bool get isScheduledToday => isScheduledFor(DateTime.now());
 
   /// Mark task as completed
   void complete() {
@@ -152,13 +212,13 @@ class Task extends HiveObject {
     abandonReason = TaskAbandonReason.completed;
   }
 
-  /// Promote task to priority (Top 2)
+  /// Promote task to priority (Top 2) - legacy
   void promoteToPriority() {
     isPriority = true;
     addedToPriorityAt = DateTime.now();
   }
 
-  /// Demote task to backlog
+  /// Demote task to backlog - legacy
   void demoteToBacklog({TaskAbandonReason? reason}) {
     isPriority = false;
     if (reason != null) {
@@ -166,7 +226,7 @@ class Task extends HiveObject {
     }
   }
 
-  /// Check if task is stale (in Top 2 for >24 hours)
+  /// Check if task is stale (in Top 2 for >24 hours) - legacy
   bool get isStale {
     if (!isPriority || addedToPriorityAt == null) return false;
     return DateTime.now().difference(addedToPriorityAt!).inHours >= 24;
@@ -181,9 +241,45 @@ class Task extends HiveObject {
     return DateTime.now().difference(addedToPriorityAt!).inHours;
   }
 
-  /// Effort emoji
+  /// Effort emoji - legacy
   String get effortEmoji => effort == TaskEffort.quick ? '⚡' : '🐘';
 
-  /// Impact emoji  
+  /// Impact emoji - legacy
   String get impactEmoji => impact == TaskImpact.high ? '⭐' : '🧹';
+
+  /// Get checklist progress (completed / total)
+  String get checklistProgress {
+    if (checklistItems == null || checklistItems!.isEmpty) return '';
+    final completed = checklistCompleted?.where((c) => c).length ?? 0;
+    return '$completed/${checklistItems!.length}';
+  }
+
+  /// Toggle a checklist item
+  void toggleChecklistItem(int index) {
+    if (checklistItems == null || index >= checklistItems!.length) return;
+
+    // Initialize checklistCompleted if needed
+    checklistCompleted ??= List.filled(checklistItems!.length, false);
+
+    // Ensure the list is long enough
+    while (checklistCompleted!.length < checklistItems!.length) {
+      checklistCompleted!.add(false);
+    }
+
+    checklistCompleted![index] = !checklistCompleted![index];
+
+    // Auto-complete task if all checklist items are done
+    if (checklistCompleted!.every((c) => c)) {
+      isCompleted = true;
+      completedAt = DateTime.now();
+    }
+  }
+
+  /// Check if all checklist items are completed
+  bool get isChecklistComplete {
+    if (checklistItems == null || checklistItems!.isEmpty) return true;
+    if (checklistCompleted == null) return false;
+    return checklistCompleted!.length >= checklistItems!.length &&
+        checklistCompleted!.every((c) => c);
+  }
 }

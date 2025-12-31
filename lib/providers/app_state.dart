@@ -5,6 +5,8 @@ import '../models/sprint_target.dart';
 import '../models/task.dart';
 import '../models/subtask.dart';
 import '../models/habit.dart';
+import '../models/category_model.dart';
+import '../models/recurring_task.dart';
 import '../models/reflection.dart';
 import '../models/reflection_group.dart';
 import '../models/experiment.dart';
@@ -13,6 +15,7 @@ import '../models/user_stats.dart';
 import '../models/achievement.dart';
 import '../models/focus_log.dart';
 import '../services/storage_service.dart';
+import 'package:uuid/uuid.dart';
 
 /// Main application state using ChangeNotifier
 class AppState extends ChangeNotifier {
@@ -30,6 +33,8 @@ class AppState extends ChangeNotifier {
   List<FocusLog> _focusLogs = [];
   List<String> _taskCategories = [];
   List<ReflectionGroup> _reflectionGroups = [];
+  List<CategoryModel> _categories = [];
+  List<RecurringTask> _recurringTasks = [];
   bool _isLoading = true;
 
   // ========== GETTERS ==========
@@ -46,6 +51,8 @@ class AppState extends ChangeNotifier {
   List<FocusLog> get focusLogs => _focusLogs;
   List<String> get taskCategories => _taskCategories;
   List<ReflectionGroup> get reflectionGroups => _reflectionGroups;
+  List<CategoryModel> get categories => _categories;
+  List<RecurringTask> get recurringTasks => _recurringTasks;
   bool get isLoading => _isLoading;
 
   // Computed getters
@@ -199,8 +206,73 @@ class AppState extends ChangeNotifier {
       _reflectionGroups = [];
     }
 
+    // Phase 3: Load categories and recurring tasks
+    try {
+      _categories = StorageService.getAllCategories();
+      // Initialize default categories if none exist
+      if (_categories.isEmpty) {
+        await StorageService.initializeDefaultCategories();
+        _categories = StorageService.getAllCategories();
+      }
+    } catch (e) {
+      _categories = [];
+    }
+
+    try {
+      _recurringTasks = StorageService.getAllRecurringTasks();
+    } catch (e) {
+      _recurringTasks = [];
+    }
+
+    // Run migration for legacy string-based categories
+    await _migrateLegacyCategories();
+
     _isLoading = false;
     notifyListeners();
+  }
+
+  Future<void> _migrateLegacyCategories() async {
+    bool changesMade = false;
+    final Map<String, CategoryModel> categoryMap = {
+      for (var c in _categories) c.name.toLowerCase(): c,
+    };
+
+    for (final task in _tasks) {
+      // If task has no categoryId but has a legacy category string
+      if (task.categoryId == null &&
+          task.category.isNotEmpty &&
+          task.category != 'General') {
+        final legacyName = task.category;
+        final key = legacyName.toLowerCase();
+
+        if (categoryMap.containsKey(key)) {
+          // Link to existing category
+          task.categoryId = categoryMap[key]!.id;
+          await StorageService.saveTask(task);
+          changesMade = true;
+        } else {
+          // Create new category
+          final newCategory = CategoryModel.create(
+            id: const Uuid().v4(),
+            name: legacyName,
+            icon: Icons.category_rounded, // Default icon
+            color: Colors.blue, // Default color
+          );
+          await StorageService.saveCategory(newCategory);
+          _categories.add(newCategory);
+          categoryMap[key] = newCategory;
+
+          // Link task
+          task.categoryId = newCategory.id;
+          await StorageService.saveTask(task);
+          changesMade = true;
+        }
+      }
+    }
+
+    if (changesMade) {
+      notifyListeners();
+    }
   }
 
   // ========== GOALS ==========
@@ -1277,5 +1349,131 @@ class AppState extends ChangeNotifier {
     if (!_userStats.unlockedBadgeIds.contains('resurrection')) {
       _unlockAchievement('resurrection');
     }
+  }
+
+  // ========== CATEGORIES (Phase 3) ==========
+
+  /// Add a new category
+  Future<void> addCategory(CategoryModel category) async {
+    await StorageService.saveCategory(category);
+    _categories.add(category);
+    _categories.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+    notifyListeners();
+  }
+
+  /// Update an existing category
+  Future<void> updateCategory(CategoryModel category) async {
+    await StorageService.saveCategory(category);
+    final index = _categories.indexWhere((c) => c.id == category.id);
+    if (index != -1) _categories[index] = category;
+    notifyListeners();
+  }
+
+  /// Delete a category (cannot delete default categories)
+  Future<void> deleteCategory(String id) async {
+    final category = _categories.firstWhere(
+      (c) => c.id == id,
+      orElse: () => throw Exception('Category not found'),
+    );
+    if (category.isDefault) {
+      throw Exception('Cannot delete default categories');
+    }
+    await StorageService.deleteCategory(id);
+    _categories.removeWhere((c) => c.id == id);
+    notifyListeners();
+  }
+
+  /// Get category by ID
+  CategoryModel? getCategoryById(String id) {
+    try {
+      return _categories.firstWhere((c) => c.id == id);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // ========== RECURRING TASKS (Phase 3) ==========
+
+  /// Add a new recurring task
+  Future<void> addRecurringTask(RecurringTask task) async {
+    await StorageService.saveRecurringTask(task);
+    _recurringTasks.add(task);
+    _recurringTasks.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+    notifyListeners();
+  }
+
+  /// Update an existing recurring task
+  Future<void> updateRecurringTask(RecurringTask task) async {
+    await StorageService.saveRecurringTask(task);
+    final index = _recurringTasks.indexWhere((t) => t.id == task.id);
+    if (index != -1) _recurringTasks[index] = task;
+    notifyListeners();
+  }
+
+  /// Delete a recurring task
+  Future<void> deleteRecurringTask(String id) async {
+    await StorageService.deleteRecurringTask(id);
+    _recurringTasks.removeWhere((t) => t.id == id);
+    notifyListeners();
+  }
+
+  /// Log completion for a recurring task
+  Future<void> logRecurringTaskCompletion(
+    String id, {
+    required DateTime date,
+    required bool completed,
+    String? note,
+    List<bool>? checklistCompleted,
+  }) async {
+    final task = _recurringTasks.firstWhere((t) => t.id == id);
+    task.logCompletion(
+      date: date,
+      completed: completed,
+      note: note,
+      checklistCompleted: checklistCompleted,
+    );
+    await StorageService.saveRecurringTask(task);
+
+    // Award XP if completed
+    if (completed) {
+      _userStats.earnReward(
+        xp: XPRewards.completeBacklogTask,
+        coinReward: XPRewards.coinsBacklogTask,
+      );
+    }
+    notifyListeners();
+  }
+
+  // ========== TODAY PAGE HELPERS (Phase 3) ==========
+
+  /// Get all habits scheduled for a specific date (excluding archived)
+  List<Habit> getHabitsForDate(DateTime date) {
+    return _habits
+        .where((h) => h.isActive && !h.isArchived && h.isScheduledFor(date))
+        .toList()
+      ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+  }
+
+  /// Get all single tasks scheduled for a specific date
+  List<Task> getTasksForDate(DateTime date) {
+    return _tasks
+        .where((t) => !t.isCompleted && t.isScheduledFor(date))
+        .toList()
+      ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+  }
+
+  /// Get all recurring tasks scheduled for a specific date
+  List<RecurringTask> getRecurringTasksForDate(DateTime date) {
+    return _recurringTasks
+        .where((t) => !t.isArchived && t.isScheduledFor(date))
+        .toList()
+      ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+  }
+
+  /// Get count of items scheduled for a date
+  int getItemCountForDate(DateTime date) {
+    return getHabitsForDate(date).length +
+        getTasksForDate(date).length +
+        getRecurringTasksForDate(date).length;
   }
 }
