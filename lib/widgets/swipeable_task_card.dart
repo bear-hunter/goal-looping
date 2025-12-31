@@ -107,7 +107,9 @@ class _SwipeableTaskCardState extends State<SwipeableTaskCard>
     if (_dragExtent > threshold) {
       // Right swipe action
       HapticFeedback.heavyImpact();
-      if (widget.task.isPriority && widget.onFocusMode != null) {
+      if (widget.task.isPriority &&
+          !widget.task.isCompleted &&
+          widget.onFocusMode != null) {
         widget.onFocusMode!();
       } else if (widget.onComplete != null) {
         widget.onComplete!();
@@ -115,8 +117,16 @@ class _SwipeableTaskCardState extends State<SwipeableTaskCard>
     } else if (_dragExtent < -threshold) {
       // Left swipe action
       HapticFeedback.heavyImpact();
-      if (widget.task.isPriority && widget.onDemote != null) {
+      if (widget.task.isPriority &&
+          !widget.task.isCompleted &&
+          widget.onDemote != null) {
         widget.onDemote!();
+      } else if (!widget.task.isPriority &&
+          !widget.task.isCompleted &&
+          widget.onPromote != null &&
+          _dragExtent < -MediaQuery.of(context).size.width * 0.6) {
+        // Extra deep swipe to promote
+        widget.onPromote!();
       } else if (widget.onDelete != null) {
         widget.onDelete!();
       }
@@ -168,16 +178,22 @@ class _SwipeableTaskCardState extends State<SwipeableTaskCard>
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        widget.task.isPriority
+                        (widget.task.isPriority && !widget.task.isCompleted)
                             ? Icons.center_focus_strong_rounded
-                            : Icons.check_rounded,
+                            : (widget.task.isCompleted
+                                  ? Icons.undo_rounded
+                                  : Icons.check_rounded),
                         color: Colors.white,
                         size: 28 * rightProgress,
                       ),
                       if (rightProgress > 0.5) ...[
                         const SizedBox(width: 8),
                         Text(
-                          widget.task.isPriority ? 'Focus' : 'Complete',
+                          (widget.task.isPriority && !widget.task.isCompleted)
+                              ? 'Focus'
+                              : (widget.task.isCompleted
+                                    ? 'Uncomplete'
+                                    : 'Complete'),
                           style: TextStyle(
                             color: Colors.white.withAlpha(
                               (rightProgress * 255).toInt(),
@@ -227,7 +243,14 @@ class _SwipeableTaskCardState extends State<SwipeableTaskCard>
                     children: [
                       if (leftProgress > 0.5) ...[
                         Text(
-                          widget.task.isPriority ? 'Demote' : 'Delete',
+                          (widget.task.isPriority && !widget.task.isCompleted)
+                              ? 'Demote'
+                              : (!widget.task.isPriority &&
+                                    !widget.task.isCompleted &&
+                                    widget.onPromote != null &&
+                                    leftProgress > 0.75)
+                              ? 'Promote'
+                              : 'Delete',
                           style: TextStyle(
                             color: Colors.white.withAlpha(
                               (leftProgress * 255).toInt(),
@@ -238,8 +261,13 @@ class _SwipeableTaskCardState extends State<SwipeableTaskCard>
                         const SizedBox(width: 8),
                       ],
                       Icon(
-                        widget.task.isPriority
+                        (widget.task.isPriority && !widget.task.isCompleted)
                             ? Icons.arrow_downward_rounded
+                            : (!widget.task.isPriority &&
+                                  !widget.task.isCompleted &&
+                                  widget.onPromote != null &&
+                                  leftProgress > 0.75)
+                            ? Icons.arrow_upward_rounded
                             : Icons.delete_outline_rounded,
                         color: Colors.white,
                         size: 28 * leftProgress,

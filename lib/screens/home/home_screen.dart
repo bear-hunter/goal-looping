@@ -8,7 +8,7 @@ import '../../models/subtask.dart';
 import '../../providers/app_state.dart';
 import '../../services/storage_service.dart';
 import '../../widgets/glass_card.dart';
-import '../../widgets/task_card.dart';
+
 import '../../widgets/swipeable_task_card.dart';
 import '../../widgets/completion_animation.dart';
 import '../../widgets/xp_bar.dart';
@@ -32,12 +32,20 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  bool _showBacklog = false;
-  bool _showCompleted = false;
-  bool _showStats = true;
+  final ValueNotifier<bool> _showBacklog = ValueNotifier<bool>(false);
+  final ValueNotifier<bool> _showCompleted = ValueNotifier<bool>(false);
+  final ValueNotifier<bool> _showStats = ValueNotifier<bool>(true);
   String? _selectedCategoryFilter;
   String _deadlineFilter = 'all'; // 'all', 'today', 'week', 'later', 'none'
   final GlobalKey _xpBarKey = GlobalKey();
+
+  @override
+  void dispose() {
+    _showBacklog.dispose();
+    _showCompleted.dispose();
+    _showStats.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -93,21 +101,21 @@ class _HomeScreenState extends State<HomeScreen> {
                               'Today\'s Focus',
                               style: Theme.of(context).textTheme.displayMedium,
                             )
-                            .animate()
+                            .animate(
+                              key: const ValueKey('header-title-animate'),
+                            )
                             .fadeIn(duration: 400.ms)
                             .slideY(begin: -0.1, end: 0),
                         const SizedBox(height: 12),
                         // XP bar and actions on second row
                         Row(
                           children: [
-                            Expanded(
-                              child: XPBar(
-                                key: _xpBarKey,
-                                stats: state.userStats,
-                                compact: true,
-                              ),
+                            XPBar(
+                              key: _xpBarKey,
+                              stats: state.userStats,
+                              compact: true,
                             ),
-                            const SizedBox(width: AppSpacing.sm),
+                            const Spacer(),
                             // Admin Overflow Menu - consolidated from 3 separate icons
                             PopupMenuButton<String>(
                               icon: Icon(
@@ -266,188 +274,227 @@ class _HomeScreenState extends State<HomeScreen> {
                     },
                   ),
 
-                // Backlog Section
                 SliverToBoxAdapter(
-                  child: GestureDetector(
-                    onTap: () => setState(() => _showBacklog = !_showBacklog),
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: AppSpacing.lg,
-                      ),
-                      padding: const EdgeInsets.all(AppSpacing.md),
-                      decoration: BoxDecoration(
-                        color: surfaceLight,
-                        borderRadius: BorderRadius.circular(AppRadius.lg),
-                        border: Border.all(color: glassBorder),
-                        boxShadow: AppShadows.card,
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            _showBacklog
-                                ? Icons.keyboard_arrow_down_rounded
-                                : Icons.keyboard_arrow_right_rounded,
-                            color: textMuted,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Less Important',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: textSecondary,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: textMuted.withAlpha(40),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(
-                              '${filteredBacklog.length}/${state.backlogTasks.length}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: textMuted,
-                              ),
-                            ),
-                          ),
-                          const Spacer(),
-                          // IconButton removed
-                          const SizedBox(width: 8),
-                        ],
-                      ),
-                    ),
-                  ).animate().fadeIn(delay: 300.ms, duration: 400.ms),
+                  child:
+                      ValueListenableBuilder<bool>(
+                            valueListenable: _showBacklog,
+                            builder: (context, show, child) {
+                              return GestureDetector(
+                                onTap: () => _showBacklog.value = !show,
+                                child: Container(
+                                  margin: const EdgeInsets.symmetric(
+                                    horizontal: 20,
+                                    vertical: AppSpacing.lg,
+                                  ),
+                                  padding: const EdgeInsets.all(AppSpacing.md),
+                                  decoration: BoxDecoration(
+                                    color: surfaceLight,
+                                    borderRadius: BorderRadius.circular(
+                                      AppRadius.lg,
+                                    ),
+                                    border: Border.all(color: glassBorder),
+                                    boxShadow: AppShadows.card,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        show
+                                            ? Icons.keyboard_arrow_down_rounded
+                                            : Icons
+                                                  .keyboard_arrow_right_rounded,
+                                        color: textMuted,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Less Important',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          color: textSecondary,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 2,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: textMuted.withAlpha(40),
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          '${filteredBacklog.length}/${state.backlogTasks.length}',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: textMuted,
+                                          ),
+                                        ),
+                                      ),
+                                      const Spacer(),
+                                      // IconButton removed
+                                      const SizedBox(width: 8),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          )
+                          .animate(
+                            key: const ValueKey('backlog-header-animate'),
+                          )
+                          .fadeIn(delay: 300.ms, duration: 400.ms),
                 ),
 
-                // Backlog Filters
-                if (_showBacklog)
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Deadline filters
-                          FadingHorizontalScroll(
-                            child: Row(
+                // Backlog Content (Filters + Items)
+                ValueListenableBuilder<bool>(
+                  valueListenable: _showBacklog,
+                  builder: (context, show, child) {
+                    if (!show) return const SliverToBoxAdapter();
+
+                    return SliverMainAxisGroup(
+                      slivers: [
+                        // Backlog Filters
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                _FilterChip(
-                                  label: 'All',
-                                  selected: _deadlineFilter == 'all',
-                                  onSelected: () =>
-                                      setState(() => _deadlineFilter = 'all'),
+                                // Deadline filters
+                                FadingHorizontalScroll(
+                                  child: Row(
+                                    children: [
+                                      _FilterChip(
+                                        label: 'All',
+                                        selected: _deadlineFilter == 'all',
+                                        onSelected: () => setState(
+                                          () => _deadlineFilter = 'all',
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      _FilterChip(
+                                        label: 'Today',
+                                        icon: Icons.today_rounded,
+                                        selected: _deadlineFilter == 'today',
+                                        onSelected: () => setState(
+                                          () => _deadlineFilter = 'today',
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      _FilterChip(
+                                        label: 'This Week',
+                                        icon: Icons.date_range_rounded,
+                                        selected: _deadlineFilter == 'week',
+                                        onSelected: () => setState(
+                                          () => _deadlineFilter = 'week',
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      _FilterChip(
+                                        label: 'Later',
+                                        icon: Icons.schedule_rounded,
+                                        selected: _deadlineFilter == 'later',
+                                        onSelected: () => setState(
+                                          () => _deadlineFilter = 'later',
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      _FilterChip(
+                                        label: 'No Deadline',
+                                        icon: Icons.event_busy_rounded,
+                                        selected: _deadlineFilter == 'none',
+                                        onSelected: () => setState(
+                                          () => _deadlineFilter = 'none',
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                                const SizedBox(width: 8),
-                                _FilterChip(
-                                  label: 'Today',
-                                  icon: Icons.today_rounded,
-                                  selected: _deadlineFilter == 'today',
-                                  onSelected: () =>
-                                      setState(() => _deadlineFilter = 'today'),
-                                ),
-                                const SizedBox(width: 8),
-                                _FilterChip(
-                                  label: 'This Week',
-                                  icon: Icons.date_range_rounded,
-                                  selected: _deadlineFilter == 'week',
-                                  onSelected: () =>
-                                      setState(() => _deadlineFilter = 'week'),
-                                ),
-                                const SizedBox(width: 8),
-                                _FilterChip(
-                                  label: 'Later',
-                                  icon: Icons.schedule_rounded,
-                                  selected: _deadlineFilter == 'later',
-                                  onSelected: () =>
-                                      setState(() => _deadlineFilter = 'later'),
-                                ),
-                                const SizedBox(width: 8),
-                                _FilterChip(
-                                  label: 'No Deadline',
-                                  icon: Icons.event_busy_rounded,
-                                  selected: _deadlineFilter == 'none',
-                                  onSelected: () =>
-                                      setState(() => _deadlineFilter = 'none'),
+                                const SizedBox(height: 8),
+                                // Category filters
+                                FadingHorizontalScroll(
+                                  child: Row(
+                                    children: [
+                                      _FilterChip(
+                                        label: 'All Categories',
+                                        selected:
+                                            _selectedCategoryFilter == null,
+                                        onSelected: () => setState(
+                                          () => _selectedCategoryFilter = null,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      ...state.taskCategories.map(
+                                        (cat) => Padding(
+                                          padding: const EdgeInsets.only(
+                                            right: 8,
+                                          ),
+                                          child: _FilterChip(
+                                            label: cat,
+                                            selected:
+                                                _selectedCategoryFilter == cat,
+                                            onSelected: () => setState(
+                                              () =>
+                                                  _selectedCategoryFilter = cat,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ],
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          // Category filters
-                          FadingHorizontalScroll(
-                            child: Row(
-                              children: [
-                                _FilterChip(
-                                  label: 'All Categories',
-                                  selected: _selectedCategoryFilter == null,
-                                  onSelected: () => setState(
-                                    () => _selectedCategoryFilter = null,
+                        ),
+
+                        // Backlog Items (Categorized)
+                        ..._getCategorizedFilteredBacklog(
+                          filteredBacklog,
+                        ).entries.map(
+                          (group) => SliverMainAxisGroup(
+                            slivers: [
+                              SliverToBoxAdapter(
+                                child: Padding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    28,
+                                    16,
+                                    20,
+                                    8,
                                   ),
-                                ),
-                                const SizedBox(width: 8),
-                                ...state.taskCategories.map(
-                                  (cat) => Padding(
-                                    padding: const EdgeInsets.only(right: 8),
-                                    child: _FilterChip(
-                                      label: cat,
-                                      selected: _selectedCategoryFilter == cat,
-                                      onSelected: () => setState(
-                                        () => _selectedCategoryFilter = cat,
-                                      ),
+                                  child: Text(
+                                    group.key.toUpperCase(),
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.textMuted,
+                                      letterSpacing: 1.2,
                                     ),
                                   ),
                                 ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                // Backlog Items (Categorized)
-                if (_showBacklog)
-                  ..._getCategorizedFilteredBacklog(
-                    filteredBacklog,
-                  ).entries.map(
-                    (group) => SliverMainAxisGroup(
-                      slivers: [
-                        SliverToBoxAdapter(
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(28, 16, 20, 8),
-                            child: Text(
-                              group.key.toUpperCase(),
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.textMuted,
-                                letterSpacing: 1.2,
                               ),
-                            ),
-                          ),
-                        ),
-                        SliverList(
-                          delegate: SliverChildBuilderDelegate(
-                            (context, index) => _buildTaskCard(
-                              context,
-                              group.value[index],
-                              state,
-                              showPromote: true,
-                            ),
-                            childCount: group.value.length,
+                              SliverList(
+                                delegate: SliverChildBuilderDelegate(
+                                  (context, index) => _buildTaskCard(
+                                    context,
+                                    group.value[index],
+                                    state,
+                                    showPromote: true,
+                                  ),
+                                  childCount: group.value.length,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
-                    ),
-                  ),
+                    );
+                  },
+                ),
 
                 // Pending Experiments
                 if (state.pendingExperiments.isNotEmpty)
@@ -536,153 +583,189 @@ class _HomeScreenState extends State<HomeScreen> {
                     }, childCount: state.pendingExperiments.length),
                   ),
 
-                // Task Statistics Card (collapsible)
                 SliverToBoxAdapter(
-                  child: GestureDetector(
-                    onTap: () => setState(() => _showStats = !_showStats),
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: AppSpacing.lg,
-                      ),
-                      padding: const EdgeInsets.all(AppSpacing.md),
-                      decoration: BoxDecoration(
-                        color: surfaceLight,
-                        borderRadius: BorderRadius.circular(AppRadius.lg),
-                        border: Border.all(color: glassBorder),
-                        boxShadow: AppShadows.card,
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            _showStats
-                                ? Icons.keyboard_arrow_down_rounded
-                                : Icons.keyboard_arrow_right_rounded,
-                            color: textMuted,
-                          ),
-                          const SizedBox(width: 8),
-                          Icon(
-                            Icons.bar_chart_rounded,
-                            color: AppColors.primary,
-                            size: 18,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Task Statistics',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ).animate().fadeIn(delay: 350.ms, duration: 400.ms),
+                  child:
+                      ValueListenableBuilder<bool>(
+                            valueListenable: _showStats,
+                            builder: (context, show, child) {
+                              return GestureDetector(
+                                onTap: () => _showStats.value = !show,
+                                child: Container(
+                                  margin: const EdgeInsets.symmetric(
+                                    horizontal: 20,
+                                    vertical: AppSpacing.lg,
+                                  ),
+                                  padding: const EdgeInsets.all(AppSpacing.md),
+                                  decoration: BoxDecoration(
+                                    color: surfaceLight,
+                                    borderRadius: BorderRadius.circular(
+                                      AppRadius.lg,
+                                    ),
+                                    border: Border.all(color: glassBorder),
+                                    boxShadow: AppShadows.card,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        show
+                                            ? Icons.keyboard_arrow_down_rounded
+                                            : Icons
+                                                  .keyboard_arrow_right_rounded,
+                                        color: textMuted,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Icon(
+                                        Icons.bar_chart_rounded,
+                                        color: AppColors.primary,
+                                        size: 18,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Task Statistics',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          color: textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          )
+                          .animate(key: const ValueKey('stats-header-animate'))
+                          .fadeIn(delay: 350.ms, duration: 400.ms),
                 ),
 
-                if (_showStats)
-                  SliverToBoxAdapter(
-                    child: TaskStatsCard(stats: state.userStats),
-                  ),
+                ValueListenableBuilder<bool>(
+                  valueListenable: _showStats,
+                  builder: (context, show, child) {
+                    if (!show) return const SliverToBoxAdapter();
+                    return SliverToBoxAdapter(
+                      child: TaskStatsCard(stats: state.userStats),
+                    );
+                  },
+                ),
 
-                // Completed Tasks Section
                 SliverToBoxAdapter(
-                  child: GestureDetector(
-                    onTap: () =>
-                        setState(() => _showCompleted = !_showCompleted),
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: AppSpacing.md,
-                      ),
-                      padding: const EdgeInsets.all(AppSpacing.md),
-                      decoration: BoxDecoration(
-                        color: surfaceLight,
-                        borderRadius: BorderRadius.circular(AppRadius.lg),
-                        border: Border.all(color: glassBorder),
-                        boxShadow: AppShadows.card,
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            _showCompleted
-                                ? Icons.keyboard_arrow_down_rounded
-                                : Icons.keyboard_arrow_right_rounded,
-                            color: textMuted,
-                          ),
-                          const SizedBox(width: 8),
-                          Icon(
-                            Icons.check_circle_rounded,
-                            color: AppColors.success,
-                            size: 18,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Completed',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: textSecondary,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.success.withAlpha(40),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
+                  child:
+                      ValueListenableBuilder<bool>(
+                            valueListenable: _showCompleted,
+                            builder: (context, show, child) {
+                              return GestureDetector(
+                                onTap: () => _showCompleted.value = !show,
+                                child: Container(
+                                  margin: const EdgeInsets.symmetric(
+                                    horizontal: 20,
+                                    vertical: AppSpacing.md,
+                                  ),
+                                  padding: const EdgeInsets.all(AppSpacing.md),
+                                  decoration: BoxDecoration(
+                                    color: surfaceLight,
+                                    borderRadius: BorderRadius.circular(
+                                      AppRadius.lg,
+                                    ),
+                                    border: Border.all(color: glassBorder),
+                                    boxShadow: AppShadows.card,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        show
+                                            ? Icons.keyboard_arrow_down_rounded
+                                            : Icons
+                                                  .keyboard_arrow_right_rounded,
+                                        color: textMuted,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Icon(
+                                        Icons.check_circle_rounded,
+                                        color: AppColors.success,
+                                        size: 18,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Completed',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          color: textSecondary,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 2,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.success.withAlpha(
+                                            40,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          '${state.completedTasks.length}',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: AppColors.success,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          )
+                          .animate(
+                            key: const ValueKey('completed-header-animate'),
+                          )
+                          .fadeIn(delay: 400.ms, duration: 400.ms),
+                ),
+
+                ValueListenableBuilder<bool>(
+                  valueListenable: _showCompleted,
+                  builder: (context, show, child) {
+                    if (!show) return const SliverToBoxAdapter();
+
+                    if (state.completedTasks.isEmpty) {
+                      return SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Center(
                             child: Text(
-                              '${state.completedTasks.length}',
+                              'No completed tasks yet',
                               style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.success,
+                                color: textMuted,
+                                fontStyle: FontStyle.italic,
                               ),
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-                  ).animate().fadeIn(delay: 400.ms, duration: 400.ms),
-                ),
-
-                // Completed Tasks List
-                if (_showCompleted && state.completedTasks.isNotEmpty)
-                  SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final task = state.completedTasks[index];
-                        return Opacity(
-                          opacity: 0.7,
-                          child: _buildTaskCard(context, task, state),
-                        );
-                      },
-                      childCount: state.completedTasks.length > 20
-                          ? 20 // Limit to 20 to prevent performance issues
-                          : state.completedTasks.length,
-                    ),
-                  ),
-
-                if (_showCompleted && state.completedTasks.isEmpty)
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Center(
-                        child: Text(
-                          'No completed tasks yet',
-                          style: TextStyle(
-                            color: textMuted,
-                            fontStyle: FontStyle.italic,
-                          ),
                         ),
+                      );
+                    }
+
+                    return SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          final task = state.completedTasks[index];
+                          return Opacity(
+                            opacity: 0.7,
+                            child: _buildTaskCard(context, task, state),
+                          );
+                        },
+                        childCount: state.completedTasks.length > 20
+                            ? 20 // Limit to 20 to prevent performance issues
+                            : state.completedTasks.length,
                       ),
-                    ),
-                  ),
+                    );
+                  },
+                ),
 
                 // Bottom padding
                 const SliverToBoxAdapter(child: SizedBox(height: 100)),
@@ -704,59 +787,72 @@ class _HomeScreenState extends State<HomeScreen> {
     final completed = subtasks.where((s) => s.isCompleted).length;
 
     // Use SwipeableTaskCard for gesture-based progressive disclosure
-    return SwipeableTaskCard(
-      task: task,
-      subtaskCount: subtasks.length,
-      subtaskCompleted: completed,
-      onTap: () => _showEditTaskDialog(context, task),
-      onComplete: () {
-        HapticService.success();
+    // Use SwipeableTaskCard for gesture-based progressive disclosure
+    return Builder(
+      builder: (cardContext) {
+        return SwipeableTaskCard(
+          task: task,
+          subtaskCount: subtasks.length,
+          subtaskCompleted: completed,
+          onTap: () => _showEditTaskDialog(cardContext, task),
+          onComplete: () {
+            if (!task.isCompleted) {
+              HapticService.success();
 
-        // Show completion animation (Principle 4: Dopamine Feedback Loop)
-        // Calculate position from task card context
-        final box = context.findRenderObject() as RenderBox?;
-        if (box != null) {
-          final position = box.localToGlobal(Offset(24, box.size.height / 2));
-          final xpAmount = task.isPriority ? 15 : 10;
-          CompletionOverlay.show(
-            context,
-            position: position,
-            xpBarKey: _xpBarKey,
-            xpAmount: xpAmount,
-          );
-        }
-
-        state.toggleTaskComplete(task.id);
-      },
-      onDelete: () async {
-        if (!task.isCompleted) {
-          final reason = await showWhyDialog(context, task);
-          if (reason != null && context.mounted) {
-            task.abandonReason = reason;
-            _deleteTaskWithUndo(context, task, state);
-          }
-        } else {
-          _deleteTaskWithUndo(context, task, state);
-        }
-      },
-      onPromote: (showPromote && state.canAddPriorityTask)
-          ? () => state.promoteTaskToPriority(task.id)
-          : null,
-      onDemote: task.isPriority
-          ? () async {
-              final reason = await showWhyDialog(context, task);
-              if (reason != null) {
-                task.demoteToBacklog(reason: reason);
-                state.updateTask(task);
+              // Show completion animation (Principle 4: Dopamine Feedback Loop)
+              // Calculate position from task card context
+              final box = cardContext.findRenderObject() as RenderBox?;
+              if (box != null) {
+                final position = box.localToGlobal(
+                  Offset(24, box.size.height / 2),
+                );
+                final xpAmount = task.isPriority ? 15 : 10;
+                CompletionOverlay.show(
+                  cardContext,
+                  position: position,
+                  xpBarKey: _xpBarKey,
+                  xpAmount: xpAmount,
+                );
               }
+            } else {
+              HapticService.selectionClick();
             }
-          : null,
-      onFocusMode: task.isPriority
-          ? () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => FocusModeScreen(task: task)),
-            )
-          : null,
+
+            state.toggleTaskComplete(task.id);
+          },
+          onDelete: () async {
+            if (!task.isCompleted) {
+              final reason = await showWhyDialog(cardContext, task);
+              if (reason != null && cardContext.mounted) {
+                task.abandonReason = reason;
+                _deleteTaskWithUndo(cardContext, task, state);
+              }
+            } else {
+              _deleteTaskWithUndo(cardContext, task, state);
+            }
+          },
+          onPromote: (showPromote && state.canAddPriorityTask)
+              ? () => state.promoteTaskToPriority(task.id)
+              : null,
+          onDemote: task.isPriority
+              ? () async {
+                  final reason = await showWhyDialog(cardContext, task);
+                  if (reason != null && cardContext.mounted) {
+                    task.demoteToBacklog(reason: reason);
+                    state.updateTask(task);
+                  }
+                }
+              : null,
+          onFocusMode: task.isPriority
+              ? () => Navigator.push(
+                  cardContext,
+                  MaterialPageRoute(
+                    builder: (_) => FocusModeScreen(task: task),
+                  ),
+                )
+              : null,
+        );
+      },
     );
   }
 
@@ -1306,10 +1402,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
 
                   // Factor Connection (Optional)
-                  if (state.activeFocusFactors.isNotEmpty) ...[
+                  if (state.factors.isNotEmpty) ...[
                     const SizedBox(height: 16),
                     Text(
-                      'Link to Focus Factors (Optional):',
+                      'Link to Goal Tree (Factors):',
                       style: TextStyle(
                         color: AppColors.textMuted,
                         fontSize: 13,
@@ -1327,8 +1423,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           onSelected: (_) =>
                               setModalState(() => selectedFactorIds = []),
                         ),
-                        // Chips for each active focus factor
-                        ...state.activeFocusFactors.map(
+                        // Chips for each factor (dissected tree elements)
+                        ...state.factors.map(
                           (factor) => _ChoiceChip(
                             label: factor.name,
                             selected: selectedFactorIds.contains(factor.id),
@@ -1779,10 +1875,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
 
                 // Factor Connection (Optional)
-                if (state.activeFocusFactors.isNotEmpty) ...[
+                if (state.factors.isNotEmpty) ...[
                   const SizedBox(height: 16),
                   Text(
-                    'Link to Focus Factors (Optional):',
+                    'Link to Goal Tree (Factors):',
                     style: TextStyle(color: AppColors.textMuted, fontSize: 13),
                   ),
                   const SizedBox(height: 8),
@@ -1797,8 +1893,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         onSelected: (_) =>
                             setModalState(() => selectedFactorIds = []),
                       ),
-                      // Chips for each active focus factor
-                      ...state.activeFocusFactors.map(
+                      // Chips for each factor
+                      ...state.factors.map(
                         (factor) => _ChoiceChip(
                           label: factor.name,
                           selected: selectedFactorIds.contains(factor.id),

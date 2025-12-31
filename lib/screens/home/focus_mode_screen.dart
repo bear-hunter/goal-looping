@@ -444,12 +444,18 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
                                     children: [
                                       Text(
                                         widget.task.effortEmoji,
-                                        style: const TextStyle(fontSize: 18),
+                                        style: const TextStyle(
+                                          fontSize: 18,
+                                          decoration: TextDecoration.none,
+                                        ),
                                       ),
                                       const SizedBox(width: 8),
                                       Text(
                                         widget.task.impactEmoji,
-                                        style: const TextStyle(fontSize: 18),
+                                        style: const TextStyle(
+                                          fontSize: 18,
+                                          decoration: TextDecoration.none,
+                                        ),
                                       ),
                                       const Spacer(),
                                       if (subtasks.isNotEmpty)
@@ -457,6 +463,7 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
                                           '$completedSubtasks/${subtasks.length}',
                                           style: TextStyle(
                                             color: AppColors.textMuted,
+                                            decoration: TextDecoration.none,
                                           ),
                                         ),
                                     ],
@@ -468,6 +475,7 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
                                       fontSize: 20,
                                       fontWeight: FontWeight.w600,
                                       color: AppColors.textPrimary,
+                                      decoration: TextDecoration.none,
                                     ),
                                   ),
                                   if (widget.task.description.isNotEmpty) ...[
@@ -476,6 +484,7 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
                                       widget.task.description,
                                       style: TextStyle(
                                         color: AppColors.textMuted,
+                                        decoration: TextDecoration.none,
                                       ),
                                     ),
                                   ],

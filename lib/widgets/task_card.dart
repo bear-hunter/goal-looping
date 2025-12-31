@@ -136,12 +136,18 @@ class TaskCard extends StatelessWidget {
                           .start, // Align top for multi-line titles
                       children: [
                         // Checkbox
-                        Padding(
-                          padding: const EdgeInsets.only(
-                            top: 2,
-                          ), // Visual alignment with text
-                          child: GestureDetector(
-                            onTap: onComplete,
+                        // Checkbox
+                        GestureDetector(
+                          onTap: onComplete,
+                          behavior: HitTestBehavior.opaque,
+                          child: Container(
+                            width: 44,
+                            height: 44,
+                            alignment: Alignment.topCenter,
+                            padding: const EdgeInsets.only(
+                              top: 4,
+                            ), // Visual alignment
+                            color: Colors.transparent,
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 200),
                               width: 24,
@@ -221,66 +227,25 @@ class TaskCard extends StatelessWidget {
                                     ),
                                   ),
 
-                                  // Source indicator
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 3,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: sourceColor.withAlpha(
-                                        15,
-                                      ), // Softer background
-                                      borderRadius: BorderRadius.circular(
-                                        AppRadius.sm,
+                                  // Source indicator (Hidden for new entries)
+                                  if (task.source != TaskSource.newEntry)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 3,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: sourceColor.withAlpha(20),
+                                        borderRadius: BorderRadius.circular(
+                                          AppRadius.sm,
+                                        ),
+                                      ),
+                                      child: Icon(
+                                        sourceIcon,
+                                        size: 14,
+                                        color: sourceColor,
                                       ),
                                     ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          sourceIcon,
-                                          size: 12,
-                                          color: sourceColor,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          task.source.name
-                                              .toUpperCase(), // Stylized source name? Or just icon?
-                                          // Actually existing code just showed icon. Let's keep it minimal or descriptive.
-                                          // Original code just had Icon.
-                                          // Let's stick to Icon but maybe cleaner.
-                                          // Wait, original had Icon inside container.
-                                          // I will keep just the Icon but in a nice pill.
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  // Wait, I broke the 'Icon' only logic in my thought. The original code:
-                                  /*
-                                Container(
-                                  padding: ...,
-                                  child: Icon(sourceIcon, size: 16, color: sourceColor),
-                                )
-                              */
-                                  // I will revert to just the icon in the container.
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 6,
-                                      vertical: 3,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: sourceColor.withAlpha(20),
-                                      borderRadius: BorderRadius.circular(
-                                        AppRadius.sm,
-                                      ),
-                                    ),
-                                    child: Icon(
-                                      sourceIcon,
-                                      size: 14, // Smaller
-                                      color: sourceColor,
-                                    ),
-                                  ),
 
                                   if (task.customTag != null &&
                                       task.customTag!.isNotEmpty) ...[
