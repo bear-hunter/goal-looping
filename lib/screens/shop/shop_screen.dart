@@ -12,13 +12,22 @@ class ShopScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<AppState>(
-      builder: (context, state, _) {
-        final userCoins = state.userStats.coins;
+    // Use Selector to only rebuild when coins or unlocked badges change
+    // This prevents rebuilds when unrelated AppState properties change
+    return Selector<AppState, ({int coins, List<String> unlockedIds})>(
+      selector: (context, state) => (
+        coins: state.userStats.coins,
+        unlockedIds: state.userStats.unlockedBadgeIds,
+      ),
+      builder: (context, data, child) {
+        final userCoins = data.coins;
+        final unlockedIds = data.unlockedIds;
         final isDark = Theme.of(context).brightness == Brightness.dark;
         final bgColor = isDark ? AppColors.background : LightColors.background;
-        final textPrimary = isDark ? AppColors.textPrimary : LightColors.textPrimary;
-        
+        final textPrimary = isDark
+            ? AppColors.textPrimary
+            : LightColors.textPrimary;
+
         return Scaffold(
           backgroundColor: bgColor,
           appBar: AppBar(
@@ -37,7 +46,10 @@ class ShopScreen extends StatelessWidget {
             actions: [
               Container(
                 margin: const EdgeInsets.only(right: 16),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.warning.withAlpha(30),
                   borderRadius: BorderRadius.circular(20),
@@ -46,7 +58,13 @@ class ShopScreen extends StatelessWidget {
                   children: [
                     const Text('🪙', style: TextStyle(fontSize: 16)),
                     const SizedBox(width: 6),
-                    Text('$userCoins', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.warning)),
+                    Text(
+                      '$userCoins',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.warning,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -70,21 +88,34 @@ class ShopScreen extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.info_outline_rounded, size: 18, color: AppColors.success),
+                          Icon(
+                            Icons.info_outline_rounded,
+                            size: 18,
+                            color: AppColors.success,
+                          ),
                           const SizedBox(width: 8),
-                          Text('Tree Life Cycle', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                          Text(
+                            'Tree Life Cycle',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 8),
                       Text(
                         'Each species grows through 7 stages:\nSeed → Sprout → Seedling → Sapling → Mature → Decline → Snag',
-                        style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                     ],
                   ),
                 ),
               ),
-              
+
               // Species Grid
               Expanded(
                 child: GridView.builder(
@@ -98,14 +129,16 @@ class ShopScreen extends StatelessWidget {
                   itemCount: TreeDesigns.all.length,
                   itemBuilder: (context, index) {
                     final design = TreeDesigns.all[index];
-                    final isUnlocked = state.userStats.unlockedBadgeIds.contains('tree_${design.id}') || design.cost == 0;
+                    final isUnlocked =
+                        unlockedIds.contains('tree_${design.id}') ||
+                        design.cost == 0;
                     final canAfford = userCoins >= design.cost;
-                    
+
                     return _SpeciesCard(
                       design: design,
                       isUnlocked: isUnlocked,
                       canAfford: canAfford,
-                      onPurchase: () => _purchaseSpecies(context, state, design),
+                      onPurchase: () => _purchaseSpecies(context, design),
                     );
                   },
                 ),
@@ -117,9 +150,10 @@ class ShopScreen extends StatelessWidget {
     );
   }
 
-  void _purchaseSpecies(BuildContext context, AppState state, TreeDesign design) {
+  void _purchaseSpecies(BuildContext context, TreeDesign design) {
+    final state = context.read<AppState>();
     if (design.cost == 0) return;
-    
+
     if (state.userStats.coins < design.cost) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -129,7 +163,7 @@ class ShopScreen extends StatelessWidget {
       );
       return;
     }
-    
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -140,7 +174,10 @@ class ShopScreen extends StatelessWidget {
           children: [
             Text(design.emoji, style: const TextStyle(fontSize: 64)),
             const SizedBox(height: 16),
-            Text(design.description, style: TextStyle(color: AppColors.textSecondary)),
+            Text(
+              design.description,
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
             const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.all(12),
@@ -155,7 +192,10 @@ class ShopScreen extends StatelessWidget {
                   Expanded(
                     child: Text(
                       'Mature: ${design.matureDescription}',
-                      style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textMuted,
+                      ),
                     ),
                   ),
                 ],
@@ -167,7 +207,14 @@ class ShopScreen extends StatelessWidget {
               children: [
                 const Text('🪙', style: TextStyle(fontSize: 20)),
                 const SizedBox(width: 6),
-                Text('${design.cost}', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.warning)),
+                Text(
+                  '${design.cost}',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.warning,
+                  ),
+                ),
               ],
             ),
           ],
@@ -213,23 +260,29 @@ class _SpeciesCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final surfaceLight = isDark ? AppColors.surfaceLight : LightColors.surfaceLight;
-    final glassBorder = isDark ? AppColors.glassBorder : LightColors.glassBorder;
-    final textPrimary = isDark ? AppColors.textPrimary : LightColors.textPrimary;
-    
+    final surfaceLight = isDark
+        ? AppColors.surfaceLight
+        : LightColors.surfaceLight;
+    final glassBorder = isDark
+        ? AppColors.glassBorder
+        : LightColors.glassBorder;
+    final textPrimary = isDark
+        ? AppColors.textPrimary
+        : LightColors.textPrimary;
+
     return GestureDetector(
       onTap: isUnlocked ? null : onPurchase,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isUnlocked 
-              ? AppColors.success.withAlpha(15)
-              : surfaceLight,
+          color: isUnlocked ? AppColors.success.withAlpha(15) : surfaceLight,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isUnlocked 
+            color: isUnlocked
                 ? AppColors.success.withAlpha(100)
-                : canAfford ? AppColors.warning.withAlpha(100) : glassBorder,
+                : canAfford
+                ? AppColors.warning.withAlpha(100)
+                : glassBorder,
             width: isUnlocked ? 2 : 1,
           ),
         ),
@@ -247,7 +300,10 @@ class _SpeciesCard extends StatelessWidget {
                   fit: BoxFit.contain,
                   errorBuilder: (context, error, stackTrace) {
                     // Fallback to emoji
-                    return Text(design.emoji, style: const TextStyle(fontSize: 40));
+                    return Text(
+                      design.emoji,
+                      style: const TextStyle(fontSize: 40),
+                    );
                   },
                 ),
                 if (!isUnlocked)
@@ -257,34 +313,39 @@ class _SpeciesCard extends StatelessWidget {
                       color: Colors.black.withAlpha(150),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(Icons.lock_rounded, color: Colors.white, size: 20),
+                    child: Icon(
+                      Icons.lock_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
                   ),
               ],
             ),
             const SizedBox(height: 12),
             Text(
               design.name,
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                color: textPrimary,
-              ),
+              style: TextStyle(fontWeight: FontWeight.w600, color: textPrimary),
             ),
             const SizedBox(height: 4),
-            Text(
-              design.emoji,
-              style: const TextStyle(fontSize: 20),
-            ),
+            Text(design.emoji, style: const TextStyle(fontSize: 20)),
             const SizedBox(height: 8),
             if (isUnlocked)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.success.withAlpha(30),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
                   '✓ Owned',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.success),
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.success,
+                  ),
                 ),
               )
             else
@@ -297,7 +358,9 @@ class _SpeciesCard extends StatelessWidget {
                     '${design.cost}',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: canAfford ? AppColors.warning : AppColors.textMuted,
+                      color: canAfford
+                          ? AppColors.warning
+                          : AppColors.textMuted,
                     ),
                   ),
                 ],
@@ -308,4 +371,3 @@ class _SpeciesCard extends StatelessWidget {
     ).animate().fadeIn(duration: 300.ms).scale(begin: const Offset(0.95, 0.95));
   }
 }
-

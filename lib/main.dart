@@ -98,11 +98,14 @@ class _AppRootState extends State<AppRoot> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Precache tree images for faster Strategy screen loading
-    _precacheTreeAssets();
+    // Defer precaching until after first frame to improve Time to Interactive
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _precacheTreeAssets();
+    });
   }
 
   /// Precache all tree assets to avoid loading delays
+  /// This runs after the first frame to not block initial render
   void _precacheTreeAssets() {
     final treeTypes = ['oak', 'cherry', 'maple', 'pine', 'willow', 'baobab'];
     final stages = ['sprout', 'sapling', 'mature'];
@@ -196,10 +199,12 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
   @override
   void initState() {
     super.initState();
-    // Check achievements when state changes
+    // Schedule initial achievement check after first frame
+    // Using debounced check to prevent blocking UI during rapid state changes
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final state = context.read<AppState>();
-      state.addListener(() => state.checkAchievements());
+      // Use debounced version to prevent O(N) checks on every notification
+      state.addListener(() => state.scheduleAchievementCheck());
     });
   }
 

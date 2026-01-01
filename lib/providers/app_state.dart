@@ -16,6 +16,7 @@ import '../models/achievement.dart';
 import '../models/focus_log.dart';
 import '../services/storage_service.dart';
 import 'package:uuid/uuid.dart';
+import 'dart:async';
 
 /// Main application state using ChangeNotifier
 class AppState extends ChangeNotifier {
@@ -36,6 +37,22 @@ class AppState extends ChangeNotifier {
   List<CategoryModel> _categories = [];
   List<RecurringTask> _recurringTasks = [];
   bool _isLoading = true;
+
+  // ========== MEMOIZATION CACHES (Phase 1: Performance Optimization) ==========
+  // These caches prevent O(N log N) operations from running on every getter access
+  List<Task>? _cachedPriorityTasks;
+  List<Task>? _cachedBacklogTasks;
+  List<Task>? _cachedCompletedTasks;
+  List<Habit>? _cachedBuildHabits;
+  List<Habit>? _cachedQuitHabits;
+  List<Habit>? _cachedTimedHabits;
+  List<Factor>? _cachedFactorsWithGap;
+  Map<String, List<Habit>>? _cachedHabitsForDate;
+  Map<String, List<Task>>? _cachedTasksForDate;
+  Map<String, List<RecurringTask>>? _cachedRecurringTasksForDate;
+
+  // Debounce for achievement checks
+  bool _achievementCheckScheduled = false;
 
   // ========== GETTERS ==========
   List<Goal> get goals => _goals;
@@ -58,21 +75,31 @@ class AppState extends ChangeNotifier {
   // Computed getters
   Goal? get activeGoal => _goals.isNotEmpty ? _goals.first : null;
 
-  List<Task> get priorityTasks =>
-      _tasks.where((t) => t.isPriority && !t.isCompleted).toList()
-        ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+  /// Priority tasks with memoization - O(1) after first access until cache invalidated
+  List<Task> get priorityTasks {
+    if (_cachedPriorityTasks != null) return _cachedPriorityTasks!;
+    _cachedPriorityTasks =
+        _tasks.where((t) => t.isPriority && !t.isCompleted).toList()
+          ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+    return _cachedPriorityTasks!;
+  }
 
-  List<Task> get backlogTasks =>
-      _tasks.where((t) => !t.isPriority && !t.isCompleted).toList()
-        ..sort((a, b) {
-          // Sort by deadline if available, then by sortOrder
-          if (a.deadline != null && b.deadline != null) {
-            return a.deadline!.compareTo(b.deadline!);
-          }
-          if (a.deadline != null) return -1;
-          if (b.deadline != null) return 1;
-          return a.sortOrder.compareTo(b.sortOrder);
-        });
+  /// Backlog tasks with memoization - O(1) after first access until cache invalidated
+  List<Task> get backlogTasks {
+    if (_cachedBacklogTasks != null) return _cachedBacklogTasks!;
+    _cachedBacklogTasks =
+        _tasks.where((t) => !t.isPriority && !t.isCompleted).toList()
+          ..sort((a, b) {
+            // Sort by deadline if available, then by sortOrder
+            if (a.deadline != null && b.deadline != null) {
+              return a.deadline!.compareTo(b.deadline!);
+            }
+            if (a.deadline != null) return -1;
+            if (b.deadline != null) return 1;
+            return a.sortOrder.compareTo(b.sortOrder);
+          });
+    return _cachedBacklogTasks!;
+  }
 
   Map<String, List<Task>> get categorizedBacklog {
     final Map<String, List<Task>> groups = {};
@@ -85,19 +112,65 @@ class AppState extends ChangeNotifier {
     return groups;
   }
 
-  List<Task> get completedTasks => _tasks.where((t) => t.isCompleted).toList();
+  /// Completed tasks with memoization
+  List<Task> get completedTasks {
+    if (_cachedCompletedTasks != null) return _cachedCompletedTasks!;
+    _cachedCompletedTasks = _tasks.where((t) => t.isCompleted).toList();
+    return _cachedCompletedTasks!;
+  }
 
   bool get canAddPriorityTask => priorityTasks.length < 2;
 
-  // Phase 2: Updated habit type getters
-  List<Habit> get buildHabits =>
-      _habits.where((h) => h.type == HabitType.build && h.isActive).toList();
+  /// Invalidate all task-related caches. Call this after any task mutation.
+  void _invalidateTaskCaches() {
+    _cachedPriorityTasks = null;
+    _cachedBacklogTasks = null;
+    _cachedCompletedTasks = null;
+    _cachedTasksForDate = null;
+  }
 
-  List<Habit> get quitHabits =>
-      _habits.where((h) => h.type == HabitType.quit && h.isActive).toList();
+  /// Invalidate all habit-related caches. Call this after any habit mutation.
+  void _invalidateHabitCaches() {
+    _cachedBuildHabits = null;
+    _cachedQuitHabits = null;
+    _cachedTimedHabits = null;
+    _cachedHabitsForDate = null;
+  }
 
-  List<Habit> get timedHabits =>
-      _habits.where((h) => h.type == HabitType.timed && h.isActive).toList();
+  /// Invalidate factor-related caches.
+  void _invalidateFactorCaches() {
+    _cachedFactorsWithGap = null;
+  }
+
+  /// Invalidate recurring task caches.
+  void _invalidateRecurringTaskCaches() {
+    _cachedRecurringTasksForDate = null;
+  }
+
+  // Phase 2: Updated habit type getters with memoization
+  List<Habit> get buildHabits {
+    if (_cachedBuildHabits != null) return _cachedBuildHabits!;
+    _cachedBuildHabits = _habits
+        .where((h) => h.type == HabitType.build && h.isActive)
+        .toList();
+    return _cachedBuildHabits!;
+  }
+
+  List<Habit> get quitHabits {
+    if (_cachedQuitHabits != null) return _cachedQuitHabits!;
+    _cachedQuitHabits = _habits
+        .where((h) => h.type == HabitType.quit && h.isActive)
+        .toList();
+    return _cachedQuitHabits!;
+  }
+
+  List<Habit> get timedHabits {
+    if (_cachedTimedHabits != null) return _cachedTimedHabits!;
+    _cachedTimedHabits = _habits
+        .where((h) => h.type == HabitType.timed && h.isActive)
+        .toList();
+    return _cachedTimedHabits!;
+  }
 
   // Legacy aliases for backward compatibility
   List<Habit> get limitingHabits => quitHabits;
@@ -106,9 +179,13 @@ class AppState extends ChangeNotifier {
   List<Experiment> get pendingExperiments =>
       _experiments.where((e) => e.status == ExperimentStatus.pending).toList();
 
-  List<Factor> get factorsWithGap =>
-      _factors.where((f) => f.gap > 0).toList()
-        ..sort((a, b) => b.gap.compareTo(a.gap));
+  /// Factors with gap - memoized
+  List<Factor> get factorsWithGap {
+    if (_cachedFactorsWithGap != null) return _cachedFactorsWithGap!;
+    _cachedFactorsWithGap = _factors.where((f) => f.gap > 0).toList()
+      ..sort((a, b) => b.gap.compareTo(a.gap));
+    return _cachedFactorsWithGap!;
+  }
 
   Factor? get biggestGapFactor =>
       factorsWithGap.isNotEmpty ? factorsWithGap.first : null;
@@ -337,6 +414,7 @@ class AppState extends ChangeNotifier {
   Future<void> addFactor(Factor factor) async {
     await StorageService.saveFactor(factor);
     _factors.add(factor);
+    _invalidateFactorCaches();
     notifyListeners();
   }
 
@@ -344,6 +422,7 @@ class AppState extends ChangeNotifier {
     await StorageService.saveFactor(factor);
     final index = _factors.indexWhere((f) => f.id == factor.id);
     if (index != -1) _factors[index] = factor;
+    _invalidateFactorCaches();
     invalidateGoalProgressCache(); // Re-calculate Goal progress after Factor update
     notifyListeners();
   }
@@ -351,6 +430,7 @@ class AppState extends ChangeNotifier {
   Future<void> deleteFactor(String id) async {
     await StorageService.deleteFactor(id);
     _factors.removeWhere((f) => f.id == id);
+    _invalidateFactorCaches();
     notifyListeners();
   }
 
@@ -494,6 +574,7 @@ class AppState extends ChangeNotifier {
 
     // Add to local state first (optimistic update)
     _tasks.add(task);
+    _invalidateTaskCaches();
     notifyListeners();
 
     // Then persist to storage with error handling
@@ -517,6 +598,7 @@ class AppState extends ChangeNotifier {
     // OPTIMISTIC: Update local state first
     final index = _tasks.indexWhere((t) => t.id == task.id);
     if (index != -1) _tasks[index] = task;
+    _invalidateTaskCaches();
     notifyListeners();
 
     // Persist in background
@@ -572,6 +654,7 @@ class AppState extends ChangeNotifier {
     }
 
     // Notify UI BEFORE storage - makes completion feel instant
+    _invalidateTaskCaches();
     notifyListeners();
 
     // Persist to storage in background (fire-and-forget pattern)
@@ -591,6 +674,7 @@ class AppState extends ChangeNotifier {
     final task = _tasks.firstWhere((t) => t.id == id);
     task.isPriority = true;
     task.addedToPriorityAt = DateTime.now();
+    _invalidateTaskCaches();
     notifyListeners();
 
     // Persist in background
@@ -605,6 +689,7 @@ class AppState extends ChangeNotifier {
     final task = _tasks.firstWhere((t) => t.id == id);
     task.isPriority = false;
     task.addedToPriorityAt = null;
+    _invalidateTaskCaches();
     notifyListeners();
 
     // Persist in background
@@ -617,6 +702,7 @@ class AppState extends ChangeNotifier {
   Future<void> deleteTask(String id) async {
     // OPTIMISTIC: Remove from local state first
     _tasks.removeWhere((t) => t.id == id);
+    _invalidateTaskCaches();
     notifyListeners();
 
     // Persist in background
@@ -644,6 +730,7 @@ class AppState extends ChangeNotifier {
     for (int i = 0; i < priorityList.length; i++) {
       priorityList[i].sortOrder = i;
     }
+    _invalidateTaskCaches();
     notifyListeners();
 
     // Persist in background
@@ -694,6 +781,7 @@ class AppState extends ChangeNotifier {
   Future<void> addHabit(Habit habit) async {
     await StorageService.saveHabit(habit);
     _habits.add(habit);
+    _invalidateHabitCaches();
     notifyListeners();
   }
 
@@ -701,6 +789,7 @@ class AppState extends ChangeNotifier {
     await StorageService.saveHabit(habit);
     final index = _habits.indexWhere((h) => h.id == habit.id);
     if (index != -1) _habits[index] = habit;
+    _invalidateHabitCaches();
     notifyListeners();
   }
 
@@ -744,12 +833,14 @@ class AppState extends ChangeNotifier {
     } else {
       _userStats.earnReward(xp: XPRewards.logHabitFailed, coinReward: 0);
     }
+    _invalidateHabitCaches();
     notifyListeners();
   }
 
   Future<void> deleteHabit(String id) async {
     await StorageService.deleteHabit(id);
     _habits.removeWhere((h) => h.id == id);
+    _invalidateHabitCaches();
     notifyListeners();
   }
 
@@ -1227,12 +1318,26 @@ class AppState extends ChangeNotifier {
   List<String> get pendingAchievementNotifications =>
       _pendingAchievementNotifications;
 
+  /// Clear achievement notification
   void clearAchievementNotification(String achievementId) {
     _pendingAchievementNotifications.remove(achievementId);
     notifyListeners();
   }
 
+  /// Schedule achievement check to run after current frame (debounced)
+  /// This prevents achievement checks from blocking the UI thread during rapid state changes
+  void scheduleAchievementCheck() {
+    if (_achievementCheckScheduled) return;
+    _achievementCheckScheduled = true;
+
+    scheduleMicrotask(() {
+      _achievementCheckScheduled = false;
+      checkAchievements();
+    });
+  }
+
   /// Check and unlock achievements based on current state
+  /// NOTE: This is an O(N) operation. Prefer calling scheduleAchievementCheck() to debounce.
   void checkAchievements() {
     // first_reflection: Complete first reflection
     if (_reflections.isNotEmpty &&
@@ -1277,18 +1382,21 @@ class AppState extends ChangeNotifier {
     }
 
     // first_top2: Complete first priority task
-    if (_tasks.any((t) => t.isPriority && t.isCompleted) &&
+    // Use cached completedTasks to avoid inline filtering
+    if (completedTasks.any((t) => t.isPriority) &&
         !_userStats.unlockedBadgeIds.contains('first_top2')) {
       _unlockAchievement('first_top2');
     }
 
     // tasks_50: Complete 50 tasks
-    if (_tasks.where((t) => t.isCompleted).length >= 50 &&
+    // Use cached completedTasks (O(1) access) instead of inline filter (O(N))
+    if (completedTasks.length >= 50 &&
         !_userStats.unlockedBadgeIds.contains('tasks_50')) {
       _unlockAchievement('tasks_50');
     }
 
     // zero_backlog: Clear entire backlog (no incomplete backlog tasks)
+    // backlogTasks getter is now memoized
     if (backlogTasks.isEmpty &&
         _tasks.isNotEmpty &&
         !_userStats.unlockedBadgeIds.contains('zero_backlog')) {
@@ -1400,6 +1508,7 @@ class AppState extends ChangeNotifier {
     await StorageService.saveRecurringTask(task);
     _recurringTasks.add(task);
     _recurringTasks.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+    _invalidateRecurringTaskCaches();
     notifyListeners();
   }
 
@@ -1408,6 +1517,7 @@ class AppState extends ChangeNotifier {
     await StorageService.saveRecurringTask(task);
     final index = _recurringTasks.indexWhere((t) => t.id == task.id);
     if (index != -1) _recurringTasks[index] = task;
+    _invalidateRecurringTaskCaches();
     notifyListeners();
   }
 
@@ -1415,6 +1525,7 @@ class AppState extends ChangeNotifier {
   Future<void> deleteRecurringTask(String id) async {
     await StorageService.deleteRecurringTask(id);
     _recurringTasks.removeWhere((t) => t.id == id);
+    _invalidateRecurringTaskCaches();
     notifyListeners();
   }
 
@@ -1442,33 +1553,62 @@ class AppState extends ChangeNotifier {
         coinReward: XPRewards.coinsBacklogTask,
       );
     }
+    _invalidateRecurringTaskCaches();
     notifyListeners();
   }
 
   // ========== TODAY PAGE HELPERS (Phase 3) ==========
 
+  /// Generate a date key for caching (YYYY-MM-DD format)
+  String _dateKey(DateTime date) => '${date.year}-${date.month}-${date.day}';
+
   /// Get all habits scheduled for a specific date (excluding archived)
+  /// Results are memoized per date until habit data changes
   List<Habit> getHabitsForDate(DateTime date) {
-    return _habits
-        .where((h) => h.isActive && !h.isArchived && h.isScheduledFor(date))
-        .toList()
-      ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+    final key = _dateKey(date);
+    _cachedHabitsForDate ??= {};
+    if (_cachedHabitsForDate!.containsKey(key)) {
+      return _cachedHabitsForDate![key]!;
+    }
+    final result =
+        _habits
+            .where((h) => h.isActive && !h.isArchived && h.isScheduledFor(date))
+            .toList()
+          ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+    _cachedHabitsForDate![key] = result;
+    return result;
   }
 
   /// Get all single tasks scheduled for a specific date
+  /// Results are memoized per date until task data changes
   List<Task> getTasksForDate(DateTime date) {
-    return _tasks
-        .where((t) => !t.isCompleted && t.isScheduledFor(date))
-        .toList()
-      ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+    final key = _dateKey(date);
+    _cachedTasksForDate ??= {};
+    if (_cachedTasksForDate!.containsKey(key)) {
+      return _cachedTasksForDate![key]!;
+    }
+    final result =
+        _tasks.where((t) => !t.isCompleted && t.isScheduledFor(date)).toList()
+          ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+    _cachedTasksForDate![key] = result;
+    return result;
   }
 
   /// Get all recurring tasks scheduled for a specific date
+  /// Results are memoized per date until recurring task data changes
   List<RecurringTask> getRecurringTasksForDate(DateTime date) {
-    return _recurringTasks
-        .where((t) => !t.isArchived && t.isScheduledFor(date))
-        .toList()
-      ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+    final key = _dateKey(date);
+    _cachedRecurringTasksForDate ??= {};
+    if (_cachedRecurringTasksForDate!.containsKey(key)) {
+      return _cachedRecurringTasksForDate![key]!;
+    }
+    final result =
+        _recurringTasks
+            .where((t) => !t.isArchived && t.isScheduledFor(date))
+            .toList()
+          ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+    _cachedRecurringTasksForDate![key] = result;
+    return result;
   }
 
   /// Get count of items scheduled for a date

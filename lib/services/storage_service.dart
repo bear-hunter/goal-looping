@@ -127,24 +127,26 @@ class StorageService {
     _isInitialized = true;
   }
 
-  /// Open all boxes
+  /// Open all boxes in parallel for faster initialization
   static Future<void> _openAllBoxes() async {
-    await _ensureBoxOpen<Goal>(goalsBox);
-    await _ensureBoxOpen<Factor>(factorsBox);
-    await _ensureBoxOpen<SprintTarget>(sprintTargetsBox);
-    await _ensureBoxOpen<Task>(tasksBox);
-    await _ensureBoxOpen<Subtask>(subtasksBox);
-    await _ensureBoxOpen<Habit>(habitsBox);
-    await _ensureBoxOpen<Reflection>(reflectionsBox);
-    await _ensureBoxOpen<Experiment>(experimentsBox);
-    await _ensureBoxOpen<BarrierEntry>(barriersBox);
-    await _ensureSettingsBoxOpen();
-    await _ensureBoxOpen<UserStats>(userStatsBox);
-    await _ensureBoxOpen<Achievement>(achievementsBox);
-    await _ensureBoxOpen<FocusLog>(focusLogsBox);
-    await _ensureBoxOpen<ReflectionGroup>(reflectionGroupsBox);
-    await _ensureBoxOpen<CategoryModel>(categoriesBox);
-    await _ensureBoxOpen<RecurringTask>(recurringTasksBox);
+    await Future.wait([
+      _ensureBoxOpen<Goal>(goalsBox),
+      _ensureBoxOpen<Factor>(factorsBox),
+      _ensureBoxOpen<SprintTarget>(sprintTargetsBox),
+      _ensureBoxOpen<Task>(tasksBox),
+      _ensureBoxOpen<Subtask>(subtasksBox),
+      _ensureBoxOpen<Habit>(habitsBox),
+      _ensureBoxOpen<Reflection>(reflectionsBox),
+      _ensureBoxOpen<Experiment>(experimentsBox),
+      _ensureBoxOpen<BarrierEntry>(barriersBox),
+      _ensureSettingsBoxOpen(),
+      _ensureBoxOpen<UserStats>(userStatsBox),
+      _ensureBoxOpen<Achievement>(achievementsBox),
+      _ensureBoxOpen<FocusLog>(focusLogsBox),
+      _ensureBoxOpen<ReflectionGroup>(reflectionGroupsBox),
+      _ensureBoxOpen<CategoryModel>(categoriesBox),
+      _ensureBoxOpen<RecurringTask>(recurringTasksBox),
+    ]);
   }
 
   /// Initialize Hive and register all adapters
