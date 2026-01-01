@@ -160,7 +160,7 @@ class _SwipeableTaskCardState extends State<SwipeableTaskCard>
         if (_dragExtent > 0)
           Positioned.fill(
             child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
@@ -213,7 +213,7 @@ class _SwipeableTaskCardState extends State<SwipeableTaskCard>
         if (_dragExtent < 0)
           Positioned.fill(
             child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: widget.task.isPriority

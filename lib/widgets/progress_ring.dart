@@ -76,7 +76,7 @@ class _ProgressRingPainter extends CustomPainter {
     if (progress > 0) {
       final progressPaint = Paint()
         ..shader = LinearGradient(
-          colors: [progressColor, progressColor.withOpacity(0.7)],
+          colors: [progressColor, progressColor.withValues(alpha: 0.7)],
         ).createShader(Rect.fromCircle(center: center, radius: radius))
         ..style = PaintingStyle.stroke
         ..strokeWidth = strokeWidth
@@ -166,8 +166,8 @@ class StreakIndicator extends StatelessWidget {
         shape: BoxShape.circle,
         gradient: RadialGradient(
           colors: [
-            flameColor.withOpacity(0.3),
-            flameColor.withOpacity(0.1),
+            flameColor.withValues(alpha: 0.3),
+            flameColor.withValues(alpha: 0.1),
           ],
         ),
       ),

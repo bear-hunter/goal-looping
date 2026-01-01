@@ -181,6 +181,9 @@ class Habit extends HiveObject {
   @HiveField(34)
   bool scoringEnabled;
 
+  @HiveField(35)
+  int priority; // Numeric priority (-20 to 20, higher = more important)
+
   Habit({
     required this.id,
     required this.name,
@@ -218,6 +221,7 @@ class Habit extends HiveObject {
     this.extraGoal,
     this.sortOrder = 0,
     this.scoringEnabled = false,
+    this.priority = 0,
   }) : logs = logs ?? [],
        scheduledDays =
            scheduledDays ?? [1, 2, 3, 4, 5, 6, 7], // Default: every day
@@ -427,8 +431,9 @@ class Habit extends HiveObject {
 
   /// Get scheduled days as readable string
   String get scheduleDaysLabel {
-    if (effectiveFrequencyType == HabitFrequencyType.everyday)
+    if (effectiveFrequencyType == HabitFrequencyType.everyday) {
       return 'Every day';
+    }
     if (scheduledDays.length == 7) return 'Every day';
     if (scheduledDays.isEmpty) return 'No schedule';
 
@@ -495,6 +500,9 @@ class Habit extends HiveObject {
     if (scheduledCount == 0) return 100;
     return (completedCount / scheduledCount * 100).clamp(0, 100);
   }
+
+  /// Get completion rate as integer percentage (0-100)
+  int get completionRate => habitScore.round();
 
   /// Get completions for a time period
   int getCompletionsForPeriod(DateTime start, DateTime end) {

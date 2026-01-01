@@ -1,4 +1,4 @@
-import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
@@ -64,7 +64,7 @@ class _AnimatedTreeWidgetState extends State<AnimatedTreeWidget>
     
     return GestureDetector(
       onTap: widget.onTap,
-      child: Container(
+      child: SizedBox(
         width: widget.size,
         height: widget.size * 1.3,
         child: Stack(

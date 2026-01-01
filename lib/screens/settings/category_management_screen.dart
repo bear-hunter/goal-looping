@@ -297,7 +297,6 @@ class _CategoryTile extends StatelessWidget {
   final VoidCallback onDelete;
 
   const _CategoryTile({
-    super.key,
     required this.category,
     required this.taskCount,
     required this.isProtected,

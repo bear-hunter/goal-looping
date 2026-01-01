@@ -13,24 +13,26 @@ class BadgeGalleryScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+    
     return Consumer<AppState>(
       builder: (context, state, _) {
         final unlockedIds = state.userStats.unlockedBadgeIds;
         final categories = ['reflection', 'habits', 'tasks', 'strategy', 'meta'];
         
         return Scaffold(
-          backgroundColor: AppColors.background,
+          backgroundColor: colors.background,
           appBar: AppBar(
             backgroundColor: Colors.transparent,
             elevation: 0,
             title: Row(
               children: [
                 const Text('🏆 '),
-                Text('Achievements', style: TextStyle(color: AppColors.textPrimary)),
+                Text('Achievements', style: TextStyle(color: colors.textPrimary)),
               ],
             ),
             leading: IconButton(
-              icon: Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
+              icon: Icon(Icons.arrow_back_rounded, color: colors.textPrimary),
               onPressed: () => Navigator.pop(context),
             ),
           ),
@@ -72,16 +74,16 @@ class BadgeGalleryScreen extends StatelessWidget {
                         padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
                         child: Row(
                           children: [
-                            Icon(_getCategoryIcon(category), color: AppColors.textSecondary, size: 20),
+                            Icon(_getCategoryIcon(category), color: colors.textSecondary, size: 20),
                             const SizedBox(width: 8),
                             Text(
                               categoryName,
-                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: colors.textPrimary),
                             ),
                             const SizedBox(width: 8),
                             Text(
                               '${categoryBadges.where((a) => unlockedIds.contains(a.id)).length}/${categoryBadges.length}',
-                              style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                              style: TextStyle(fontSize: 12, color: colors.textMuted),
                             ),
                           ],
                         ),
@@ -132,9 +134,11 @@ class BadgeGalleryScreen extends StatelessWidget {
   }
 
   void _showBadgeDetails(BuildContext context, Achievement badge, bool isUnlocked) {
+    final colors = context.colors;
+    
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.surface,
+      backgroundColor: colors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -150,12 +154,12 @@ class BadgeGalleryScreen extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               badge.title,
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: colors.textPrimary),
             ),
             const SizedBox(height: 8),
             Text(
               badge.description,
-              style: TextStyle(color: AppColors.textSecondary),
+              style: TextStyle(color: colors.textSecondary),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
@@ -165,27 +169,27 @@ class BadgeGalleryScreen extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: AppColors.surfaceLight,
+                    color: colors.surfaceLight,
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Text('⭐ ${badge.xpReward} XP', style: TextStyle(color: AppColors.textPrimary)),
+                  child: Text('⭐ ${badge.xpReward} XP', style: TextStyle(color: colors.textPrimary)),
                 ),
                 const SizedBox(width: 12),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: AppColors.surfaceLight,
+                    color: colors.surfaceLight,
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Text('🪙 ${badge.coinReward}', style: TextStyle(color: AppColors.textPrimary)),
+                  child: Text('🪙 ${badge.coinReward}', style: TextStyle(color: colors.textPrimary)),
                 ),
               ],
             ),
             const SizedBox(height: 16),
             if (isUnlocked)
-              Text('✓ Unlocked', style: TextStyle(color: AppColors.success, fontWeight: FontWeight.w600))
+              Text('✓ Unlocked', style: TextStyle(color: colors.success, fontWeight: FontWeight.w600))
             else
-              Text('Not yet unlocked', style: TextStyle(color: AppColors.textMuted)),
+              Text('Not yet unlocked', style: TextStyle(color: colors.textMuted)),
           ],
         ),
       ),

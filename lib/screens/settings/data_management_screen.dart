@@ -163,58 +163,6 @@ class _DataManagementScreenState extends State<DataManagementScreen> {
               ),
             ).animate(delay: 200.ms).fadeIn(duration: 300.ms).slideY(begin: -0.1, end: 0),
 
-            const SizedBox(height: 16),
-
-            // Theme Toggle section
-            _buildSection(
-              context,
-              title: 'Appearance',
-              icon: Icons.palette_rounded,
-              iconColor: AppColors.info,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    'Choose your preferred theme.',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                  const SizedBox(height: 16),
-                  Consumer<ThemeProvider>(
-                    builder: (context, themeProvider, _) => Row(
-                      children: [
-                        Expanded(
-                          child: _ThemeOptionButton(
-                            icon: Icons.brightness_auto_rounded,
-                            label: 'System',
-                            isSelected: themeProvider.themeMode == AppThemeMode.system,
-                            onTap: () => themeProvider.setThemeMode(AppThemeMode.system),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _ThemeOptionButton(
-                            icon: Icons.light_mode_rounded,
-                            label: 'Light',
-                            isSelected: themeProvider.themeMode == AppThemeMode.light,
-                            onTap: () => themeProvider.setThemeMode(AppThemeMode.light),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _ThemeOptionButton(
-                            icon: Icons.dark_mode_rounded,
-                            label: 'Dark',
-                            isSelected: themeProvider.themeMode == AppThemeMode.dark,
-                            onTap: () => themeProvider.setThemeMode(AppThemeMode.dark),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ).animate(delay: 250.ms).fadeIn(duration: 300.ms).slideY(begin: -0.1, end: 0),
-
             const SizedBox(height: 24),
 
             // Warning section
@@ -489,7 +437,7 @@ class _DataManagementScreenState extends State<DataManagementScreen> {
                     ],
                   ),
                 );
-              }).toList(),
+              }),
 
               if (preview.hasConflicts) ...[
                 const SizedBox(height: 16),
@@ -529,7 +477,7 @@ class _DataManagementScreenState extends State<DataManagementScreen> {
                           color: AppColors.warning,
                           fontSize: 12,
                         ),
-                      )).toList(),
+                      )),
                     ],
                   ),
                 ),

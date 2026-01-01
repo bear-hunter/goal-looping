@@ -31,6 +31,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
   // Edit state
   late TextEditingController _nameController;
   late TextEditingController _descriptionController;
+  late TextEditingController _triggerResponseController;
   String? _selectedCategoryId;
   PriorityLevel _selectedPriority = PriorityLevel.none;
   List<int> _selectedDays = [];
@@ -40,9 +41,10 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
     _nameController = TextEditingController();
     _descriptionController = TextEditingController();
+    _triggerResponseController = TextEditingController();
   }
 
   @override
@@ -50,6 +52,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
     _tabController.dispose();
     _nameController.dispose();
     _descriptionController.dispose();
+    _triggerResponseController.dispose();
     super.dispose();
   }
   
@@ -57,6 +60,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
     if (!_isEditMode) {
       _nameController.text = habit.name;
       _descriptionController.text = habit.description ?? '';
+      _triggerResponseController.text = habit.triggerResponse ?? '';
       _selectedCategoryId = habit.categoryId;
       _selectedPriority = habit.effectivePriorityLevel;
       _selectedDays = List<int>.from(habit.scheduledDays);
@@ -83,7 +87,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
       body: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrolled) => [
           SliverAppBar(
-            expandedHeight: 180,
+            expandedHeight: 200, // Increased for more space
             floating: false,
             pinned: true,
             backgroundColor: category != null
@@ -94,12 +98,17 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
               onPressed: () => Navigator.pop(context),
             ),
             flexibleSpace: FlexibleSpaceBar(
+              centerTitle: true,
+              titlePadding: const EdgeInsets.only(bottom: 60), // Space for tabs
               title: Text(
                 habit.name,
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
+                  fontSize: 18,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
               background: Container(
                 decoration: BoxDecoration(
@@ -117,11 +126,11 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
                     ],
                   ),
                 ),
-                child: Center(
+                child: SafeArea(
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.start,
                     children: [
-                      const SizedBox(height: 40),
+                      const SizedBox(height: 50), // Space for back button
                       Icon(
                         category?.icon ?? Icons.repeat_rounded,
                         size: 48,
@@ -148,7 +157,6 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
               tabs: const [
                 Tab(text: 'Calendar'),
                 Tab(text: 'Statistics'),
-                Tab(text: 'Edit'),
               ],
             ),
           ),
@@ -158,7 +166,6 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
           children: [
             _buildCalendarTab(habit, isDark, textPrimary),
             _buildStatisticsTab(habit, isDark, textPrimary),
-            _buildEditTab(habit, isDark, textPrimary),
           ],
         ),
       ),
@@ -825,6 +832,620 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
     return completedDays / scheduledDays;
   }
 
+  // ========== DEFENSE TAB ==========
+  Widget _buildDefenseTab(Habit habit, bool isDark, Color textPrimary) {
+    final textSecondary = isDark ? AppColors.textSecondary : LightColors.textSecondary;
+    final accentColor = AppColors.primary;
+
+    // Get barrier logs from habit logs
+    final logsWithBarriers = habit.logs
+        .where((log) => log.barrierTag != null && log.barrierTag!.isNotEmpty)
+        .toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
+
+    // Count barriers by type
+    final barrierCounts = <String, int>{};
+    for (final log in logsWithBarriers) {
+      final tag = log.barrierTag!;
+      barrierCounts[tag] = (barrierCounts[tag] ?? 0) + 1;
+    }
+    final sortedBarriers = barrierCounts.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Scripted Response Section (If-Then Plan)
+          _buildDefenseCard(
+            'Scripted Response',
+            Icons.psychology_rounded,
+            accentColor,
+            isDark,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Your If-Then Plan',
+                  style: TextStyle(
+                    color: textSecondary,
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                if (habit.triggerResponse != null && habit.triggerResponse!.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: accentColor.withAlpha(30),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: accentColor.withAlpha(50)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.bolt_rounded, color: accentColor, size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            habit.triggerResponse!,
+                            style: TextStyle(
+                              color: textPrimary,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  _buildEmptyState(
+                    'No scripted response yet',
+                    'Add one in the Edit tab to prepare for obstacles',
+                    Icons.add_rounded,
+                    textSecondary,
+                  ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: () {
+                    _tabController.animateTo(3); // Go to Edit tab
+                  },
+                  icon: Icon(
+                    habit.triggerResponse != null ? Icons.edit_rounded : Icons.add_rounded,
+                    size: 18,
+                  ),
+                  label: Text(habit.triggerResponse != null ? 'Edit Response' : 'Add Response'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: accentColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Barrier Statistics
+          _buildDefenseCard(
+            'Barrier Analysis',
+            Icons.analytics_rounded,
+            Colors.orange,
+            isDark,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (sortedBarriers.isEmpty)
+                  _buildEmptyState(
+                    'No barriers logged yet',
+                    'When you miss this habit, logging barriers helps identify patterns',
+                    Icons.shield_rounded,
+                    textSecondary,
+                  )
+                else ...[
+                  Text(
+                    'Most Common Barriers',
+                    style: TextStyle(
+                      color: textSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ...sortedBarriers.take(5).map((entry) => _buildBarrierRow(
+                        entry.key,
+                        entry.value,
+                        logsWithBarriers.length,
+                        textPrimary,
+                        textSecondary,
+                      )),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Recent Barrier Logs
+          _buildDefenseCard(
+            'Barrier History',
+            Icons.history_rounded,
+            Colors.blue,
+            isDark,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (logsWithBarriers.isEmpty)
+                  _buildEmptyState(
+                    'No barrier history',
+                    'Barrier logs will appear here when you log them',
+                    Icons.timeline_rounded,
+                    textSecondary,
+                  )
+                else ...[
+                  ...logsWithBarriers.take(10).map((log) => _buildBarrierLogEntry(
+                        log,
+                        textPrimary,
+                        textSecondary,
+                      )),
+                  if (logsWithBarriers.length > 10)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        '+ ${logsWithBarriers.length - 10} more entries',
+                        style: TextStyle(color: textSecondary, fontSize: 12),
+                      ),
+                    ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Quick Defense Actions
+          _buildDefenseCard(
+            'Quick Actions',
+            Icons.flash_on_rounded,
+            Colors.amber,
+            isDark,
+            child: Column(
+              children: [
+                _buildQuickActionButton(
+                  'Log a Barrier Now',
+                  Icons.warning_rounded,
+                  Colors.orange,
+                  () => _showLogBarrierDialog(habit),
+                ),
+                const SizedBox(height: 8),
+                _buildQuickActionButton(
+                  'I\'m Struggling - Show My Plan',
+                  Icons.psychology_rounded,
+                  accentColor,
+                  () => _showScriptedResponseDialog(habit),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(duration: 200.ms);
+  }
+
+  Widget _buildDefenseCard(
+    String title,
+    IconData icon,
+    Color color,
+    bool isDark, {
+    required Widget child,
+  }) {
+    final surfaceColor = isDark ? AppColors.surfaceLight : LightColors.surfaceLight;
+    final textPrimary = isDark ? AppColors.textPrimary : LightColors.textPrimary;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withAlpha(30),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, color: color, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                title,
+                style: TextStyle(
+                  color: textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(
+    String title,
+    String subtitle,
+    IconData icon,
+    Color textSecondary,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Column(
+        children: [
+          Icon(icon, size: 32, color: textSecondary.withAlpha(100)),
+          const SizedBox(height: 8),
+          Text(
+            title,
+            style: TextStyle(color: textSecondary),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            subtitle,
+            style: TextStyle(color: textSecondary.withAlpha(150), fontSize: 12),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBarrierRow(
+    String barrier,
+    int count,
+    int total,
+    Color textPrimary,
+    Color textSecondary,
+  ) {
+    final percentage = (count / total * 100).round();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                barrier,
+                style: TextStyle(color: textPrimary, fontSize: 14),
+              ),
+              Text(
+                '$count ($percentage%)',
+                style: TextStyle(color: textSecondary, fontSize: 12),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          LinearProgressIndicator(
+            value: count / total,
+            backgroundColor: Colors.grey.withAlpha(50),
+            valueColor: AlwaysStoppedAnimation(
+              _getBarrierColor(barrier),
+            ),
+            minHeight: 6,
+            borderRadius: BorderRadius.circular(3),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getBarrierColor(String barrier) {
+    switch (barrier.toLowerCase()) {
+      case 'tired':
+        return Colors.purple;
+      case 'no time':
+        return Colors.blue;
+      case 'stressed':
+        return Colors.red;
+      case 'distracted':
+        return Colors.orange;
+      case 'unmotivated':
+        return Colors.grey;
+      case 'sick':
+        return Colors.teal;
+      case 'social pressure':
+        return Colors.pink;
+      case 'forgot':
+        return Colors.amber;
+      default:
+        return Colors.blueGrey;
+    }
+  }
+
+  Widget _buildBarrierLogEntry(
+    HabitLog log,
+    Color textPrimary,
+    Color textSecondary,
+  ) {
+    final dateStr = _formatDateRelative(log.date);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: _getBarrierColor(log.barrierTag ?? ''),
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  log.barrierTag ?? 'Unknown',
+                  style: TextStyle(color: textPrimary, fontSize: 14),
+                ),
+                Text(
+                  dateStr,
+                  style: TextStyle(color: textSecondary, fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+          if (log.note != null && log.note!.isNotEmpty)
+            Tooltip(
+              message: log.note!,
+              child: Icon(Icons.notes_rounded, size: 16, color: textSecondary),
+            ),
+        ],
+      ),
+    );
+  }
+
+  String _formatDateRelative(DateTime date) {
+    final now = DateTime.now();
+    final diff = now.difference(date);
+    if (diff.inDays == 0) return 'Today';
+    if (diff.inDays == 1) return 'Yesterday';
+    if (diff.inDays < 7) return '${diff.inDays} days ago';
+    return '${date.month}/${date.day}/${date.year}';
+  }
+
+  Widget _buildQuickActionButton(
+    String label,
+    IconData icon,
+    Color color,
+    VoidCallback onPressed,
+  ) {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: onPressed,
+        icon: Icon(icon, size: 18),
+        label: Text(label),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: color,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+        ),
+      ),
+    );
+  }
+
+  void _showLogBarrierDialog(Habit habit) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textPrimary = isDark ? AppColors.textPrimary : LightColors.textPrimary;
+    String? selectedBarrier;
+    final noteController = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: isDark ? AppColors.surface : LightColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) => Padding(
+          padding: EdgeInsets.fromLTRB(
+            20,
+            20,
+            20,
+            MediaQuery.of(context).viewInsets.bottom + 20,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Log a Barrier',
+                style: TextStyle(
+                  color: textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'What got in the way?',
+                style: TextStyle(color: textPrimary.withAlpha(180)),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: BarrierTags.common.map((tag) {
+                  final isSelected = selectedBarrier == tag;
+                  return ChoiceChip(
+                    label: Text(tag),
+                    selected: isSelected,
+                    onSelected: (selected) {
+                      setModalState(() => selectedBarrier = selected ? tag : null);
+                    },
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: noteController,
+                decoration: InputDecoration(
+                  hintText: 'Add a note (optional)',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                maxLines: 2,
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: selectedBarrier == null
+                      ? null
+                      : () {
+                          _logBarrier(habit, selectedBarrier!, noteController.text);
+                          Navigator.pop(ctx);
+                        },
+                  child: const Text('Log Barrier'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _logBarrier(Habit habit, String barrier, String note) {
+    final today = DateTime.now();
+    final todayStart = DateTime(today.year, today.month, today.day);
+
+    // Find or create today's log
+    var todayLog = habit.logs.firstWhere(
+      (log) =>
+          log.date.year == todayStart.year &&
+          log.date.month == todayStart.month &&
+          log.date.day == todayStart.day,
+      orElse: () {
+        final newLog = HabitLog(date: todayStart);
+        habit.logs.add(newLog);
+        return newLog;
+      },
+    );
+
+    todayLog.barrierTag = barrier;
+    if (note.isNotEmpty) {
+      todayLog.note = note;
+    }
+
+    context.read<AppState>().updateHabit(habit);
+    setState(() {});
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Barrier logged: $barrier'),
+        backgroundColor: Colors.orange,
+      ),
+    );
+  }
+
+  void _showScriptedResponseDialog(Habit habit) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textPrimary = isDark ? AppColors.textPrimary : LightColors.textPrimary;
+    final accentColor = AppColors.primary;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.psychology_rounded, color: accentColor),
+            const SizedBox(width: 8),
+            const Text('Your Defense Plan'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (habit.triggerResponse != null && habit.triggerResponse!.isNotEmpty) ...[
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: accentColor.withAlpha(20),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: accentColor.withAlpha(50)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'When facing obstacles:',
+                      style: TextStyle(
+                        color: textPrimary.withAlpha(180),
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      habit.triggerResponse!,
+                      style: TextStyle(
+                        color: textPrimary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                '💡 Remember: This is your pre-planned response. Trust it!',
+                style: TextStyle(
+                  color: textPrimary.withAlpha(150),
+                  fontSize: 12,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ] else ...[
+              const Text(
+                'You haven\'t set up a scripted response yet.',
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'An "If-Then" plan helps you overcome obstacles automatically. '
+                'Example: "If I feel tired → I will do just 5 minutes"',
+                style: TextStyle(fontSize: 12),
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          if (habit.triggerResponse == null || habit.triggerResponse!.isEmpty)
+            TextButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                _tabController.animateTo(3); // Go to Edit tab
+              },
+              child: const Text('Add One Now'),
+            ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              habit.triggerResponse != null ? 'Got It!' : 'Maybe Later',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ========== EDIT TAB ==========
   Widget _buildEditTab(Habit habit, bool isDark, Color textPrimary) {
     _initEditState(habit);
@@ -1004,6 +1625,38 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
             isDark,
             textPrimary,
           ),
+          const SizedBox(height: 16),
+
+          // Scripted Response (If-Then Plan)
+          _buildEditSection(
+            'Defense Plan (If-Then)',
+            [
+              Text(
+                'When facing obstacles, what will you do?',
+                style: TextStyle(color: textSecondary, fontSize: 12),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _triggerResponseController,
+                style: TextStyle(color: textPrimary),
+                maxLines: 2,
+                decoration: InputDecoration(
+                  hintText: 'e.g., "If I feel tired → I will do just 5 minutes"',
+                  hintStyle: TextStyle(color: textSecondary),
+                  filled: true,
+                  fillColor: surfaceColor,
+                  prefixIcon: Icon(Icons.psychology_rounded, color: AppColors.primary),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+                onChanged: (_) => setState(() => _hasChanges = true),
+              ),
+            ],
+            isDark,
+            textPrimary,
+          ),
           const SizedBox(height: 24),
 
           // Save Button (only show if changes made)
@@ -1082,6 +1735,9 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
     habit.name = name;
     habit.description = _descriptionController.text.trim().isNotEmpty 
         ? _descriptionController.text.trim() 
+        : null;
+    habit.triggerResponse = _triggerResponseController.text.trim().isNotEmpty
+        ? _triggerResponseController.text.trim()
         : null;
     habit.categoryId = _selectedCategoryId;
     habit.priorityLevel = _selectedPriority;
@@ -1208,9 +1864,10 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
     );
 
     if (confirmed == true && mounted) {
+      final nav = Navigator.of(context);
       final appState = context.read<AppState>();
       await appState.deleteHabit(habit.id);
-      Navigator.of(context).pop();
+      nav.pop();
     }
   }
 }

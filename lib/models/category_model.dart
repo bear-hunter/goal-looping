@@ -62,7 +62,7 @@ class CategoryModel extends HiveObject {
       name: name,
       iconCodePoint: icon.codePoint,
       iconFontFamily: icon.fontFamily ?? 'MaterialIcons',
-      colorValue: color.value,
+      colorValue: color.toARGB32(),
       isDefault: isDefault,
       sortOrder: sortOrder,
     );
@@ -80,7 +80,7 @@ class CategoryModel extends HiveObject {
       name: name ?? this.name,
       iconCodePoint: icon?.codePoint ?? iconCodePoint,
       iconFontFamily: icon?.fontFamily ?? iconFontFamily,
-      colorValue: color?.value ?? colorValue,
+      colorValue: color?.toARGB32() ?? colorValue,
       isDefault: isDefault,
       createdAt: createdAt,
       sortOrder: sortOrder ?? this.sortOrder,

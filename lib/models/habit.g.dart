@@ -110,13 +110,14 @@ class HabitAdapter extends TypeAdapter<Habit> {
       extraGoal: fields[32] as int?,
       sortOrder: fields[33] as int,
       scoringEnabled: fields[34] as bool,
+      priority: fields[35] as int,
     );
   }
 
   @override
   void write(BinaryWriter writer, Habit obj) {
     writer
-      ..writeByte(35)
+      ..writeByte(36)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -186,7 +187,9 @@ class HabitAdapter extends TypeAdapter<Habit> {
       ..writeByte(33)
       ..write(obj.sortOrder)
       ..writeByte(34)
-      ..write(obj.scoringEnabled);
+      ..write(obj.scoringEnabled)
+      ..writeByte(35)
+      ..write(obj.priority);
   }
 
   @override

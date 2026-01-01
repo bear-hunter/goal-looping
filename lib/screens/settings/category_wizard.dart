@@ -277,7 +277,7 @@ class _CategoryWizardState extends State<CategoryWizard> {
               spacing: 8,
               runSpacing: 8,
               children: _availableColors.map((color) {
-                final isSelected = color.value == _selectedColor.value;
+                final isSelected = color.toARGB32() == _selectedColor.toARGB32();
                 return GestureDetector(
                   onTap: () => setState(() => _selectedColor = color),
                   child: Container(

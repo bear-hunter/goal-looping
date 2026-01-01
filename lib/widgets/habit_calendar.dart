@@ -91,7 +91,7 @@ class _HabitCalendarState extends State<HabitCalendar> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceAround,
       children: days.map((d) => SizedBox(
-        width: 32,
+        width: 44, // Match _DayCell width for alignment
         child: Center(
           child: Text(d, style: TextStyle(fontSize: 12, color: AppColors.textMuted, fontWeight: FontWeight.w600)),
         ),
@@ -109,7 +109,7 @@ class _HabitCalendarState extends State<HabitCalendar> {
     
     // Empty cells for days before the 1st
     for (var i = 1; i < startingWeekday; i++) {
-      cells.add(const SizedBox(width: 32, height: 32));
+      cells.add(const SizedBox(width: 44, height: 44)); // Match _DayCell dimensions
     }
     
     // Day cells
@@ -122,6 +122,7 @@ class _HabitCalendarState extends State<HabitCalendar> {
       
       cells.add(_DayCell(
         day: day,
+        date: date,
         status: status,
         isToday: isToday,
         isFuture: isFuture,
@@ -205,16 +206,51 @@ class _DayCell extends StatelessWidget {
   final int? score;
   final bool scoringEnabled;
   final VoidCallback? onTap;
+  final DateTime date;
 
   const _DayCell({
     required this.day,
     required this.status,
     required this.isToday,
     required this.isFuture,
+    required this.date,
     this.score,
     this.scoringEnabled = false,
     this.onTap,
   });
+  
+  String _getSemanticLabel() {
+    final dateStr = '${_monthNames[date.month]} $day';
+    
+    if (isFuture) return '$dateStr, future date';
+    if (isToday) {
+      final statusText = _getStatusText();
+      return '$dateStr, today, $statusText';
+    }
+    return '$dateStr, ${_getStatusText()}';
+  }
+  
+  String _getStatusText() {
+    if (scoringEnabled && score != null) {
+      if (score! >= 70) return 'completed with $score% score';
+      if (score! >= 40) return 'partial completion with $score% score';
+      return 'missed with $score% score';
+    }
+    
+    switch (status) {
+      case _DayStatus.completed:
+        return 'completed';
+      case _DayStatus.missed:
+        return 'missed';
+      case _DayStatus.noData:
+        return 'no data recorded';
+      case _DayStatus.notScheduled:
+        return 'not scheduled';
+    }
+  }
+  
+  static const _monthNames = ['', 'January', 'February', 'March', 'April', 'May', 'June',
+                              'July', 'August', 'September', 'October', 'November', 'December'];
 
   @override
   Widget build(BuildContext context) {
@@ -329,23 +365,28 @@ class _DayCell extends StatelessWidget {
       );
     }
     
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        width: 32,
-        height: 32,
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(8),
-          border: isToday 
-              ? Border.all(color: AppColors.primary, width: 2) 
-              : null,
-          boxShadow: (status == _DayStatus.completed || (scoringEnabled && score != null && score! >= 70))
-              ? [BoxShadow(color: bgColor.withAlpha(100), blurRadius: 4, spreadRadius: 1)]
-              : null,
+    return Semantics(
+      label: _getSemanticLabel(),
+      button: onTap != null && !isFuture,
+      enabled: !isFuture,
+      child: GestureDetector(
+        onTap: isFuture ? null : onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          width: 44, // Increased from 32 to meet 44px touch target minimum
+          height: 44, // Increased from 32 to meet 44px touch target minimum
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(8),
+            border: isToday 
+                ? Border.all(color: AppColors.primary, width: 2) 
+                : null,
+            boxShadow: (status == _DayStatus.completed || (scoringEnabled && score != null && score! >= 70))
+                ? [BoxShadow(color: bgColor.withAlpha(100), blurRadius: 4, spreadRadius: 1)]
+                : null,
+          ),
+          child: content,
         ),
-        child: content,
       ),
     );
   }

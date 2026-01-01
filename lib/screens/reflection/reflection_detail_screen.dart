@@ -217,16 +217,15 @@ class _ReflectionDetailScreenState extends State<ReflectionDetailScreen> {
           TextButton(
             onPressed: () async {
               await state.archiveReflection(reflection.id);
+              if (!ctx.mounted) return;
               Navigator.pop(ctx);
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Text('Archived successfully!'),
-                    backgroundColor: AppColors.success,
-                  ),
-                );
-                Navigator.pop(context); // Go back after archiving
-              }
+              ScaffoldMessenger.of(ctx).showSnackBar(
+                SnackBar(
+                  content: const Text('Archived successfully!'),
+                  backgroundColor: AppColors.success,
+                ),
+              );
+              Navigator.pop(ctx); // Go back after archiving
             },
             child: Text('Archive', style: TextStyle(color: AppColors.primary)),
           ),
@@ -392,10 +391,10 @@ class _ReflectionPage extends StatelessWidget {
                     onResurrect: () => onResurrect(exp),
                     canPromote: state.canAddPriorityTask,
                     onPromoteToTop2: exp.status == ExperimentStatus.pending
-                        ? () => state.promoteExperimentToTask(exp.id, toPriority: true)
+                        ? () => state.startExperiment(exp.id)
                         : null,
                     onPromoteToBacklog: exp.status == ExperimentStatus.pending
-                        ? () => state.promoteExperimentToTask(exp.id, toPriority: false)
+                        ? () => state.startExperiment(exp.id)
                         : null,
                   )),
               ],

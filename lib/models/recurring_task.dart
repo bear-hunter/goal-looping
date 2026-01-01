@@ -94,6 +94,9 @@ class RecurringTask extends HiveObject {
   @HiveField(19)
   int sortOrder;
 
+  @HiveField(20)
+  int priority; // Numeric priority (-20 to 20, higher = more important)
+
   RecurringTask({
     required this.id,
     required this.name,
@@ -115,6 +118,7 @@ class RecurringTask extends HiveObject {
     DateTime? createdAt,
     this.isArchived = false,
     this.sortOrder = 0,
+    this.priority = 0,
   }) : scheduledDays = scheduledDays ?? [1, 2, 3, 4, 5, 6, 7],
        startDate = startDate ?? DateTime.now(),
        reminderTimes = reminderTimes ?? [],

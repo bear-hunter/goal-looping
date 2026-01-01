@@ -676,8 +676,7 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> toggleSubtask(String id) async {
-    final subtasks = StorageService.getSubtasksForTask(id);
-    // This needs the subtask ID, not task ID
+    // Needs subtask ID to retrieve and toggle; currently a no-op stub.
     notifyListeners();
   }
 

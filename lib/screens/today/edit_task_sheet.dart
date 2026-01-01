@@ -364,7 +364,7 @@ class _EditTaskSheetState extends State<EditTaskSheet> {
                   Switch(
                     value: _hasChecklist,
                     onChanged: (v) => setState(() => _hasChecklist = v),
-                    activeColor: AppColors.primary,
+                    activeTrackColor: AppColors.primary,
                   ),
                 ],
               ),
@@ -553,12 +553,17 @@ class _EditTaskSheetState extends State<EditTaskSheet> {
       ),
     );
 
-    if (confirmed == true && mounted) {
-      final appState = context.read<AppState>();
-      await appState.deleteTask(widget.task.id);
-      widget.onTaskUpdated?.call();
-      if (mounted) Navigator.of(context).pop();
-    }
+    if (confirmed != true) return;
+    if (!mounted) return;
+
+    // ignore: use_build_context_synchronously - mounted checked above
+    final appState = Provider.of<AppState>(context, listen: false);
+    final callback = widget.onTaskUpdated;
+    await appState.deleteTask(widget.task.id);
+    callback?.call();
+    if (!mounted) return;
+    // ignore: use_build_context_synchronously - mounted checked above
+    Navigator.of(context).pop();
   }
 
   String _formatDate(DateTime date) {

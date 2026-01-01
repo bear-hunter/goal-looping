@@ -214,7 +214,7 @@ class SkeletonList extends StatelessWidget {
   factory SkeletonList.tasks({int count = 3}) {
     return SkeletonList(
       itemCount: count,
-      itemBuilder: (_, __) => const SkeletonTaskCard(),
+      itemBuilder: (_, _) => const SkeletonTaskCard(),
     );
   }
 
@@ -222,7 +222,7 @@ class SkeletonList extends StatelessWidget {
   factory SkeletonList.habits({int count = 3}) {
     return SkeletonList(
       itemCount: count,
-      itemBuilder: (_, __) => const SkeletonHabitCard(),
+      itemBuilder: (_, _) => const SkeletonHabitCard(),
     );
   }
 

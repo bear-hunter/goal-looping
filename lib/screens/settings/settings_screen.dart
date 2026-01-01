@@ -3,9 +3,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme/theme.dart';
-import '../../providers/app_state.dart';
+import '../../providers/theme_provider.dart';
 import 'category_management_screen.dart';
-import 'category_wizard.dart';
 import 'data_management_screen.dart';
 
 /// Settings screen with app configuration links
@@ -14,22 +13,16 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? AppColors.background : LightColors.background;
-    final textPrimary = isDark
-        ? AppColors.textPrimary
-        : LightColors.textPrimary;
-    final textSecondary = isDark
-        ? AppColors.textSecondary
-        : LightColors.textSecondary;
+    final colors = context.colors;
+    final themeProvider = context.watch<ThemeProvider>();
 
     return Scaffold(
-      backgroundColor: bgColor,
+      backgroundColor: colors.background,
       appBar: AppBar(
-        backgroundColor: bgColor,
+        backgroundColor: colors.background,
         title: Text(
           'Settings',
-          style: TextStyle(fontWeight: FontWeight.bold, color: textPrimary),
+          style: TextStyle(fontWeight: FontWeight.bold, color: colors.textPrimary),
         ),
         centerTitle: true,
       ),
@@ -37,7 +30,7 @@ class SettingsScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         children: [
           // Categories Section
-          _SectionHeader(title: 'Organization', textColor: textSecondary),
+          _SectionHeader(title: 'Organization', textColor: colors.textSecondary),
           const SizedBox(height: 8),
           _SettingsTile(
             icon: Icons.category_rounded,
@@ -50,17 +43,10 @@ class SettingsScreen extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 8),
-          _SettingsTile(
-            icon: Icons.add_circle_outline_rounded,
-            title: 'New Category',
-            subtitle: 'Create a custom category',
-            onTap: () => CategoryWizard.show(context),
-          ),
           const SizedBox(height: 24),
 
           // Data Section
-          _SectionHeader(title: 'Data', textColor: textSecondary),
+          _SectionHeader(title: 'Data', textColor: colors.textSecondary),
           const SizedBox(height: 8),
           _SettingsTile(
             icon: Icons.storage_rounded,
@@ -74,29 +60,25 @@ class SettingsScreen extends StatelessWidget {
           const SizedBox(height: 24),
 
           // Appearance Section
-          _SectionHeader(title: 'Appearance', textColor: textSecondary),
+          _SectionHeader(title: 'Appearance', textColor: colors.textSecondary),
           const SizedBox(height: 8),
-          Consumer<AppState>(
-            builder: (context, state, _) => _SettingsTile(
-              icon: isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
-              title: 'Theme',
-              subtitle: isDark ? 'Dark mode' : 'Light mode',
-              trailing: Switch(
-                value: isDark,
-                onChanged: (value) {
-                  // Toggle theme - this would need theme provider support
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Theme toggle coming soon!')),
-                  );
-                },
-                activeColor: AppColors.primary,
-              ),
+          _SettingsTile(
+            icon: themeProvider.themeModeIcon,
+            title: 'Theme',
+            subtitle: themeProvider.themeModeDisplayName,
+            trailing: Switch(
+              value: themeProvider.themeMode == AppThemeMode.dark,
+              onChanged: (value) {
+                themeProvider.toggleTheme();
+              },
+              activeTrackColor: AppColors.primary.withAlpha(128),
+              thumbColor: WidgetStatePropertyAll(AppColors.primary),
             ),
           ),
           const SizedBox(height: 24),
 
           // About Section
-          _SectionHeader(title: 'About', textColor: textSecondary),
+          _SectionHeader(title: 'About', textColor: colors.textSecondary),
           const SizedBox(height: 8),
           _SettingsTile(
             icon: Icons.info_outline_rounded,
@@ -162,20 +144,14 @@ class _SettingsTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textPrimary = isDark
-        ? AppColors.textPrimary
-        : LightColors.textPrimary;
-    final textSecondary = isDark
-        ? AppColors.textSecondary
-        : LightColors.textSecondary;
+    final colors = context.colors;
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isDark ? AppColors.surface : LightColors.surface,
+          color: colors.surface,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
@@ -198,17 +174,17 @@ class _SettingsTile extends StatelessWidget {
                     title,
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
-                      color: textPrimary,
+                      color: colors.textPrimary,
                     ),
                   ),
                   Text(
                     subtitle,
-                    style: TextStyle(fontSize: 12, color: textSecondary),
+                    style: TextStyle(fontSize: 12, color: colors.textSecondary),
                   ),
                 ],
               ),
             ),
-            trailing ?? Icon(Icons.chevron_right_rounded, color: textSecondary),
+            trailing ?? Icon(Icons.chevron_right_rounded, color: colors.textSecondary),
           ],
         ),
       ),

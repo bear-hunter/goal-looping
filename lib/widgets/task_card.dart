@@ -79,7 +79,7 @@ class TaskCard extends StatelessWidget {
       label: semanticLabel,
       button: true,
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         child: Material(
           color: Colors.transparent,
           child: InkWell(
@@ -88,7 +88,7 @@ class TaskCard extends StatelessWidget {
             child: Hero(
               tag: 'task-${task.id}',
               child: Container(
-                padding: const EdgeInsets.all(AppSpacing.md),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
@@ -141,17 +141,17 @@ class TaskCard extends StatelessWidget {
                           onTap: onComplete,
                           behavior: HitTestBehavior.opaque,
                           child: Container(
-                            width: 44,
-                            height: 44,
+                            width: 36,
+                            height: 36,
                             alignment: Alignment.topCenter,
                             padding: const EdgeInsets.only(
-                              top: 4,
+                              top: 2,
                             ), // Visual alignment
                             color: Colors.transparent,
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 200),
-                              width: 24,
-                              height: 24,
+                              width: 22,
+                              height: 22,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 color: task.isCompleted
@@ -176,7 +176,7 @@ class TaskCard extends StatelessWidget {
                             ),
                           ),
                         ),
-                        const SizedBox(width: AppSpacing.md), // Was 12
+                        const SizedBox(width: AppSpacing.sm), // Compact
                         // Title & Tags Column
                         Expanded(
                           child: Column(
@@ -198,7 +198,7 @@ class TaskCard extends StatelessWidget {
                                 ),
                               ),
                               const SizedBox(
-                                height: AppSpacing.xs,
+                                height: 4,
                               ), // Spacing between title and metadata
                               // Metadata Row (Tags + Source)
                               Wrap(

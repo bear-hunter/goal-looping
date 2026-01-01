@@ -559,23 +559,9 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                             const SizedBox(width: 12),
                             _MiniButton(
-                              label: 'Top 2',
+                              label: 'Start',
                               color: AppColors.primary,
-                              onTap: state.canAddPriorityTask
-                                  ? () => state.promoteExperimentToTask(
-                                      exp.id,
-                                      toPriority: true,
-                                    )
-                                  : null,
-                            ),
-                            const SizedBox(width: 8),
-                            _MiniButton(
-                              label: 'Backlog',
-                              color: AppColors.textMuted,
-                              onTap: () => state.promoteExperimentToTask(
-                                exp.id,
-                                toPriority: false,
-                              ),
+                              onTap: () => state.startExperiment(exp.id),
                             ),
                           ],
                         ),
@@ -1504,16 +1490,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final state = context.read<AppState>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final surfaceColor = isDark ? AppColors.surface : LightColors.surface;
-    final surfaceLight = isDark
-        ? AppColors.surfaceLight
-        : LightColors.surfaceLight;
     final glassBorder = isDark
         ? AppColors.glassBorder
         : LightColors.glassBorder;
-    final textPrimary = isDark
-        ? AppColors.textPrimary
-        : LightColors.textPrimary;
-    final textMuted = isDark ? AppColors.textMuted : LightColors.textMuted;
 
     showModalBottomSheet(
       context: context,

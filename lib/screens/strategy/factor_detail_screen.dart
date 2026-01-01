@@ -3,10 +3,10 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme/theme.dart';
-import '../../models/growth_area.dart';
+
 import '../../providers/app_state.dart';
 import '../../widgets/glass_card.dart';
-import '../../widgets/progress_ring.dart';
+
 import '../../widgets/tree_platform.dart';
 
 /// Phase 2: Factor Detail Screen - "Work Volume" Dashboard
@@ -423,37 +423,6 @@ class _FactorDetailScreenState extends State<FactorDetailScreen> {
   }
 }
 
-class _EffortRing extends StatelessWidget {
-  final int effortUnits;
-  const _EffortRing({required this.effortUnits});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 120,
-      height: 120,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: LinearGradient(
-          colors: [AppColors.primary.withAlpha(50), AppColors.success.withAlpha(50)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        border: Border.all(color: AppColors.primary.withAlpha(100), width: 3),
-      ),
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('$effortUnits', style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: AppColors.primary)),
-            Text('units', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 /// Styled editable level box for edit mode
 class _EditableLevelBox extends StatelessWidget {
   final String label;
@@ -606,34 +575,6 @@ class _HistoryItem extends StatelessWidget {
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MiniStat extends StatelessWidget {
-  final String label;
-  final String value;
-  final IconData icon;
-  final Color color;
-
-  const _MiniStat({required this.label, required this.value, required this.icon, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: color.withAlpha(20),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: color, size: 18),
-          const SizedBox(height: 4),
-          Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color)),
-          Text(label, style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
         ],
       ),
     );

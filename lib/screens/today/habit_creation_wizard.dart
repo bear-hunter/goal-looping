@@ -39,15 +39,19 @@ class _HabitCreationWizardState extends State<HabitCreationWizard> {
   HabitEvaluationType _evaluationType = HabitEvaluationType.yesNo;
   HabitFrequencyType _frequencyType = HabitFrequencyType.everyday;
   List<int> _scheduledDays = [1, 2, 3, 4, 5, 6, 7]; // All days
+  int _repeatInterval = 2; // For repeatEvery (every N days)
+  int _daysPerPeriod = 3; // For someDaysPerPeriod (X days per week)
+  List<DateTime> _specificDates = []; // For specificDatesOfYear
   int _targetValue = 1;
   String _unit = '';
-  List<String> _checklistItems = [];
+  final List<String> _checklistItems = [];
   PriorityLevel _priority = PriorityLevel.none;
   DateTime _startDate = DateTime.now();
   DateTime? _endDate;
-  List<TimeOfDay> _reminderTimes = [];
+  final List<TimeOfDay> _reminderTimes = [];
   String _description = '';
   bool _scoringEnabled = false; // Optional scoring (0-100) for completion
+  String _triggerResponse = ''; // If-Then plan: "If X, then I will Y"
 
   static const int _totalPages = 5;
 
@@ -89,10 +93,14 @@ class _HabitCreationWizardState extends State<HabitCreationWizard> {
       id: const Uuid().v4(),
       name: _habitName,
       type: _habitType,
+      triggerResponse: _triggerResponse.isNotEmpty ? _triggerResponse : null,
       categoryId: _selectedCategoryId,
       evaluationType: _evaluationType,
       frequencyType: _frequencyType,
       scheduledDays: _scheduledDays,
+      repeatInterval: _frequencyType == HabitFrequencyType.repeatEvery ? _repeatInterval : null,
+      daysPerPeriod: _frequencyType == HabitFrequencyType.someDaysPerPeriod ? _daysPerPeriod : null,
+      specificDates: _frequencyType == HabitFrequencyType.specificDatesOfYear ? _specificDates : null,
       targetValue: _targetValue,
       unit: _unit.isNotEmpty ? _unit : null,
       checklistItems: _checklistItems.isNotEmpty ? _checklistItems : null,
@@ -348,6 +356,42 @@ class _HabitCreationWizardState extends State<HabitCreationWizard> {
                 )
                 .toList(),
           ),
+          const SizedBox(height: 32),
+
+          // If-Then Plan (Implementation Intention)
+          Text(
+            'If-Then Plan',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: textPrimary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'When will you do this habit? Link it to an existing routine.',
+            style: TextStyle(fontSize: 12, color: textSecondary),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            style: TextStyle(color: textPrimary, fontSize: 16),
+            maxLines: 2,
+            decoration: InputDecoration(
+              hintText: _habitType == HabitType.build
+                  ? 'e.g., After I wake up, I will drink a glass of water'
+                  : 'e.g., When I feel stressed, I will take 3 deep breaths instead',
+              hintStyle: TextStyle(color: textSecondary.withAlpha(150), fontSize: 14),
+              filled: true,
+              fillColor: isDark
+                  ? AppColors.surfaceLight
+                  : LightColors.surfaceLight,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+            ),
+            onChanged: (value) => _triggerResponse = value,
+          ),
         ],
       ),
     ).animate().fadeIn(duration: 200.ms);
@@ -521,7 +565,7 @@ class _HabitCreationWizardState extends State<HabitCreationWizard> {
               Switch(
                 value: _scoringEnabled,
                 onChanged: (value) => setState(() => _scoringEnabled = value),
-                activeColor: AppColors.primary,
+                activeTrackColor: AppColors.primary,
               ),
             ],
           ),
@@ -801,6 +845,36 @@ class _HabitCreationWizardState extends State<HabitCreationWizard> {
               () => _frequencyType = HabitFrequencyType.specificDays,
             ),
           ),
+          const SizedBox(height: 12),
+          _FrequencyOption(
+            title: 'Repeat every X days',
+            subtitle: 'e.g., every 2 days, every 3 days',
+            icon: Icons.replay_rounded,
+            isSelected: _frequencyType == HabitFrequencyType.repeatEvery,
+            onTap: () => setState(
+              () => _frequencyType = HabitFrequencyType.repeatEvery,
+            ),
+          ),
+          const SizedBox(height: 12),
+          _FrequencyOption(
+            title: 'X days per week',
+            subtitle: 'Flexible - any days you choose',
+            icon: Icons.calendar_view_week_rounded,
+            isSelected: _frequencyType == HabitFrequencyType.someDaysPerPeriod,
+            onTap: () => setState(
+              () => _frequencyType = HabitFrequencyType.someDaysPerPeriod,
+            ),
+          ),
+          const SizedBox(height: 12),
+          _FrequencyOption(
+            title: 'Specific dates',
+            subtitle: 'Yearly dates like birthdays',
+            icon: Icons.cake_rounded,
+            isSelected: _frequencyType == HabitFrequencyType.specificDatesOfYear,
+            onTap: () => setState(
+              () => _frequencyType = HabitFrequencyType.specificDatesOfYear,
+            ),
+          ),
 
           // Day selector (if specific days)
           if (_frequencyType == HabitFrequencyType.specificDays) ...[
@@ -808,6 +882,33 @@ class _HabitCreationWizardState extends State<HabitCreationWizard> {
             _DaySelector(
               selectedDays: _scheduledDays,
               onChanged: (days) => setState(() => _scheduledDays = days),
+            ),
+          ],
+
+          // Repeat interval selector (if repeatEvery)
+          if (_frequencyType == HabitFrequencyType.repeatEvery) ...[
+            const SizedBox(height: 20),
+            _RepeatIntervalSelector(
+              interval: _repeatInterval,
+              onChanged: (val) => setState(() => _repeatInterval = val),
+            ),
+          ],
+
+          // Days per period selector (if someDaysPerPeriod)
+          if (_frequencyType == HabitFrequencyType.someDaysPerPeriod) ...[
+            const SizedBox(height: 20),
+            _DaysPerPeriodSelector(
+              daysPerPeriod: _daysPerPeriod,
+              onChanged: (val) => setState(() => _daysPerPeriod = val),
+            ),
+          ],
+
+          // Specific dates picker (if specificDatesOfYear)
+          if (_frequencyType == HabitFrequencyType.specificDatesOfYear) ...[
+            const SizedBox(height: 20),
+            _SpecificDatesSelector(
+              dates: _specificDates,
+              onChanged: (dates) => setState(() => _specificDates = dates),
             ),
           ],
         ],
@@ -821,9 +922,6 @@ class _HabitCreationWizardState extends State<HabitCreationWizard> {
     final textPrimary = isDark
         ? AppColors.textPrimary
         : LightColors.textPrimary;
-    final textSecondary = isDark
-        ? AppColors.textSecondary
-        : LightColors.textSecondary;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -1260,6 +1358,213 @@ class _DaySelector extends StatelessWidget {
           ),
         );
       }),
+    );
+  }
+}
+
+/// Selector for repeat interval (every X days)
+class _RepeatIntervalSelector extends StatelessWidget {
+  final int interval;
+  final Function(int) onChanged;
+
+  const _RepeatIntervalSelector({required this.interval, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textPrimary = isDark ? AppColors.textPrimary : LightColors.textPrimary;
+    
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceLight : LightColors.surfaceLight,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Text('Every', style: TextStyle(color: textPrimary, fontSize: 16)),
+          const SizedBox(width: 12),
+          Container(
+            width: 60,
+            height: 40,
+            decoration: BoxDecoration(
+              border: Border.all(color: AppColors.primary),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton(
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 20),
+                  icon: const Icon(Icons.remove, size: 16),
+                  color: AppColors.primary,
+                  onPressed: interval > 2 ? () => onChanged(interval - 1) : null,
+                ),
+                Text(
+                  '$interval',
+                  style: TextStyle(
+                    color: textPrimary,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                IconButton(
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 20),
+                  icon: const Icon(Icons.add, size: 16),
+                  color: AppColors.primary,
+                  onPressed: interval < 30 ? () => onChanged(interval + 1) : null,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text('days', style: TextStyle(color: textPrimary, fontSize: 16)),
+        ],
+      ),
+    );
+  }
+}
+
+/// Selector for days per period (X days per week)
+class _DaysPerPeriodSelector extends StatelessWidget {
+  final int daysPerPeriod;
+  final Function(int) onChanged;
+
+  const _DaysPerPeriodSelector({required this.daysPerPeriod, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textPrimary = isDark ? AppColors.textPrimary : LightColors.textPrimary;
+    
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceLight : LightColors.surfaceLight,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Complete at least $daysPerPeriod day${daysPerPeriod > 1 ? 's' : ''} per week',
+            style: TextStyle(color: textPrimary, fontSize: 16),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: List.generate(7, (index) {
+              final days = index + 1;
+              final isSelected = daysPerPeriod == days;
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () => onChanged(days),
+                  child: Container(
+                    margin: EdgeInsets.only(right: index < 6 ? 4 : 0),
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: isSelected ? AppColors.primary : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: isSelected ? AppColors.primary : Colors.grey.withAlpha(100),
+                      ),
+                    ),
+                    child: Center(
+                      child: Text(
+                        '$days',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: isSelected ? Colors.white : Colors.grey,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Selector for specific dates of the year
+class _SpecificDatesSelector extends StatelessWidget {
+  final List<DateTime> dates;
+  final Function(List<DateTime>) onChanged;
+
+  const _SpecificDatesSelector({required this.dates, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textPrimary = isDark ? AppColors.textPrimary : LightColors.textPrimary;
+    final textSecondary = isDark ? AppColors.textSecondary : LightColors.textSecondary;
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceLight : LightColors.surfaceLight,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Selected dates',
+                style: TextStyle(color: textPrimary, fontSize: 16, fontWeight: FontWeight.w500),
+              ),
+              TextButton.icon(
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Add date'),
+                onPressed: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: DateTime.now(),
+                    firstDate: DateTime(2000),
+                    lastDate: DateTime(2100),
+                  );
+                  if (picked != null) {
+                    // Store just month and day for yearly recurrence
+                    final newDate = DateTime(2000, picked.month, picked.day);
+                    if (!dates.any((d) => d.month == newDate.month && d.day == newDate.day)) {
+                      onChanged([...dates, newDate]);
+                    }
+                  }
+                },
+              ),
+            ],
+          ),
+          if (dates.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Text(
+                'No dates added yet',
+                style: TextStyle(color: textSecondary, fontStyle: FontStyle.italic),
+              ),
+            )
+          else
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: dates.map((date) {
+                return Chip(
+                  label: Text('${months[date.month - 1]} ${date.day}'),
+                  deleteIcon: const Icon(Icons.close, size: 16),
+                  onDeleted: () {
+                    onChanged(dates.where((d) => d != date).toList());
+                  },
+                );
+              }).toList(),
+            ),
+        ],
+      ),
     );
   }
 }

@@ -151,6 +151,12 @@ class Task extends HiveObject {
   @HiveField(29)
   String? scheduledTime; // Time of day as "HH:MM"
 
+  @HiveField(30)
+  bool isArchived; // Archived tasks (hidden but not deleted)
+
+  @HiveField(31)
+  int priority; // Numeric priority (-20 to 20, higher = more important)
+
   Task({
     required this.id,
     required this.title,
@@ -183,6 +189,8 @@ class Task extends HiveObject {
     List<String>? reminderTimes,
     DateTime? scheduledDate,
     this.scheduledTime,
+    this.isArchived = false,
+    this.priority = 0,
   }) : createdAt = createdAt ?? DateTime.now(),
        linkedFactorIds = linkedFactorIds ?? [],
        reminderTimes = reminderTimes ?? [],

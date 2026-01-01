@@ -7,7 +7,7 @@ import '../../models/goal.dart';
 import '../../models/growth_area.dart';
 import '../../providers/app_state.dart';
 import '../../widgets/forest_platform.dart';
-import '../../widgets/glass_card.dart';
+
 import 'factor_detail_screen.dart';
 
 /// Goal Detail Screen with Forest View and Statistics

@@ -47,13 +47,15 @@ class TaskAdapter extends TypeAdapter<Task> {
       reminderTimes: (fields[27] as List?)?.cast<String>(),
       scheduledDate: fields[28] as DateTime?,
       scheduledTime: fields[29] as String?,
+      isArchived: fields[30] as bool,
+      priority: fields[31] as int,
     );
   }
 
   @override
   void write(BinaryWriter writer, Task obj) {
     writer
-      ..writeByte(30)
+      ..writeByte(32)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -113,7 +115,11 @@ class TaskAdapter extends TypeAdapter<Task> {
       ..writeByte(28)
       ..write(obj.scheduledDate)
       ..writeByte(29)
-      ..write(obj.scheduledTime);
+      ..write(obj.scheduledTime)
+      ..writeByte(30)
+      ..write(obj.isArchived)
+      ..writeByte(31)
+      ..write(obj.priority);
   }
 
   @override

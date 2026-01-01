@@ -9,7 +9,7 @@ import 'services/storage_service.dart';
 import 'services/notification_service.dart';
 import 'screens/today/today_screen.dart';
 import 'screens/strategy/strategy_screen.dart';
-import 'screens/habits/habits_screen.dart';
+import 'screens/habits/habits_list_screen.dart';
 import 'screens/reflection/reflection_screen.dart';
 import 'screens/onboarding/onboarding_screen.dart';
 import 'widgets/achievement_notification.dart';
@@ -166,7 +166,7 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
   final List<Widget> _screens = const [
     TodayScreen(),
     StrategyScreen(),
-    HabitsScreen(),
+    HabitsListScreen(),
     ReflectionScreen(),
   ];
 

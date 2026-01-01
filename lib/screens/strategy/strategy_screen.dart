@@ -10,7 +10,7 @@ import '../../models/time_availability.dart';
 import '../../providers/app_state.dart';
 import '../../services/storage_service.dart';
 import '../../widgets/glass_card.dart';
-import '../../widgets/factor_chip.dart';
+
 import '../../widgets/factor_health_tree.dart';
 import 'factor_detail_screen.dart';
 import 'goal_detail_screen.dart';

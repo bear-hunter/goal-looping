@@ -83,13 +83,14 @@ class RecurringTaskAdapter extends TypeAdapter<RecurringTask> {
       createdAt: fields[17] as DateTime?,
       isArchived: fields[18] as bool,
       sortOrder: fields[19] as int,
+      priority: fields[20] as int,
     );
   }
 
   @override
   void write(BinaryWriter writer, RecurringTask obj) {
     writer
-      ..writeByte(20)
+      ..writeByte(21)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -129,7 +130,9 @@ class RecurringTaskAdapter extends TypeAdapter<RecurringTask> {
       ..writeByte(18)
       ..write(obj.isArchived)
       ..writeByte(19)
-      ..write(obj.sortOrder);
+      ..write(obj.sortOrder)
+      ..writeByte(20)
+      ..write(obj.priority);
   }
 
   @override

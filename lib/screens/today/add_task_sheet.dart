@@ -327,7 +327,7 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                   Switch(
                     value: _hasChecklist,
                     onChanged: (v) => setState(() => _hasChecklist = v),
-                    activeColor: AppColors.primary,
+                    activeTrackColor: AppColors.primary,
                   ),
                 ],
               ),

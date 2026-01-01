@@ -56,7 +56,7 @@ class FactorChip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected 
-              ? typeColor.withOpacity(0.2) 
+              ? typeColor.withValues(alpha: 0.2) 
               : AppColors.surfaceLight,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
@@ -87,8 +87,8 @@ class FactorChip extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
                   color: factor.needsFocus 
-                      ? AppColors.danger.withOpacity(0.2) 
-                      : AppColors.warning.withOpacity(0.2),
+                      ? AppColors.danger.withValues(alpha: 0.2) 
+                      : AppColors.warning.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
