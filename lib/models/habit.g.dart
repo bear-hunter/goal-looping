@@ -25,13 +25,14 @@ class HabitLogAdapter extends TypeAdapter<HabitLog> {
       numericValue: fields[5] as int?,
       checklistCompleted: (fields[6] as List?)?.cast<bool>(),
       timerSeconds: fields[7] as int?,
+      score: fields[8] as int?,
     );
   }
 
   @override
   void write(BinaryWriter writer, HabitLog obj) {
     writer
-      ..writeByte(8)
+      ..writeByte(9)
       ..writeByte(0)
       ..write(obj.date)
       ..writeByte(1)
@@ -47,7 +48,9 @@ class HabitLogAdapter extends TypeAdapter<HabitLog> {
       ..writeByte(6)
       ..write(obj.checklistCompleted)
       ..writeByte(7)
-      ..write(obj.timerSeconds);
+      ..write(obj.timerSeconds)
+      ..writeByte(8)
+      ..write(obj.score);
   }
 
   @override
@@ -106,13 +109,14 @@ class HabitAdapter extends TypeAdapter<Habit> {
       description: fields[31] as String?,
       extraGoal: fields[32] as int?,
       sortOrder: fields[33] as int,
+      scoringEnabled: fields[34] as bool,
     );
   }
 
   @override
   void write(BinaryWriter writer, Habit obj) {
     writer
-      ..writeByte(34)
+      ..writeByte(35)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -180,7 +184,9 @@ class HabitAdapter extends TypeAdapter<Habit> {
       ..writeByte(32)
       ..write(obj.extraGoal)
       ..writeByte(33)
-      ..write(obj.sortOrder);
+      ..write(obj.sortOrder)
+      ..writeByte(34)
+      ..write(obj.scoringEnabled);
   }
 
   @override

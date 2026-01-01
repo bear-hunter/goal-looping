@@ -45,6 +45,11 @@ class HabitLog extends HiveObject {
   @HiveField(7)
   int? timerSeconds; // Actual time tracked for timer evaluation
 
+  /// Optional score (0-100) for "completed with scoring" or "failed with scoring"
+  /// null means standard yes/no completion without scoring
+  @HiveField(8)
+  int? score;
+
   HabitLog({
     required this.date,
     this.completed = false,
@@ -54,6 +59,7 @@ class HabitLog extends HiveObject {
     this.numericValue,
     this.checklistCompleted,
     this.timerSeconds,
+    this.score,
   });
 }
 
@@ -170,6 +176,11 @@ class Habit extends HiveObject {
   @HiveField(33)
   int sortOrder; // For custom ordering in lists
 
+  /// Whether this habit uses optional scoring (0-100) instead of simple yes/no
+  /// When true, user can mark as "completed with scoring" or "failed with scoring"
+  @HiveField(34)
+  bool scoringEnabled;
+
   Habit({
     required this.id,
     required this.name,
@@ -206,6 +217,7 @@ class Habit extends HiveObject {
     this.description,
     this.extraGoal,
     this.sortOrder = 0,
+    this.scoringEnabled = false,
   }) : logs = logs ?? [],
        scheduledDays =
            scheduledDays ?? [1, 2, 3, 4, 5, 6, 7], // Default: every day
@@ -316,6 +328,7 @@ class Habit extends HiveObject {
     int? numericValue,
     List<bool>? checklistCompleted,
     int? timerSeconds,
+    int? score,
   }) {
     // Remove existing log for this date
     logs.removeWhere(
@@ -335,6 +348,7 @@ class Habit extends HiveObject {
         numericValue: numericValue,
         checklistCompleted: checklistCompleted,
         timerSeconds: timerSeconds,
+        score: score,
       ),
     );
 
@@ -353,6 +367,7 @@ class Habit extends HiveObject {
     String? note,
     int? mood,
     String? barrier,
+    int? score,
   }) {
     logForDate(
       date: DateTime.now(),
@@ -360,6 +375,7 @@ class Habit extends HiveObject {
       note: note,
       mood: mood,
       barrier: barrier,
+      score: score,
     );
   }
 

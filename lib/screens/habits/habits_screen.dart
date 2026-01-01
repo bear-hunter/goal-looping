@@ -12,137 +12,228 @@ import '../../widgets/progress_ring.dart';
 import '../../widgets/habit_calendar.dart';
 import '../../widgets/mood_barrier_dialog.dart';
 import 'habit_detail_screen.dart';
+import 'habits_list_screen.dart';
 
-/// Module 3: Habit & Barrier Defense Screen (Phase 3 Updated)
-class HabitsScreen extends StatelessWidget {
+/// Module 3: Habits Screen with tab toggle between All Habits and Habit Defense
+class HabitsScreen extends StatefulWidget {
   const HabitsScreen({super.key});
+
+  @override
+  State<HabitsScreen> createState() => _HabitsScreenState();
+}
+
+class _HabitsScreenState extends State<HabitsScreen> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        // Tab bar at the top
+        SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+            child: Container(
+              decoration: BoxDecoration(
+                color: AppColors.surfaceLight,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.glassBorder),
+              ),
+              child: TabBar(
+                controller: _tabController,
+                indicator: BoxDecoration(
+                  color: AppColors.primary.withAlpha(30),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                indicatorSize: TabBarIndicatorSize.tab,
+                indicatorPadding: const EdgeInsets.all(4),
+                labelColor: AppColors.primary,
+                unselectedLabelColor: AppColors.textMuted,
+                labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.normal, fontSize: 14),
+                dividerColor: Colors.transparent,
+                tabs: const [
+                  Tab(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.list_alt_rounded, size: 18),
+                        SizedBox(width: 8),
+                        Text('All Habits'),
+                      ],
+                    ),
+                  ),
+                  Tab(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.shield_rounded, size: 18),
+                        SizedBox(width: 8),
+                        Text('Defense'),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ).animate().fadeIn(duration: 300.ms),
+          ),
+        ),
+        // Tab content
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: const [
+              HabitsListScreen(),
+              _HabitDefenseView(),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Habit Defense View - the original habits defense content
+class _HabitDefenseView extends StatelessWidget {
+  const _HabitDefenseView();
 
   @override
   Widget build(BuildContext context) {
     return Consumer<AppState>(
       builder: (context, state, _) {
-        return SafeArea(
-          child: CustomScrollView(
-            slivers: [
-              // Header
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Habit Defense', style: Theme.of(context).textTheme.displayMedium)
-                          .animate().fadeIn(duration: 400.ms),
-                      const SizedBox(height: 8),
-                      Text('Track habits & defend against barriers',
-                          style: TextStyle(color: AppColors.textSecondary)),
-                    ],
-                  ),
-                ),
-              ),
+        return CustomScrollView(
+          slivers: [
+            // Header
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Habit Defense', style: Theme.of(context).textTheme.displayMedium)
+                        .animate().fadeIn(duration: 400.ms),
+                    const SizedBox(height: 8),
+                    Text('Track habits & defend against barriers',
+                  style: TextStyle(color: AppColors.textSecondary)),
+              ],
+            ),
+          ),
+        ),
 
-              // Limiting Habits Section
-              SliverToBoxAdapter(
-                child: _SectionHeader(
-                  title: 'Limiting Habits',
-                  subtitle: 'Track the absence of bad habits',
-                  icon: Icons.block_rounded,
-                  color: AppColors.danger,
-                  onAdd: () => _showAddHabitDialog(context, state, HabitType.quit),
-                ),
-              ),
+        // Limiting Habits Section
+        SliverToBoxAdapter(
+          child: _SectionHeader(
+            title: 'Limiting Habits',
+            subtitle: 'Track the absence of bad habits',
+            icon: Icons.block_rounded,
+            color: AppColors.danger,
+            onAdd: () => _showAddHabitDialog(context, state, HabitType.quit),
+          ),
+        ),
 
-              if (state.quitHabits.isEmpty)
-                SliverToBoxAdapter(child: _EmptyCard(
-                  text: 'Add limiting habits to avoid',
-                  onTap: () => _showAddHabitDialog(context, state, HabitType.quit),
-                ))
-              else
-                SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) => _HabitCardWithCalendar(
-                      habit: state.quitHabits[index],
-                      isQuit: true,
+        if (state.quitHabits.isEmpty)
+          SliverToBoxAdapter(child: _EmptyCard(
+            text: 'Add limiting habits to avoid',
+            onTap: () => _showAddHabitDialog(context, state, HabitType.quit),
+          ))
+        else
+          SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) => _HabitCardWithCalendar(
+                habit: state.quitHabits[index],
+                isQuit: true,
+              ),
+              childCount: state.quitHabits.length,
+            ),
+          ),
+
+        // Scripted Actions Section
+        SliverToBoxAdapter(
+          child: _SectionHeader(
+            title: 'Scripted Actions',
+            subtitle: 'If X happens → I will do Y',
+            icon: Icons.code_rounded,
+            color: AppColors.success,
+            onAdd: () => _showAddHabitDialog(context, state, HabitType.build),
+          ),
+        ),
+
+        if (state.buildHabits.isEmpty)
+          SliverToBoxAdapter(child: _EmptyCard(
+            text: 'Add scripted responses',
+            onTap: () => _showAddHabitDialog(context, state, HabitType.build),
+          ))
+        else
+          SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) => _HabitCardWithCalendar(
+                habit: state.buildHabits[index],
+                isQuit: false,
+              ),
+              childCount: state.buildHabits.length,
+            ),
+          ),
+
+        // Barrier Journal Section
+        SliverToBoxAdapter(
+          child: _SectionHeader(
+            title: 'Barrier Journal',
+            subtitle: 'Log unexpected barriers',
+            icon: Icons.warning_amber_rounded,
+            color: AppColors.warning,
+            onAdd: () => _showAddBarrierDialog(context),
+          ),
+        ),
+
+        SliverList(
+          delegate: SliverChildBuilderDelegate(
+            (context, index) {
+              final barrier = state.barriers[index];
+              return GlassCard(
+                onTap: () => _showEditBarrierDialog(context, barrier),
+                child: Row(
+                  children: [
+                    Icon(
+                      barrier.wasHandled ? Icons.check_circle_rounded : Icons.flash_on_rounded, 
+                      color: barrier.wasHandled ? AppColors.success : AppColors.warning, 
+                      size: 20
                     ),
-                    childCount: state.quitHabits.length,
-                  ),
-                ),
-
-              // Scripted Actions Section
-              SliverToBoxAdapter(
-                child: _SectionHeader(
-                  title: 'Scripted Actions',
-                  subtitle: 'If X happens → I will do Y',
-                  icon: Icons.code_rounded,
-                  color: AppColors.success,
-                  onAdd: () => _showAddHabitDialog(context, state, HabitType.build),
-                ),
-              ),
-
-              if (state.buildHabits.isEmpty)
-                SliverToBoxAdapter(child: _EmptyCard(
-                  text: 'Add scripted responses',
-                  onTap: () => _showAddHabitDialog(context, state, HabitType.build),
-                ))
-              else
-                SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) => _HabitCardWithCalendar(
-                      habit: state.buildHabits[index],
-                      isQuit: false,
-                    ),
-                    childCount: state.buildHabits.length,
-                  ),
-                ),
-
-              // Barrier Journal Section
-              SliverToBoxAdapter(
-                child: _SectionHeader(
-                  title: 'Barrier Journal',
-                  subtitle: 'Log unexpected barriers',
-                  icon: Icons.warning_amber_rounded,
-                  color: AppColors.warning,
-                  onAdd: () => _showAddBarrierDialog(context),
-                ),
-              ),
-
-              SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    final barrier = state.barriers[index];
-                    return GlassCard(
-                      onTap: () => _showEditBarrierDialog(context, barrier),
-                      child: Row(
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(
-                            barrier.wasHandled ? Icons.check_circle_rounded : Icons.flash_on_rounded, 
-                            color: barrier.wasHandled ? AppColors.success : AppColors.warning, 
-                            size: 20
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(barrier.description, style: TextStyle(color: AppColors.textPrimary)),
-                                if (barrier.response != null && barrier.response!.isNotEmpty)
-                                  Text('Response: ${barrier.response}', style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontStyle: FontStyle.italic)),
-                                Text(_formatDate(barrier.occurredAt), style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
-                              ],
-                            ),
-                          ),
+                          Text(barrier.description, style: TextStyle(color: AppColors.textPrimary)),
+                          if (barrier.response != null && barrier.response!.isNotEmpty)
+                            Text('Response: ${barrier.response}', style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontStyle: FontStyle.italic)),
+                          Text(_formatDate(barrier.occurredAt), style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
                         ],
                       ),
-                    );
-                  },
-                  childCount: state.barriers.length,
+                    ),
+                  ],
                 ),
-              ),
-
-              const SliverToBoxAdapter(child: SizedBox(height: 100)),
-            ],
+              );
+            },
+            childCount: state.barriers.length,
           ),
-        );
+        ),
+
+        const SliverToBoxAdapter(child: SizedBox(height: 100)),
+      ],
+    );
       },
     );
   }

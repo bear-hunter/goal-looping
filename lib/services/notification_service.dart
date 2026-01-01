@@ -1,5 +1,7 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/material.dart';
+import 'package:timezone/timezone.dart' as tz;
+import 'package:timezone/data/latest.dart' as tz_data;
 import '../models/user_stats.dart';
 
 /// Service for scheduling and displaying Android OS notifications
@@ -8,10 +10,17 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
   
   static bool _isInitialized = false;
+  static bool _tzInitialized = false;
 
   /// Initialize the notification service
   static Future<void> initialize() async {
     if (_isInitialized) return;
+
+    // Initialize timezone data
+    if (!_tzInitialized) {
+      tz_data.initializeTimeZones();
+      _tzInitialized = true;
+    }
 
     // Android settings
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -179,6 +188,145 @@ class NotificationService {
       body: body,
       payload: 'goal:$goalId',
     );
+  }
+
+  // ========== SCHEDULED HABIT/TASK REMINDERS ==========
+
+  /// Schedule a daily reminder for a habit at a specific time
+  /// [habitId] - The habit ID for payload
+  /// [habitName] - The habit name for display
+  /// [timeString] - Time in "HH:MM" format (24-hour)
+  /// [weekdays] - List of weekdays to remind (1=Mon, 7=Sun), empty = every day
+  static Future<void> scheduleHabitReminder({
+    required String habitId,
+    required String habitName,
+    required String timeString,
+    List<int>? weekdays,
+  }) async {
+    final timeParts = timeString.split(':');
+    if (timeParts.length != 2) return;
+    
+    final hour = int.tryParse(timeParts[0]) ?? 0;
+    final minute = int.tryParse(timeParts[1]) ?? 0;
+    
+    // Generate a unique ID based on habit and time
+    final notificationId = 400 + (habitId.hashCode + timeString.hashCode).abs() % 1000;
+    
+    const androidDetails = AndroidNotificationDetails(
+      'habit_reminders_channel',
+      'Habit Reminders',
+      channelDescription: 'Daily reminders for your habits',
+      importance: Importance.high,
+      priority: Priority.high,
+      icon: '@mipmap/ic_launcher',
+    );
+
+    const notificationDetails = NotificationDetails(
+      android: androidDetails,
+    );
+
+    // Schedule for today or next occurrence
+    final now = DateTime.now();
+    var scheduledDate = DateTime(now.year, now.month, now.day, hour, minute);
+    
+    // If time has passed today, schedule for tomorrow
+    if (scheduledDate.isBefore(now)) {
+      scheduledDate = scheduledDate.add(const Duration(days: 1));
+    }
+    
+    // If weekdays specified, find next valid day
+    if (weekdays != null && weekdays.isNotEmpty) {
+      while (!weekdays.contains(scheduledDate.weekday)) {
+        scheduledDate = scheduledDate.add(const Duration(days: 1));
+      }
+    }
+
+    final tzScheduledDate = tz.TZDateTime.from(scheduledDate, tz.local);
+
+    await _notifications.zonedSchedule(
+      notificationId,
+      '🔔 Habit Reminder',
+      'Time for: $habitName',
+      tzScheduledDate,
+      notificationDetails,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      matchDateTimeComponents: weekdays == null || weekdays.length == 7
+          ? DateTimeComponents.time // Daily at same time
+          : DateTimeComponents.dayOfWeekAndTime, // Specific days
+      payload: 'habit:$habitId',
+    );
+  }
+
+  /// Schedule a reminder for a task at a specific date and time
+  static Future<void> scheduleTaskReminder({
+    required String taskId,
+    required String taskName,
+    required DateTime scheduledDateTime,
+  }) async {
+    // Don't schedule if in the past
+    if (scheduledDateTime.isBefore(DateTime.now())) return;
+
+    final notificationId = 500 + taskId.hashCode.abs() % 1000;
+    
+    const androidDetails = AndroidNotificationDetails(
+      'task_reminders_channel',
+      'Task Reminders',
+      channelDescription: 'Reminders for your tasks',
+      importance: Importance.high,
+      priority: Priority.high,
+      icon: '@mipmap/ic_launcher',
+    );
+
+    const notificationDetails = NotificationDetails(
+      android: androidDetails,
+    );
+
+    final tzScheduledDate = tz.TZDateTime.from(scheduledDateTime, tz.local);
+
+    await _notifications.zonedSchedule(
+      notificationId,
+      '📋 Task Reminder',
+      taskName,
+      tzScheduledDate,
+      notificationDetails,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      payload: 'task:$taskId',
+    );
+  }
+
+  /// Cancel a habit reminder
+  static Future<void> cancelHabitReminder(String habitId, String timeString) async {
+    final notificationId = 400 + (habitId.hashCode + timeString.hashCode).abs() % 1000;
+    await cancel(notificationId);
+  }
+
+  /// Cancel a task reminder
+  static Future<void> cancelTaskReminder(String taskId) async {
+    final notificationId = 500 + taskId.hashCode.abs() % 1000;
+    await cancel(notificationId);
+  }
+
+  /// Schedule all reminders for a habit (multiple times)
+  static Future<void> scheduleAllHabitReminders({
+    required String habitId,
+    required String habitName,
+    required List<String> reminderTimes,
+    List<int>? weekdays,
+  }) async {
+    // Cancel existing reminders for this habit first
+    for (final time in reminderTimes) {
+      await cancelHabitReminder(habitId, time);
+    }
+    
+    // Schedule new reminders
+    for (final time in reminderTimes) {
+      await scheduleHabitReminder(
+        habitId: habitId,
+        habitName: habitName,
+        timeString: time,
+        weekdays: weekdays,
+      );
+    }
   }
 
   /// Cancel all notifications

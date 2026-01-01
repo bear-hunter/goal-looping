@@ -109,6 +109,43 @@ class AppShadows {
       offset: const Offset(0, 4),
     ),
   ];
+
+  // Priority glows for items
+  static List<BoxShadow> get highPriorityGlow => [
+    BoxShadow(
+      color: AppColors.danger.withAlpha(60),
+      blurRadius: 16,
+      spreadRadius: 2,
+      offset: const Offset(0, 2),
+    ),
+  ];
+
+  static List<BoxShadow> get mediumPriorityGlow => [
+    BoxShadow(
+      color: AppColors.warning.withAlpha(50),
+      blurRadius: 12,
+      spreadRadius: 1,
+      offset: const Offset(0, 2),
+    ),
+  ];
+
+  static List<BoxShadow> get lowPriorityGlow => [
+    BoxShadow(
+      color: AppColors.info.withAlpha(40),
+      blurRadius: 8,
+      offset: const Offset(0, 2),
+    ),
+  ];
+
+  // Success glow for completed items
+  static List<BoxShadow> get successGlow => [
+    BoxShadow(
+      color: AppColors.success.withAlpha(60),
+      blurRadius: 16,
+      spreadRadius: 2,
+      offset: const Offset(0, 2),
+    ),
+  ];
 }
 
 /// The 8pt Grid System

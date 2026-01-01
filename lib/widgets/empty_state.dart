@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../core/theme/theme.dart';
 
 /// A reusable empty state widget with illustration and action button
@@ -9,6 +10,7 @@ class EmptyState extends StatelessWidget {
   final String? actionLabel;
   final VoidCallback? onAction;
   final Color? iconColor;
+  final bool animate;
 
   const EmptyState({
     super.key,
@@ -18,6 +20,7 @@ class EmptyState extends StatelessWidget {
     this.actionLabel,
     this.onAction,
     this.iconColor,
+    this.animate = true,
   });
 
   @override
@@ -29,63 +32,103 @@ class EmptyState extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             // Animated icon container
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: (iconColor ?? AppColors.primary).withAlpha(20),
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: (iconColor ?? AppColors.primary).withAlpha(40),
-                  width: 2,
-                ),
-              ),
-              child: Icon(
-                icon,
-                size: 48,
-                color: iconColor ?? AppColors.primary,
-              ),
-            ),
+            _buildIconContainer(),
             const SizedBox(height: 24),
             
             // Title
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
-              ),
-              textAlign: TextAlign.center,
-            ),
+            _buildTitle(),
             const SizedBox(height: 8),
             
             // Subtitle
-            Text(
-              subtitle,
-              style: TextStyle(
-                fontSize: 14,
-                color: AppColors.textMuted,
-                height: 1.4,
-              ),
-              textAlign: TextAlign.center,
-            ),
+            _buildSubtitle(),
             
             // Action button
             if (actionLabel != null && onAction != null) ...[
               const SizedBox(height: 24),
-              ElevatedButton.icon(
-                onPressed: onAction,
-                icon: const Icon(Icons.add_rounded, size: 20),
-                label: Text(actionLabel!),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                ),
-              ),
+              _buildActionButton(),
             ],
           ],
         ),
       ),
     );
+  }
+
+  Widget _buildIconContainer() {
+    final container = Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: (iconColor ?? AppColors.primary).withAlpha(20),
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: (iconColor ?? AppColors.primary).withAlpha(40),
+          width: 2,
+        ),
+      ),
+      child: Icon(
+        icon,
+        size: 48,
+        color: iconColor ?? AppColors.primary,
+      ),
+    );
+    
+    if (!animate) return container;
+    return container
+      .animate()
+      .scale(begin: const Offset(0.8, 0.8), duration: 500.ms, curve: Curves.elasticOut)
+      .fadeIn(duration: 300.ms);
+  }
+
+  Widget _buildTitle() {
+    final text = Text(
+      title,
+      style: TextStyle(
+        fontSize: 18,
+        fontWeight: FontWeight.w600,
+        color: AppColors.textPrimary,
+      ),
+      textAlign: TextAlign.center,
+    );
+    
+    if (!animate) return text;
+    return text
+      .animate()
+      .fadeIn(duration: 300.ms, delay: 100.ms)
+      .slideY(begin: 0.2, end: 0, duration: 300.ms);
+  }
+
+  Widget _buildSubtitle() {
+    final text = Text(
+      subtitle,
+      style: TextStyle(
+        fontSize: 14,
+        color: AppColors.textMuted,
+        height: 1.4,
+      ),
+      textAlign: TextAlign.center,
+    );
+    
+    if (!animate) return text;
+    return text
+      .animate()
+      .fadeIn(duration: 300.ms, delay: 200.ms)
+      .slideY(begin: 0.2, end: 0, duration: 300.ms);
+  }
+
+  Widget _buildActionButton() {
+    final button = ElevatedButton.icon(
+      onPressed: onAction,
+      icon: const Icon(Icons.add_rounded, size: 20),
+      label: Text(actionLabel!),
+      style: ElevatedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      ),
+    );
+    
+    if (!animate) return button;
+    return button
+      .animate()
+      .fadeIn(duration: 300.ms, delay: 300.ms)
+      .slideY(begin: 0.2, end: 0, duration: 300.ms);
   }
 
   /// Factory for task-related empty states

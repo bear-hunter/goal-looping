@@ -6,7 +6,6 @@ import '../../core/theme/theme.dart';
 import '../../providers/app_state.dart';
 import '../../models/habit.dart';
 import '../../models/habit_enums.dart';
-import '../../models/category_model.dart';
 
 /// Habit Detail Screen with tabbed interface
 class HabitDetailScreen extends StatefulWidget {
@@ -28,17 +27,40 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   DateTime _calendarMonth = DateTime.now();
+  
+  // Edit state
+  late TextEditingController _nameController;
+  late TextEditingController _descriptionController;
+  String? _selectedCategoryId;
+  PriorityLevel _selectedPriority = PriorityLevel.none;
+  List<int> _selectedDays = [];
+  bool _isEditMode = false;
+  bool _hasChanges = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _nameController = TextEditingController();
+    _descriptionController = TextEditingController();
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _nameController.dispose();
+    _descriptionController.dispose();
     super.dispose();
+  }
+  
+  void _initEditState(Habit habit) {
+    if (!_isEditMode) {
+      _nameController.text = habit.name;
+      _descriptionController.text = habit.description ?? '';
+      _selectedCategoryId = habit.categoryId;
+      _selectedPriority = habit.effectivePriorityLevel;
+      _selectedDays = List<int>.from(habit.scheduledDays);
+    }
   }
 
   @override
@@ -243,41 +265,95 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
     final today = DateTime.now();
     for (int day = 1; day <= lastDay.day; day++) {
       final date = DateTime(_calendarMonth.year, _calendarMonth.month, day);
-      final isCompleted = habit.isCompletedFor(date);
+      final log = habit.getLogFor(date);
+      final isCompleted = log?.completed ?? false;
+      final score = log?.score;
       final isScheduled = habit.isScheduledFor(date);
       final isToday =
           date.year == today.year &&
           date.month == today.month &&
           date.day == today.day;
       final isFuture = date.isAfter(today);
+      
+      // Determine cell color based on scoring or completion
+      Color? cellColor;
+      Color textColor = textPrimary;
+      bool showCheckmark = false;
+      
+      if (habit.scoringEnabled && score != null) {
+        if (score >= 70) {
+          cellColor = Colors.green;
+          showCheckmark = true;
+        } else if (score >= 40) {
+          cellColor = Colors.orange;
+        } else {
+          cellColor = Colors.red;
+        }
+        textColor = Colors.white;
+      } else if (isCompleted) {
+        cellColor = AppColors.primary;
+        textColor = Colors.white;
+        showCheckmark = true;
+      } else if (isToday) {
+        cellColor = AppColors.primary.withAlpha(30);
+      } else if (isFuture) {
+        textColor = textPrimary.withAlpha(80);
+      }
 
       days.add(
         GestureDetector(
           onTap: isFuture ? null : () => _toggleCompletion(habit, date),
-          child: Container(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
             margin: const EdgeInsets.all(2),
             decoration: BoxDecoration(
-              color: isCompleted
-                  ? AppColors.primary
-                  : (isToday ? AppColors.primary.withAlpha(30) : null),
+              color: cellColor,
               borderRadius: BorderRadius.circular(8),
               border: isToday
                   ? Border.all(color: AppColors.primary, width: 2)
                   : null,
-            ),
-            child: Center(
-              child: Text(
-                '$day',
-                style: TextStyle(
-                  color: isCompleted
-                      ? Colors.white
-                      : (isFuture ? textPrimary.withAlpha(80) : textPrimary),
-                  fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
-                  decoration: isScheduled && !isCompleted && !isFuture
-                      ? TextDecoration.underline
-                      : null,
+              boxShadow: showCheckmark ? [
+                BoxShadow(
+                  color: (cellColor ?? Colors.transparent).withAlpha(80),
+                  blurRadius: 4,
+                  spreadRadius: 1,
                 ),
-              ),
+              ] : null,
+            ),
+            child: Stack(
+              children: [
+                Center(
+                  child: habit.scoringEnabled && score != null
+                      ? Text(
+                          '$score',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: textColor,
+                          ),
+                        )
+                      : Text(
+                          '$day',
+                          style: TextStyle(
+                            color: textColor,
+                            fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
+                            decoration: isScheduled && !isCompleted && !isFuture
+                                ? TextDecoration.underline
+                                : null,
+                          ),
+                        ),
+                ),
+                if (showCheckmark)
+                  Positioned(
+                    right: 2,
+                    top: 2,
+                    child: Icon(
+                      Icons.check,
+                      size: 8,
+                      color: textColor.withAlpha(200),
+                    ),
+                  ),
+              ],
             ),
           ),
         ),
@@ -296,10 +372,157 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
   void _toggleCompletion(Habit habit, DateTime date) async {
     final appState = context.read<AppState>();
     final isCompleted = habit.isCompletedFor(date);
-
-    habit.logForDate(date: date, completed: !isCompleted);
-    await appState.updateHabit(habit);
-    setState(() {});
+    
+    // If scoring is enabled, show scoring dialog instead of just toggling
+    if (habit.scoringEnabled) {
+      _showScoringDialogForDate(habit, date, appState);
+    } else {
+      habit.logForDate(date: date, completed: !isCompleted);
+      await appState.updateHabit(habit);
+      setState(() {});
+    }
+  }
+  
+  void _showScoringDialogForDate(Habit habit, DateTime date, AppState appState) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final currentLog = habit.getLogFor(date);
+    double sliderValue = (currentLog?.score ?? 50).toDouble();
+    
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: isDark ? AppColors.surface : LightColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => Padding(
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 20,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Log for ${_formatDateShort(date)}',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? AppColors.textPrimary : LightColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 24),
+              
+              // Score slider
+              Text(
+                'Score: ${sliderValue.round()}%',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: isDark ? AppColors.textSecondary : LightColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Slider(
+                value: sliderValue,
+                min: 0,
+                max: 100,
+                divisions: 10,
+                activeColor: _getScoreColor(sliderValue.round()),
+                onChanged: (value) {
+                  setDialogState(() => sliderValue = value);
+                },
+              ),
+              
+              // Quick score buttons
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [0, 25, 50, 75, 100].map((score) {
+                  final isSelected = sliderValue.round() == score;
+                  return GestureDetector(
+                    onTap: () => setDialogState(() => sliderValue = score.toDouble()),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: isSelected ? _getScoreColor(score) : Colors.transparent,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: _getScoreColor(score)),
+                      ),
+                      child: Text(
+                        '$score%',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: isSelected ? Colors.white : _getScoreColor(score),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 24),
+              
+              // Actions
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () async {
+                        Navigator.pop(ctx);
+                        habit.logForDate(date: date, completed: false, score: null);
+                        await appState.updateHabit(habit);
+                        setState(() {});
+                      },
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red,
+                        side: const BorderSide(color: Colors.red),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      child: const Text('Clear'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        Navigator.pop(ctx);
+                        habit.logForDate(
+                          date: date, 
+                          completed: sliderValue > 0, 
+                          score: sliderValue.round(),
+                        );
+                        await appState.updateHabit(habit);
+                        setState(() {});
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _getScoreColor(sliderValue.round()),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      child: const Text('Save'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+  
+  Color _getScoreColor(int score) {
+    if (score >= 70) return Colors.green;
+    if (score >= 40) return Colors.orange;
+    return Colors.red;
+  }
+  
+  String _formatDateShort(DateTime date) {
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${months[date.month - 1]} ${date.day}';
   }
 
   Widget _buildRecentLogs(Habit habit, bool isDark, Color textPrimary) {
@@ -604,29 +827,81 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
 
   // ========== EDIT TAB ==========
   Widget _buildEditTab(Habit habit, bool isDark, Color textPrimary) {
+    _initEditState(habit);
+    final textSecondary = isDark ? AppColors.textSecondary : LightColors.textSecondary;
+    final surfaceColor = isDark ? AppColors.surfaceLight : LightColors.surfaceLight;
+    final categories = context.watch<AppState>().categories;
+    
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Name field
           _buildEditSection(
-            'Habit Info',
+            'Habit Name',
             [
-              _buildInfoRow('Name', habit.name, textPrimary),
-              _buildInfoRow(
-                'Type',
-                habit.type.toString().split('.').last,
-                textPrimary,
+              TextField(
+                controller: _nameController,
+                style: TextStyle(color: textPrimary),
+                decoration: InputDecoration(
+                  hintText: 'Enter habit name',
+                  hintStyle: TextStyle(color: textSecondary),
+                  filled: true,
+                  fillColor: surfaceColor,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+                onChanged: (_) => setState(() => _hasChanges = true),
               ),
-              _buildInfoRow(
-                'Evaluation',
-                habit.effectiveEvaluationType.label,
-                textPrimary,
-              ),
-              _buildInfoRow(
-                'Frequency',
-                habit.effectiveFrequencyType.label,
-                textPrimary,
+            ],
+            isDark,
+            textPrimary,
+          ),
+          const SizedBox(height: 16),
+          
+          // Type & Evaluation (read-only as they affect core behavior)
+          _buildEditSection(
+            'Type & Evaluation',
+            [
+              _buildInfoRow('Type', habit.type.toString().split('.').last, textPrimary),
+              _buildInfoRow('Evaluation', habit.effectiveEvaluationType.label, textPrimary),
+              _buildInfoRow('Frequency', habit.effectiveFrequencyType.label, textPrimary),
+            ],
+            isDark,
+            textPrimary,
+          ),
+          const SizedBox(height: 16),
+
+          // Priority Selection
+          _buildEditSection(
+            'Priority',
+            [
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: PriorityLevel.values.map((priority) {
+                  final isSelected = _selectedPriority == priority;
+                  return ChoiceChip(
+                    label: Text(priority.label),
+                    selected: isSelected,
+                    selectedColor: _getPriorityColor(priority).withAlpha(100),
+                    onSelected: (selected) {
+                      setState(() {
+                        _selectedPriority = priority;
+                        _hasChanges = true;
+                        _isEditMode = true;
+                      });
+                    },
+                    avatar: Icon(
+                      Icons.flag_rounded,
+                      size: 16,
+                      color: isSelected ? _getPriorityColor(priority) : textSecondary,
+                    ),
+                  );
+                }).toList(),
               ),
             ],
             isDark,
@@ -634,41 +909,122 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
           ),
           const SizedBox(height: 16),
 
+          // Category Selection
           _buildEditSection(
-            'Schedule',
+            'Category',
             [
-              _buildInfoRow('Days', habit.scheduleDaysLabel, textPrimary),
-              _buildInfoRow(
-                'Start',
-                _formatDate(habit.startDate ?? habit.createdAt),
-                textPrimary,
+              SizedBox(
+                height: 40,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: categories.length,
+                  itemBuilder: (context, index) {
+                    final category = categories[index];
+                    final isSelected = _selectedCategoryId == category.id;
+                    final color = Color(category.colorValue);
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ChoiceChip(
+                        label: Text(category.name),
+                        selected: isSelected,
+                        selectedColor: color.withAlpha(100),
+                        avatar: Icon(category.icon, size: 16, color: isSelected ? color : textSecondary),
+                        onSelected: (selected) {
+                          setState(() {
+                            _selectedCategoryId = selected ? category.id : null;
+                            _hasChanges = true;
+                            _isEditMode = true;
+                          });
+                        },
+                      ),
+                    );
+                  },
+                ),
               ),
-              if (habit.endDate != null)
-                _buildInfoRow('End', _formatDate(habit.endDate!), textPrimary),
             ],
             isDark,
             textPrimary,
           ),
           const SizedBox(height: 16),
 
+          // Scheduled Days
           _buildEditSection(
-            'Priority & Category',
+            'Scheduled Days',
             [
-              _buildInfoRow(
-                'Priority',
-                habit.effectivePriorityLevel.label,
-                textPrimary,
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (var i = 1; i <= 7; i++)
+                    _DayChip(
+                      day: i,
+                      isSelected: _selectedDays.contains(i),
+                      onTap: () {
+                        setState(() {
+                          if (_selectedDays.contains(i)) {
+                            _selectedDays.remove(i);
+                          } else {
+                            _selectedDays.add(i);
+                          }
+                          _selectedDays.sort();
+                          _hasChanges = true;
+                          _isEditMode = true;
+                        });
+                      },
+                    ),
+                ],
               ),
-              _buildInfoRow(
-                'Category',
-                habit.categoryId ?? 'None',
-                textPrimary,
+            ],
+            isDark,
+            textPrimary,
+          ),
+          const SizedBox(height: 16),
+
+          // Description
+          _buildEditSection(
+            'Description',
+            [
+              TextField(
+                controller: _descriptionController,
+                style: TextStyle(color: textPrimary),
+                maxLines: 3,
+                decoration: InputDecoration(
+                  hintText: 'Add a description (optional)',
+                  hintStyle: TextStyle(color: textSecondary),
+                  filled: true,
+                  fillColor: surfaceColor,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+                onChanged: (_) => setState(() => _hasChanges = true),
               ),
             ],
             isDark,
             textPrimary,
           ),
           const SizedBox(height: 24),
+
+          // Save Button (only show if changes made)
+          if (_hasChanges)
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => _saveHabitChanges(habit),
+                icon: const Icon(Icons.save_rounded),
+                label: const Text('Save Changes'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+          if (_hasChanges) const SizedBox(height: 12),
 
           // Action buttons
           SizedBox(
@@ -711,6 +1067,48 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
         ],
       ),
     ).animate().fadeIn(duration: 200.ms);
+  }
+  
+  Future<void> _saveHabitChanges(Habit habit) async {
+    final name = _nameController.text.trim();
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a habit name')),
+      );
+      return;
+    }
+    
+    // Update habit properties
+    habit.name = name;
+    habit.description = _descriptionController.text.trim().isNotEmpty 
+        ? _descriptionController.text.trim() 
+        : null;
+    habit.categoryId = _selectedCategoryId;
+    habit.priorityLevel = _selectedPriority;
+    habit.scheduledDays = _selectedDays;
+    
+    final appState = context.read<AppState>();
+    await appState.updateHabit(habit);
+    
+    setState(() {
+      _hasChanges = false;
+      _isEditMode = false;
+    });
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Habit updated successfully')),
+      );
+    }
+  }
+  
+  Color _getPriorityColor(PriorityLevel priority) {
+    switch (priority) {
+      case PriorityLevel.none: return Colors.grey;
+      case PriorityLevel.low: return Colors.blue;
+      case PriorityLevel.medium: return Colors.orange;
+      case PriorityLevel.high: return Colors.red;
+    }
   }
 
   Widget _buildEditSection(
@@ -814,5 +1212,56 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
       await appState.deleteHabit(habit.id);
       Navigator.of(context).pop();
     }
+  }
+}
+
+/// Day selection chip for schedule editing
+class _DayChip extends StatelessWidget {
+  final int day;
+  final bool isSelected;
+  final VoidCallback onTap;
+  
+  const _DayChip({
+    required this.day,
+    required this.isSelected,
+    required this.onTap,
+  });
+  
+  static const _dayNames = ['', 'M', 'T', 'W', 'T', 'F', 'S', 'S'];
+  static const _fullDayNames = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    return GestureDetector(
+      onTap: onTap,
+      child: Tooltip(
+        message: _fullDayNames[day],
+        child: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: isSelected 
+                ? AppColors.primary 
+                : (isDark ? AppColors.surfaceLight : LightColors.surfaceLight),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: isSelected ? AppColors.primary : Colors.grey.withAlpha(100),
+              width: isSelected ? 2 : 1,
+            ),
+          ),
+          child: Center(
+            child: Text(
+              _dayNames[day],
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: isSelected ? Colors.white : (isDark ? AppColors.textPrimary : LightColors.textPrimary),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

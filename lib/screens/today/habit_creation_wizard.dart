@@ -47,6 +47,7 @@ class _HabitCreationWizardState extends State<HabitCreationWizard> {
   DateTime? _endDate;
   List<TimeOfDay> _reminderTimes = [];
   String _description = '';
+  bool _scoringEnabled = false; // Optional scoring (0-100) for completion
 
   static const int _totalPages = 5;
 
@@ -105,6 +106,7 @@ class _HabitCreationWizardState extends State<HabitCreationWizard> {
           )
           .toList(),
       description: _description.isNotEmpty ? _description : null,
+      scoringEnabled: _scoringEnabled,
     );
 
     final appState = context.read<AppState>();
@@ -481,6 +483,51 @@ class _HabitCreationWizardState extends State<HabitCreationWizard> {
           ),
         ),
         const SizedBox(height: 24),
+        
+        // Scoring option toggle
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.surfaceLight : LightColors.surfaceLight,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.score_rounded,
+                color: _scoringEnabled ? AppColors.primary : textSecondary,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Enable Scoring',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Rate how close you got (0-100%) when completing or missing the habit',
+                      style: TextStyle(fontSize: 12, color: textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+              Switch(
+                value: _scoringEnabled,
+                onChanged: (value) => setState(() => _scoringEnabled = value),
+                activeColor: AppColors.primary,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+        
         Text(
           'Optional: Add a note about this habit',
           style: TextStyle(fontSize: 14, color: textSecondary),

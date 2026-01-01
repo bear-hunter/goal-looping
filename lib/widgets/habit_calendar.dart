@@ -8,11 +8,14 @@ import '../models/habit.dart';
 class HabitCalendar extends StatefulWidget {
   final Habit habit;
   final Function(DateTime)? onDayTap;
+  /// Callback when user wants to log with score for a date
+  final Function(DateTime, bool, int?)? onLogWithScore;
 
   const HabitCalendar({
     super.key,
     required this.habit,
     this.onDayTap,
+    this.onLogWithScore,
   });
 
   @override
@@ -115,12 +118,15 @@ class _HabitCalendarState extends State<HabitCalendar> {
       final status = _getStatusForDate(date);
       final isToday = date.year == today.year && date.month == today.month && date.day == today.day;
       final isFuture = date.isAfter(today);
+      final log = widget.habit.getLogFor(date);
       
       cells.add(_DayCell(
         day: day,
         status: status,
         isToday: isToday,
         isFuture: isFuture,
+        score: log?.score,
+        scoringEnabled: widget.habit.scoringEnabled,
         onTap: widget.onDayTap != null ? () => widget.onDayTap!(date) : null,
       ));
     }
@@ -134,13 +140,16 @@ class _HabitCalendarState extends State<HabitCalendar> {
   }
 
   Widget _buildLegend() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+    final showScoring = widget.habit.scoringEnabled;
+    return Wrap(
+      alignment: WrapAlignment.center,
+      spacing: 16,
+      runSpacing: 8,
       children: [
-        _LegendItem(color: AppColors.success, label: 'Done'),
-        const SizedBox(width: 16),
-        _LegendItem(color: AppColors.danger, label: 'Missed'),
-        const SizedBox(width: 16),
+        _LegendItem(color: AppColors.success, label: showScoring ? 'Done (100%)' : 'Done'),
+        _LegendItem(color: AppColors.danger, label: showScoring ? 'Missed (0%)' : 'Missed'),
+        if (showScoring)
+          _LegendItem(color: AppColors.warning, label: 'Partial'),
         _LegendItem(color: AppColors.surfaceLight, label: 'No data'),
       ],
     );
@@ -193,6 +202,8 @@ class _DayCell extends StatelessWidget {
   final _DayStatus status;
   final bool isToday;
   final bool isFuture;
+  final int? score;
+  final bool scoringEnabled;
   final VoidCallback? onTap;
 
   const _DayCell({
@@ -200,6 +211,8 @@ class _DayCell extends StatelessWidget {
     required this.status,
     required this.isToday,
     required this.isFuture,
+    this.score,
+    this.scoringEnabled = false,
     this.onTap,
   });
 
@@ -207,18 +220,35 @@ class _DayCell extends StatelessWidget {
   Widget build(BuildContext context) {
     Color bgColor;
     Color textColor;
+    bool showCheckmark = false;
+    bool showX = false;
     
     if (isFuture) {
       bgColor = Colors.transparent;
       textColor = AppColors.textMuted;
+    } else if (scoringEnabled && score != null) {
+      // Score-based coloring: interpolate between red (0) and green (100)
+      final normalizedScore = score!.clamp(0, 100) / 100.0;
+      if (normalizedScore >= 0.7) {
+        bgColor = AppColors.success;
+        showCheckmark = true;
+      } else if (normalizedScore >= 0.4) {
+        bgColor = AppColors.warning;
+      } else {
+        bgColor = AppColors.danger;
+        if (normalizedScore < 0.1) showX = true;
+      }
+      textColor = Colors.white;
     } else {
       switch (status) {
         case _DayStatus.completed:
           bgColor = AppColors.success;
           textColor = Colors.white;
+          showCheckmark = true;
         case _DayStatus.missed:
           bgColor = AppColors.danger;
           textColor = Colors.white;
+          showX = true;
         case _DayStatus.noData:
           bgColor = AppColors.surfaceLight;
           textColor = AppColors.textMuted;
@@ -228,26 +258,94 @@ class _DayCell extends StatelessWidget {
       }
     }
     
+    Widget content;
+    if (scoringEnabled && score != null) {
+      // Show score percentage
+      content = Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            '$score',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: textColor,
+            ),
+          ),
+          if (showCheckmark)
+            Icon(Icons.check, size: 8, color: textColor.withAlpha(200)),
+        ],
+      );
+    } else if (showCheckmark) {
+      content = Stack(
+        children: [
+          Center(
+            child: Text(
+              '$day',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
+                color: textColor,
+              ),
+            ),
+          ),
+          Positioned(
+            right: 2,
+            top: 2,
+            child: Icon(Icons.check, size: 10, color: textColor.withAlpha(200)),
+          ),
+        ],
+      );
+    } else if (showX) {
+      content = Stack(
+        children: [
+          Center(
+            child: Text(
+              '$day',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
+                color: textColor,
+              ),
+            ),
+          ),
+          Positioned(
+            right: 2,
+            top: 2,
+            child: Icon(Icons.close, size: 10, color: textColor.withAlpha(200)),
+          ),
+        ],
+      );
+    } else {
+      content = Center(
+        child: Text(
+          '$day',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
+            color: textColor,
+          ),
+        ),
+      );
+    }
+    
     return GestureDetector(
       onTap: onTap,
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
         width: 32,
         height: 32,
         decoration: BoxDecoration(
           color: bgColor,
           borderRadius: BorderRadius.circular(8),
-          border: isToday ? Border.all(color: AppColors.primary, width: 2) : null,
+          border: isToday 
+              ? Border.all(color: AppColors.primary, width: 2) 
+              : null,
+          boxShadow: (status == _DayStatus.completed || (scoringEnabled && score != null && score! >= 70))
+              ? [BoxShadow(color: bgColor.withAlpha(100), blurRadius: 4, spreadRadius: 1)]
+              : null,
         ),
-        child: Center(
-          child: Text(
-            '$day',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
-              color: textColor,
-            ),
-          ),
-        ),
+        child: content,
       ),
     );
   }

@@ -711,6 +711,7 @@ class AppState extends ChangeNotifier {
     String? note,
     int? mood,
     String? barrier,
+    int? score,
   }) async {
     final habit = _habits.firstWhere((h) => h.id == id);
     habit.logToday(
@@ -718,6 +719,7 @@ class AppState extends ChangeNotifier {
       note: note,
       mood: mood,
       barrier: barrier,
+      score: score,
     );
     await StorageService.saveHabit(habit);
 
