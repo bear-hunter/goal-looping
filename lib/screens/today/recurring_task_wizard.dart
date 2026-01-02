@@ -8,6 +8,7 @@ import '../../providers/app_state.dart';
 import '../../models/recurring_task.dart';
 import '../../models/habit_enums.dart';
 import '../../models/category_model.dart';
+import '../../widgets/growth_area_selector.dart';
 
 /// Multi-page wizard for creating a recurring task
 class RecurringTaskWizard extends StatefulWidget {
@@ -128,14 +129,18 @@ class _RecurringTaskWizardState extends State<RecurringTaskWizard> {
       task.name = _taskName;
       task.categoryId = _selectedCategoryId!;
       task.evaluationType = _evaluationType;
-      task.checklistItems = _checklistItems.isNotEmpty ? List<String>.from(_checklistItems) : null;
+      task.checklistItems = _checklistItems.isNotEmpty
+          ? List<String>.from(_checklistItems)
+          : null;
       task.frequencyType = _frequencyType;
       task.scheduledDays = List<int>.from(_scheduledDays);
       task.startDate = _startDate;
       task.endDate = _endDate;
       task.priorityLevel = _priority;
       task.linkedFactorIds = List<String>.from(_linkedFactorIds);
-      task.description = _description.trim().isNotEmpty ? _description.trim() : null;
+      task.description = _description.trim().isNotEmpty
+          ? _description.trim()
+          : null;
       // Intentionally preserve fields not edited in this wizard:
       // reminderTimes, logs, createdAt, sortOrder, isArchived
       await appState.updateRecurringTask(task);
@@ -148,9 +153,15 @@ class _RecurringTaskWizardState extends State<RecurringTaskWizard> {
         checklistItems: _checklistItems.isNotEmpty ? _checklistItems : null,
         frequencyType: _frequencyType,
         scheduledDays: _scheduledDays,
-        repeatInterval: _frequencyType == HabitFrequencyType.repeatEvery ? _repeatInterval : null,
-        daysPerPeriod: _frequencyType == HabitFrequencyType.someDaysPerPeriod ? _daysPerPeriod : null,
-        specificDates: _frequencyType == HabitFrequencyType.specificDatesOfYear ? _specificDates : null,
+        repeatInterval: _frequencyType == HabitFrequencyType.repeatEvery
+            ? _repeatInterval
+            : null,
+        daysPerPeriod: _frequencyType == HabitFrequencyType.someDaysPerPeriod
+            ? _daysPerPeriod
+            : null,
+        specificDates: _frequencyType == HabitFrequencyType.specificDatesOfYear
+            ? _specificDates
+            : null,
         startDate: _startDate,
         endDate: _endDate,
         priorityLevel: _priority,
@@ -255,7 +266,7 @@ class _RecurringTaskWizardState extends State<RecurringTaskWizard> {
             Expanded(
               child: ElevatedButton(
                 onPressed: _currentPage == _totalPages - 1
-                  ? _saveTask
+                    ? _saveTask
                     : _nextPage,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
@@ -531,9 +542,8 @@ class _RecurringTaskWizardState extends State<RecurringTaskWizard> {
             subtitle: 'e.g., every 2 days, every 3 days',
             icon: Icons.replay_rounded,
             isSelected: _frequencyType == HabitFrequencyType.repeatEvery,
-            onTap: () => setState(
-              () => _frequencyType = HabitFrequencyType.repeatEvery,
-            ),
+            onTap: () =>
+                setState(() => _frequencyType = HabitFrequencyType.repeatEvery),
           ),
           const SizedBox(height: 12),
           _FrequencyOption(
@@ -550,7 +560,8 @@ class _RecurringTaskWizardState extends State<RecurringTaskWizard> {
             title: 'Specific dates',
             subtitle: 'Yearly dates like birthdays',
             icon: Icons.cake_rounded,
-            isSelected: _frequencyType == HabitFrequencyType.specificDatesOfYear,
+            isSelected:
+                _frequencyType == HabitFrequencyType.specificDatesOfYear,
             onTap: () => setState(
               () => _frequencyType = HabitFrequencyType.specificDatesOfYear,
             ),
@@ -671,6 +682,15 @@ class _RecurringTaskWizardState extends State<RecurringTaskWizard> {
                   ),
                 )
                 .toList(),
+          ),
+          const SizedBox(height: 24),
+
+          // Growth Area Selector (Dissected Trees)
+          GrowthAreaSelector(
+            selectedAreaIds: _linkedFactorIds,
+            onSelectionChanged: (ids) =>
+                setState(() => _linkedFactorIds = ids),
+            label: 'Link to Dissected Tree (Optional)',
           ),
           const SizedBox(height: 24),
 
@@ -990,13 +1010,18 @@ class _RepeatIntervalSelector extends StatelessWidget {
   final int interval;
   final Function(int) onChanged;
 
-  const _RepeatIntervalSelector({required this.interval, required this.onChanged});
+  const _RepeatIntervalSelector({
+    required this.interval,
+    required this.onChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textPrimary = isDark ? AppColors.textPrimary : LightColors.textPrimary;
-    
+    final textPrimary = isDark
+        ? AppColors.textPrimary
+        : LightColors.textPrimary;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1022,7 +1047,9 @@ class _RepeatIntervalSelector extends StatelessWidget {
                   constraints: const BoxConstraints(minWidth: 20),
                   icon: const Icon(Icons.remove, size: 16),
                   color: AppColors.primary,
-                  onPressed: interval > 2 ? () => onChanged(interval - 1) : null,
+                  onPressed: interval > 2
+                      ? () => onChanged(interval - 1)
+                      : null,
                 ),
                 Text(
                   '$interval',
@@ -1037,7 +1064,9 @@ class _RepeatIntervalSelector extends StatelessWidget {
                   constraints: const BoxConstraints(minWidth: 20),
                   icon: const Icon(Icons.add, size: 16),
                   color: AppColors.primary,
-                  onPressed: interval < 30 ? () => onChanged(interval + 1) : null,
+                  onPressed: interval < 30
+                      ? () => onChanged(interval + 1)
+                      : null,
                 ),
               ],
             ),
@@ -1055,13 +1084,18 @@ class _DaysPerPeriodSelector extends StatelessWidget {
   final int daysPerPeriod;
   final Function(int) onChanged;
 
-  const _DaysPerPeriodSelector({required this.daysPerPeriod, required this.onChanged});
+  const _DaysPerPeriodSelector({
+    required this.daysPerPeriod,
+    required this.onChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textPrimary = isDark ? AppColors.textPrimary : LightColors.textPrimary;
-    
+    final textPrimary = isDark
+        ? AppColors.textPrimary
+        : LightColors.textPrimary;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1087,10 +1121,14 @@ class _DaysPerPeriodSelector extends StatelessWidget {
                     margin: EdgeInsets.only(right: index < 6 ? 4 : 0),
                     height: 36,
                     decoration: BoxDecoration(
-                      color: isSelected ? AppColors.primary : Colors.transparent,
+                      color: isSelected
+                          ? AppColors.primary
+                          : Colors.transparent,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                        color: isSelected ? AppColors.primary : Colors.grey.withAlpha(100),
+                        color: isSelected
+                            ? AppColors.primary
+                            : Colors.grey.withAlpha(100),
                       ),
                     ),
                     child: Center(
@@ -1123,9 +1161,26 @@ class _SpecificDatesSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textPrimary = isDark ? AppColors.textPrimary : LightColors.textPrimary;
-    final textSecondary = isDark ? AppColors.textSecondary : LightColors.textSecondary;
-    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final textPrimary = isDark
+        ? AppColors.textPrimary
+        : LightColors.textPrimary;
+    final textSecondary = isDark
+        ? AppColors.textSecondary
+        : LightColors.textSecondary;
+    final months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -1141,7 +1196,11 @@ class _SpecificDatesSelector extends StatelessWidget {
             children: [
               Text(
                 'Selected dates',
-                style: TextStyle(color: textPrimary, fontSize: 16, fontWeight: FontWeight.w500),
+                style: TextStyle(
+                  color: textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
               TextButton.icon(
                 icon: const Icon(Icons.add, size: 18),
@@ -1156,7 +1215,9 @@ class _SpecificDatesSelector extends StatelessWidget {
                   if (picked != null) {
                     // Store just month and day for yearly recurrence
                     final newDate = DateTime(2000, picked.month, picked.day);
-                    if (!dates.any((d) => d.month == newDate.month && d.day == newDate.day)) {
+                    if (!dates.any(
+                      (d) => d.month == newDate.month && d.day == newDate.day,
+                    )) {
                       onChanged([...dates, newDate]);
                     }
                   }
@@ -1169,7 +1230,10 @@ class _SpecificDatesSelector extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: Text(
                 'No dates added yet',
-                style: TextStyle(color: textSecondary, fontStyle: FontStyle.italic),
+                style: TextStyle(
+                  color: textSecondary,
+                  fontStyle: FontStyle.italic,
+                ),
               ),
             )
           else

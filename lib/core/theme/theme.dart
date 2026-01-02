@@ -138,23 +138,23 @@ class AppShadows {
   ];
 }
 
-/// The 8pt Grid System
+/// The 8pt Grid System - Compact
 class AppSpacing {
-  static const double xs = 4;
-  static const double sm = 8;
-  static const double md = 16;
-  static const double lg = 24;
-  static const double xl = 32;
-  static const double xxl = 48;
-  static const double xxxl = 64;
+  static const double xs = 2;
+  static const double sm = 6;
+  static const double md = 10;
+  static const double lg = 14;
+  static const double xl = 20;
+  static const double xxl = 32;
+  static const double xxxl = 48;
 }
 
-/// Premium Corner Radii
+/// Premium Corner Radii - Minimal
 class AppRadius {
-  static const double sm = 8;
-  static const double md = 12;
-  static const double lg = 16;
-  static const double xl = 24;
+  static const double sm = 4;
+  static const double md = 6;
+  static const double lg = 8;
+  static const double xl = 12;
   static const double full = 999;
 }
 
@@ -179,47 +179,47 @@ class AppTheme {
       textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme)
           .copyWith(
             displayLarge: GoogleFonts.inter(
-              fontSize: 32,
+              fontSize: 22,
               fontWeight: FontWeight.bold,
               color: AppColors.textPrimary,
             ),
             displayMedium: GoogleFonts.inter(
-              fontSize: 28,
+              fontSize: 20,
               fontWeight: FontWeight.bold,
               color: AppColors.textPrimary,
             ),
             headlineLarge: GoogleFonts.inter(
-              fontSize: 24,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-            ),
-            headlineMedium: GoogleFonts.inter(
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-            ),
-            titleLarge: GoogleFonts.inter(
               fontSize: 18,
               fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
             ),
-            titleMedium: GoogleFonts.inter(
+            headlineMedium: GoogleFonts.inter(
               fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
+            titleLarge: GoogleFonts.inter(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
+            titleMedium: GoogleFonts.inter(
+              fontSize: 14,
               fontWeight: FontWeight.w500,
               color: AppColors.textPrimary,
             ),
             bodyLarge: GoogleFonts.inter(
-              fontSize: 16,
+              fontSize: 14,
               fontWeight: FontWeight.normal,
               color: AppColors.textSecondary,
             ),
             bodyMedium: GoogleFonts.inter(
-              fontSize: 14,
+              fontSize: 13,
               fontWeight: FontWeight.normal,
               color: AppColors.textSecondary,
             ),
             labelLarge: GoogleFonts.inter(
-              fontSize: 14,
+              fontSize: 13,
               fontWeight: FontWeight.w500,
               color: AppColors.textPrimary,
             ),
@@ -274,22 +274,23 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.surfaceLight,
+        isDense: true,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(6),
           borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(6),
           borderSide: const BorderSide(color: AppColors.glassBorder, width: 1),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.primary, width: 2),
+          borderRadius: BorderRadius.circular(6),
+          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
         ),
-        hintStyle: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 14),
+        hintStyle: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 13),
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 14,
+          horizontal: 12,
+          vertical: 10,
         ),
       ),
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
@@ -345,47 +346,47 @@ class AppTheme {
       textTheme: GoogleFonts.interTextTheme(ThemeData.light().textTheme)
           .copyWith(
             displayLarge: GoogleFonts.inter(
-              fontSize: 32,
+              fontSize: 22,
               fontWeight: FontWeight.bold,
               color: LightColors.textPrimary,
             ),
             displayMedium: GoogleFonts.inter(
-              fontSize: 28,
+              fontSize: 20,
               fontWeight: FontWeight.bold,
               color: LightColors.textPrimary,
             ),
             headlineLarge: GoogleFonts.inter(
-              fontSize: 24,
-              fontWeight: FontWeight.w600,
-              color: LightColors.textPrimary,
-            ),
-            headlineMedium: GoogleFonts.inter(
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-              color: LightColors.textPrimary,
-            ),
-            titleLarge: GoogleFonts.inter(
               fontSize: 18,
               fontWeight: FontWeight.w600,
               color: LightColors.textPrimary,
             ),
-            titleMedium: GoogleFonts.inter(
+            headlineMedium: GoogleFonts.inter(
               fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: LightColors.textPrimary,
+            ),
+            titleLarge: GoogleFonts.inter(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: LightColors.textPrimary,
+            ),
+            titleMedium: GoogleFonts.inter(
+              fontSize: 14,
               fontWeight: FontWeight.w500,
               color: LightColors.textPrimary,
             ),
             bodyLarge: GoogleFonts.inter(
-              fontSize: 16,
+              fontSize: 14,
               fontWeight: FontWeight.normal,
               color: LightColors.textSecondary,
             ),
             bodyMedium: GoogleFonts.inter(
-              fontSize: 14,
+              fontSize: 13,
               fontWeight: FontWeight.normal,
               color: LightColors.textSecondary,
             ),
             labelLarge: GoogleFonts.inter(
-              fontSize: 14,
+              fontSize: 13,
               fontWeight: FontWeight.w500,
               color: LightColors.textPrimary,
             ),
@@ -413,12 +414,10 @@ class AppTheme {
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
           textStyle: GoogleFonts.inter(
-            fontSize: 16,
+            fontSize: 14,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -427,12 +426,10 @@ class AppTheme {
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.primary,
           side: const BorderSide(color: AppColors.primary, width: 1.5),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
           textStyle: GoogleFonts.inter(
-            fontSize: 16,
+            fontSize: 14,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -440,28 +437,29 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: LightColors.surfaceLight,
+        isDense: true,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(6),
           borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(6),
           borderSide: const BorderSide(
             color: LightColors.glassBorder,
             width: 1,
           ),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.primary, width: 2),
+          borderRadius: BorderRadius.circular(6),
+          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
         ),
         hintStyle: GoogleFonts.inter(
           color: LightColors.textMuted,
-          fontSize: 14,
+          fontSize: 13,
         ),
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 14,
+          horizontal: 12,
+          vertical: 10,
         ),
       ),
       floatingActionButtonTheme: const FloatingActionButtonThemeData(

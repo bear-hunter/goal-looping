@@ -143,7 +143,7 @@ class _TodayScreenState extends State<TodayScreen> {
                 children: [
                   // App Bar
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -155,14 +155,14 @@ class _TodayScreenState extends State<TodayScreen> {
                               child: Icon(
                                 Icons.menu_rounded,
                                 color: textPrimary,
-                                size: 24,
+                                size: 20,
                               ),
                             ),
-                            const SizedBox(width: 16),
+                            const SizedBox(width: 12),
                             Text(
                               'Today',
                               style: TextStyle(
-                                fontSize: 22,
+                                fontSize: 18,
                                 fontWeight: FontWeight.bold,
                                 color: textPrimary,
                               ),
@@ -193,7 +193,7 @@ class _TodayScreenState extends State<TodayScreen> {
 
                   // Horizontal Date Picker
                   SizedBox(
-                    height: 72,
+                    height: 64,
                     child: ListView.builder(
                       controller: _dateScrollController,
                       scrollDirection: Axis.horizontal,
@@ -231,8 +231,8 @@ class _TodayScreenState extends State<TodayScreen> {
                         ? _buildEmptyState(textSecondary)
                         : ReorderableListView.builder(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
+                              horizontal: 12,
+                              vertical: 4,
                             ),
                             proxyDecorator: (child, index, animation) {
                               return AnimatedBuilder(
@@ -263,7 +263,12 @@ class _TodayScreenState extends State<TodayScreen> {
                               reordered.insert(newIndex, movedItem);
 
                               // Persist new order with smart priority swapping
-                              _persistReorder(reordered, state, oldIndex, newIndex);
+                              _persistReorder(
+                                reordered,
+                                state,
+                                oldIndex,
+                                newIndex,
+                              );
                             },
                             itemCount: allItems.length,
                             itemBuilder: (context, index) {
@@ -299,9 +304,17 @@ class _TodayScreenState extends State<TodayScreen> {
                                   } else {
                                     // Swipe left = show edit sheet (bottom sliding window)
                                     if (item.isHabit) {
-                                      _showHabitEditSheet(context, item.habit!, state);
+                                      _showHabitEditSheet(
+                                        context,
+                                        item.habit!,
+                                        state,
+                                      );
                                     } else if (item.isRecurringTask) {
-                                      _showRecurringTaskEditSheet(context, item.recurringTask!, state);
+                                      _showRecurringTaskEditSheet(
+                                        context,
+                                        item.recurringTask!,
+                                        state,
+                                      );
                                     } else {
                                       EditTaskSheet.show(
                                         context,
@@ -484,9 +497,7 @@ class _TodayScreenState extends State<TodayScreen> {
                       Navigator.pop(context);
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
-                          builder: (_) => const ShopScreen(),
-                        ),
+                        MaterialPageRoute(builder: (_) => const ShopScreen()),
                       );
                     },
                   ),
@@ -962,37 +973,81 @@ class _TodayScreenState extends State<TodayScreen> {
   void _showItemOptions(BuildContext context, _TodayItem item) {
     final state = context.read<AppState>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textPrimary = isDark
+        ? AppColors.textPrimary
+        : LightColors.textPrimary;
+    final textSecondary = isDark
+        ? AppColors.textSecondary
+        : LightColors.textSecondary;
+
+    // Get trigger response for display
+    String? triggerResponse;
+    if (item.isHabit && item.habit!.triggerResponse != null) {
+      triggerResponse = item.habit!.triggerResponse;
+    }
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: isDark ? AppColors.surface : LightColors.surface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      builder: (ctx) => DraggableScrollableSheet(
-        initialChildSize: 0.5,
-        minChildSize: 0.3,
-        maxChildSize: 0.8,
-        expand: false,
-        builder: (context, scrollController) => SingleChildScrollView(
-          controller: scrollController,
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Item title
-                Text(
-                  item.name,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Drag handle
+            Center(
+              child: Container(
+                width: 32,
+                height: 3,
+                decoration: BoxDecoration(
+                  color: textSecondary.withOpacity(0.4),
+                  borderRadius: BorderRadius.circular(999),
                 ),
-                const SizedBox(height: 20),
+              ),
+            ),
+            const SizedBox(height: 14),
 
-                // Reminders option
-                ListTile(
-                  leading: const Icon(Icons.notifications_rounded),
-                  title: const Text('Reminders'),
+            // Header: Item title
+            Text(
+              item.name,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: textPrimary,
+              ),
+            ),
+
+            // If-Then text (if exists)
+            if (triggerResponse != null && triggerResponse.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(
+                triggerResponse,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: textSecondary,
+                  fontStyle: FontStyle.italic,
+                ),
+                maxLines: 4,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+
+            const SizedBox(height: 16),
+
+            // Grid of action buttons
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                // Reminders
+                _ActionButton(
+                  icon: Icons.notifications_rounded,
+                  label: 'Reminders',
                   subtitle: _reminderCountLabel(item, _selectedDate),
                   onTap: () {
                     Navigator.pop(ctx);
@@ -1000,10 +1055,10 @@ class _TodayScreenState extends State<TodayScreen> {
                   },
                 ),
 
-                // Notes option
-                ListTile(
-                  leading: const Icon(Icons.note_rounded),
-                  title: const Text('Notes'),
+                // Notes
+                _ActionButton(
+                  icon: Icons.note_rounded,
+                  label: 'Notes',
                   subtitle: _notePreviewLabel(item, _selectedDate),
                   onTap: () {
                     Navigator.pop(ctx);
@@ -1013,10 +1068,10 @@ class _TodayScreenState extends State<TodayScreen> {
 
                 // Statistics (habits only)
                 if (item.isHabit)
-                  ListTile(
-                    leading: const Icon(Icons.bar_chart_rounded),
-                    title: const Text('Statistics'),
-                    subtitle: Text('${item.habit!.currentStreak} day streak'),
+                  _ActionButton(
+                    icon: Icons.bar_chart_rounded,
+                    label: 'Statistics',
+                    subtitle: Text('${item.habit!.currentStreak}d'),
                     onTap: () {
                       Navigator.pop(ctx);
                       HabitDetailScreen.show(context, habitId: item.habit!.id);
@@ -1025,19 +1080,19 @@ class _TodayScreenState extends State<TodayScreen> {
 
                 // Calendar (habits only)
                 if (item.isHabit)
-                  ListTile(
-                    leading: const Icon(Icons.calendar_today_rounded),
-                    title: const Text('Calendar'),
+                  _ActionButton(
+                    icon: Icons.calendar_today_rounded,
+                    label: 'Calendar',
                     onTap: () {
                       Navigator.pop(ctx);
                       HabitDetailScreen.show(context, habitId: item.habit!.id);
                     },
                   ),
 
-                // Edit option
-                ListTile(
-                  leading: const Icon(Icons.edit_rounded),
-                  title: const Text('Edit'),
+                // Edit
+                _ActionButton(
+                  icon: Icons.edit_rounded,
+                  label: 'Edit',
                   onTap: () {
                     Navigator.pop(ctx);
                     if (item.isHabit) {
@@ -1058,32 +1113,53 @@ class _TodayScreenState extends State<TodayScreen> {
                   },
                 ),
 
-                // Archive option
-                ListTile(
-                  leading: const Icon(Icons.archive_rounded),
-                  title: const Text('Archive'),
+                // Archive
+                _ActionButton(
+                  icon: Icons.archive_rounded,
+                  label: 'Archive',
                   onTap: () {
                     Navigator.pop(ctx);
                     _archiveItem(item, state);
                   },
                 ),
-
-                // Delete option
-                ListTile(
-                  leading: const Icon(Icons.delete_rounded, color: Colors.red),
-                  title: const Text('Delete', style: TextStyle(color: Colors.red)),
-                  onTap: () async {
-                    Navigator.pop(ctx);
-                    final confirmed = await _confirmDelete(context, item);
-                    if (confirmed) {
-                      _deleteItem(item, state);
-                    }
-                  },
-                ),
-                const SizedBox(height: 16),
               ],
             ),
-          ),
+            const SizedBox(height: 18),
+
+            // Destructive action: Delete
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  backgroundColor: Colors.red.withOpacity(0.18),
+                  foregroundColor: Colors.redAccent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onPressed: () async {
+                  Navigator.pop(ctx);
+                  final confirmed = await _confirmDelete(context, item);
+                  if (confirmed) {
+                    _deleteItem(item, state);
+                  }
+                },
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Icon(Icons.delete_rounded, size: 18),
+                    SizedBox(width: 8),
+                    Text(
+                      'Delete',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -1140,18 +1216,27 @@ class _TodayScreenState extends State<TodayScreen> {
   void _showHabitEditSheet(BuildContext context, Habit habit, AppState state) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final surfaceColor = isDark ? AppColors.surface : LightColors.surface;
-    final textPrimary = isDark ? AppColors.textPrimary : LightColors.textPrimary;
-    final textSecondary = isDark ? AppColors.textSecondary : LightColors.textSecondary;
+    final textPrimary = isDark
+        ? AppColors.textPrimary
+        : LightColors.textPrimary;
+    final textSecondary = isDark
+        ? AppColors.textSecondary
+        : LightColors.textSecondary;
 
     final nameController = TextEditingController(text: habit.name);
-    final triggerController = TextEditingController(text: habit.triggerResponse ?? '');
+    final triggerController = TextEditingController(
+      text: habit.triggerResponse ?? '',
+    );
     final descController = TextEditingController(text: habit.description ?? '');
     String? selectedCategoryId = habit.categoryId;
     List<int> selectedDays = List<int>.from(habit.scheduledDays);
-    HabitFrequencyType frequencyType = habit.frequencyType ?? HabitFrequencyType.everyday;
+    HabitFrequencyType frequencyType =
+        habit.frequencyType ?? HabitFrequencyType.everyday;
     int repeatInterval = habit.repeatInterval ?? 2;
     int daysPerPeriod = habit.daysPerPeriod ?? 3;
-    List<DateTime> specificDates = List<DateTime>.from(habit.specificDates ?? []);
+    List<DateTime> specificDates = List<DateTime>.from(
+      habit.specificDates ?? [],
+    );
 
     showModalBottomSheet(
       context: context,
@@ -1172,7 +1257,9 @@ class _TodayScreenState extends State<TodayScreen> {
               controller: scrollController,
               child: Padding(
                 padding: EdgeInsets.fromLTRB(
-                  20, 20, 20,
+                  20,
+                  20,
+                  20,
                   MediaQuery.of(context).viewInsets.bottom + 20,
                 ),
                 child: Column(
@@ -1219,9 +1306,13 @@ class _TodayScreenState extends State<TodayScreen> {
                       maxLines: 2,
                       decoration: InputDecoration(
                         labelText: 'If-Then Plan',
-                        hintText: 'e.g., "If I feel tired → I will do just 5 minutes"',
+                        hintText:
+                            'e.g., "If I feel tired → I will do just 5 minutes"',
                         hintStyle: TextStyle(color: textSecondary),
-                        prefixIcon: Icon(Icons.psychology_rounded, color: AppColors.primary),
+                        prefixIcon: Icon(
+                          Icons.psychology_rounded,
+                          color: AppColors.primary,
+                        ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -1249,7 +1340,9 @@ class _TodayScreenState extends State<TodayScreen> {
                                 label: const Text('None'),
                                 selected: isSelected,
                                 onSelected: (selected) {
-                                  setModalState(() => selectedCategoryId = null);
+                                  setModalState(
+                                    () => selectedCategoryId = null,
+                                  );
                                 },
                               ),
                             );
@@ -1263,9 +1356,17 @@ class _TodayScreenState extends State<TodayScreen> {
                               label: Text(category.name),
                               selected: isSelected,
                               selectedColor: color.withAlpha(100),
-                              avatar: Icon(category.icon, size: 16, color: isSelected ? color : textSecondary),
+                              avatar: Icon(
+                                category.icon,
+                                size: 16,
+                                color: isSelected ? color : textSecondary,
+                              ),
                               onSelected: (selected) {
-                                setModalState(() => selectedCategoryId = selected ? category.id : null);
+                                setModalState(
+                                  () => selectedCategoryId = selected
+                                      ? category.id
+                                      : null,
+                                );
                               },
                             ),
                           );
@@ -1291,10 +1392,17 @@ class _TodayScreenState extends State<TodayScreen> {
                           isExpanded: true,
                           value: frequencyType,
                           dropdownColor: surfaceColor,
-                          items: HabitFrequencyType.values.map((type) => DropdownMenuItem(
-                            value: type,
-                            child: Text(type.label, style: TextStyle(color: textPrimary)),
-                          )).toList(),
+                          items: HabitFrequencyType.values
+                              .map(
+                                (type) => DropdownMenuItem(
+                                  value: type,
+                                  child: Text(
+                                    type.label,
+                                    style: TextStyle(color: textPrimary),
+                                  ),
+                                ),
+                              )
+                              .toList(),
                           onChanged: (val) {
                             if (val != null) {
                               setModalState(() {
@@ -1312,7 +1420,10 @@ class _TodayScreenState extends State<TodayScreen> {
 
                     // Frequency-specific options
                     if (frequencyType == HabitFrequencyType.specificDays) ...[
-                      Text('Select days:', style: TextStyle(color: textSecondary, fontSize: 12)),
+                      Text(
+                        'Select days:',
+                        style: TextStyle(color: textSecondary, fontSize: 12),
+                      ),
                       const SizedBox(height: 8),
                       Wrap(
                         spacing: 8,
@@ -1323,7 +1434,8 @@ class _TodayScreenState extends State<TodayScreen> {
                               onTap: () {
                                 setModalState(() {
                                   if (selectedDays.contains(i)) {
-                                    if (selectedDays.length > 1) selectedDays.remove(i);
+                                    if (selectedDays.length > 1)
+                                      selectedDays.remove(i);
                                   } else {
                                     selectedDays.add(i);
                                   }
@@ -1334,17 +1446,23 @@ class _TodayScreenState extends State<TodayScreen> {
                                 width: 36,
                                 height: 36,
                                 decoration: BoxDecoration(
-                                  color: selectedDays.contains(i) ? AppColors.primary : Colors.transparent,
+                                  color: selectedDays.contains(i)
+                                      ? AppColors.primary
+                                      : Colors.transparent,
                                   borderRadius: BorderRadius.circular(8),
                                   border: Border.all(
-                                    color: selectedDays.contains(i) ? AppColors.primary : textSecondary,
+                                    color: selectedDays.contains(i)
+                                        ? AppColors.primary
+                                        : textSecondary,
                                   ),
                                 ),
                                 child: Center(
                                   child: Text(
                                     ['M', 'T', 'W', 'T', 'F', 'S', 'S'][i - 1],
                                     style: TextStyle(
-                                      color: selectedDays.contains(i) ? Colors.white : textSecondary,
+                                      color: selectedDays.contains(i)
+                                          ? Colors.white
+                                          : textSecondary,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
@@ -1366,10 +1484,17 @@ class _TodayScreenState extends State<TodayScreen> {
                               textAlign: TextAlign.center,
                               style: TextStyle(color: textPrimary),
                               decoration: InputDecoration(
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 8,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
                               ),
-                              controller: TextEditingController(text: '$repeatInterval'),
+                              controller: TextEditingController(
+                                text: '$repeatInterval',
+                              ),
                               onChanged: (val) {
                                 final parsed = int.tryParse(val);
                                 if (parsed != null && parsed >= 2) {
@@ -1383,7 +1508,8 @@ class _TodayScreenState extends State<TodayScreen> {
                       ),
                     ],
 
-                    if (frequencyType == HabitFrequencyType.someDaysPerPeriod) ...[
+                    if (frequencyType ==
+                        HabitFrequencyType.someDaysPerPeriod) ...[
                       Row(
                         children: [
                           SizedBox(
@@ -1393,28 +1519,47 @@ class _TodayScreenState extends State<TodayScreen> {
                               textAlign: TextAlign.center,
                               style: TextStyle(color: textPrimary),
                               decoration: InputDecoration(
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 8,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
                               ),
-                              controller: TextEditingController(text: '$daysPerPeriod'),
+                              controller: TextEditingController(
+                                text: '$daysPerPeriod',
+                              ),
                               onChanged: (val) {
                                 final parsed = int.tryParse(val);
-                                if (parsed != null && parsed >= 1 && parsed <= 7) {
+                                if (parsed != null &&
+                                    parsed >= 1 &&
+                                    parsed <= 7) {
                                   daysPerPeriod = parsed;
                                 }
                               },
                             ),
                           ),
-                          Text(' days per week', style: TextStyle(color: textPrimary)),
+                          Text(
+                            ' days per week',
+                            style: TextStyle(color: textPrimary),
+                          ),
                         ],
                       ),
                     ],
 
-                    if (frequencyType == HabitFrequencyType.specificDatesOfYear) ...[
+                    if (frequencyType ==
+                        HabitFrequencyType.specificDatesOfYear) ...[
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('Selected dates:', style: TextStyle(color: textSecondary, fontSize: 12)),
+                          Text(
+                            'Selected dates:',
+                            style: TextStyle(
+                              color: textSecondary,
+                              fontSize: 12,
+                            ),
+                          ),
                           TextButton.icon(
                             icon: const Icon(Icons.add, size: 16),
                             label: const Text('Add'),
@@ -1426,9 +1571,19 @@ class _TodayScreenState extends State<TodayScreen> {
                                 lastDate: DateTime(2100),
                               );
                               if (picked != null) {
-                                final newDate = DateTime(2000, picked.month, picked.day);
-                                if (!specificDates.any((d) => d.month == newDate.month && d.day == newDate.day)) {
-                                  setModalState(() => specificDates.add(newDate));
+                                final newDate = DateTime(
+                                  2000,
+                                  picked.month,
+                                  picked.day,
+                                );
+                                if (!specificDates.any(
+                                  (d) =>
+                                      d.month == newDate.month &&
+                                      d.day == newDate.day,
+                                )) {
+                                  setModalState(
+                                    () => specificDates.add(newDate),
+                                  );
                                 }
                               }
                             },
@@ -1440,11 +1595,28 @@ class _TodayScreenState extends State<TodayScreen> {
                           spacing: 8,
                           runSpacing: 8,
                           children: specificDates.map((date) {
-                            final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                            final months = [
+                              'Jan',
+                              'Feb',
+                              'Mar',
+                              'Apr',
+                              'May',
+                              'Jun',
+                              'Jul',
+                              'Aug',
+                              'Sep',
+                              'Oct',
+                              'Nov',
+                              'Dec',
+                            ];
                             return Chip(
-                              label: Text('${months[date.month - 1]} ${date.day}'),
+                              label: Text(
+                                '${months[date.month - 1]} ${date.day}',
+                              ),
                               deleteIcon: const Icon(Icons.close, size: 16),
-                              onDeleted: () => setModalState(() => specificDates.remove(date)),
+                              onDeleted: () => setModalState(
+                                () => specificDates.remove(date),
+                              ),
                             );
                           }).toList(),
                         ),
@@ -1474,24 +1646,39 @@ class _TodayScreenState extends State<TodayScreen> {
                           final name = nameController.text.trim();
                           if (name.isEmpty) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Please enter a habit name')),
+                              const SnackBar(
+                                content: Text('Please enter a habit name'),
+                              ),
                             );
                             return;
                           }
 
                           habit.name = name;
-                          habit.triggerResponse = triggerController.text.trim().isNotEmpty
+                          habit.triggerResponse =
+                              triggerController.text.trim().isNotEmpty
                               ? triggerController.text.trim()
                               : null;
-                          habit.description = descController.text.trim().isNotEmpty
+                          habit.description =
+                              descController.text.trim().isNotEmpty
                               ? descController.text.trim()
                               : null;
                           habit.categoryId = selectedCategoryId;
                           habit.frequencyType = frequencyType;
                           habit.scheduledDays = selectedDays;
-                          habit.repeatInterval = frequencyType == HabitFrequencyType.repeatEvery ? repeatInterval : null;
-                          habit.daysPerPeriod = frequencyType == HabitFrequencyType.someDaysPerPeriod ? daysPerPeriod : null;
-                          habit.specificDates = frequencyType == HabitFrequencyType.specificDatesOfYear ? specificDates : null;
+                          habit.repeatInterval =
+                              frequencyType == HabitFrequencyType.repeatEvery
+                              ? repeatInterval
+                              : null;
+                          habit.daysPerPeriod =
+                              frequencyType ==
+                                  HabitFrequencyType.someDaysPerPeriod
+                              ? daysPerPeriod
+                              : null;
+                          habit.specificDates =
+                              frequencyType ==
+                                  HabitFrequencyType.specificDatesOfYear
+                              ? specificDates
+                              : null;
 
                           state.updateHabit(habit);
                           Navigator.pop(ctx);
@@ -1518,11 +1705,19 @@ class _TodayScreenState extends State<TodayScreen> {
     );
   }
 
-  void _showRecurringTaskEditSheet(BuildContext context, RecurringTask task, AppState state) {
+  void _showRecurringTaskEditSheet(
+    BuildContext context,
+    RecurringTask task,
+    AppState state,
+  ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final surfaceColor = isDark ? AppColors.surface : LightColors.surface;
-    final textPrimary = isDark ? AppColors.textPrimary : LightColors.textPrimary;
-    final textSecondary = isDark ? AppColors.textSecondary : LightColors.textSecondary;
+    final textPrimary = isDark
+        ? AppColors.textPrimary
+        : LightColors.textPrimary;
+    final textSecondary = isDark
+        ? AppColors.textSecondary
+        : LightColors.textSecondary;
 
     final nameController = TextEditingController(text: task.name);
     final descController = TextEditingController(text: task.description ?? '');
@@ -1531,7 +1726,9 @@ class _TodayScreenState extends State<TodayScreen> {
     HabitFrequencyType frequencyType = task.frequencyType;
     int repeatInterval = task.repeatInterval ?? 2;
     int daysPerPeriod = task.daysPerPeriod ?? 3;
-    List<DateTime> specificDates = List<DateTime>.from(task.specificDates ?? []);
+    List<DateTime> specificDates = List<DateTime>.from(
+      task.specificDates ?? [],
+    );
 
     showModalBottomSheet(
       context: context,
@@ -1545,11 +1742,18 @@ class _TodayScreenState extends State<TodayScreen> {
           builder: (_, scrollController) => Container(
             decoration: BoxDecoration(
               color: surfaceColor,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(20),
+              ),
             ),
             child: SingleChildScrollView(
               controller: scrollController,
-              padding: EdgeInsets.fromLTRB(20, 12, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+              padding: EdgeInsets.fromLTRB(
+                20,
+                12,
+                20,
+                MediaQuery.of(ctx).viewInsets.bottom + 20,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -1590,7 +1794,10 @@ class _TodayScreenState extends State<TodayScreen> {
                   const SizedBox(height: 20),
 
                   // Name field
-                  Text('Name', style: TextStyle(fontSize: 13, color: textSecondary)),
+                  Text(
+                    'Name',
+                    style: TextStyle(fontSize: 13, color: textSecondary),
+                  ),
                   const SizedBox(height: 6),
                   TextField(
                     controller: nameController,
@@ -1599,7 +1806,9 @@ class _TodayScreenState extends State<TodayScreen> {
                       hintText: 'Task name',
                       hintStyle: TextStyle(color: textSecondary.withAlpha(128)),
                       filled: true,
-                      fillColor: isDark ? AppColors.surfaceLight : LightColors.surfaceLight,
+                      fillColor: isDark
+                          ? AppColors.surfaceLight
+                          : LightColors.surfaceLight,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide.none,
@@ -1609,7 +1818,10 @@ class _TodayScreenState extends State<TodayScreen> {
                   const SizedBox(height: 16),
 
                   // Description
-                  Text('Description', style: TextStyle(fontSize: 13, color: textSecondary)),
+                  Text(
+                    'Description',
+                    style: TextStyle(fontSize: 13, color: textSecondary),
+                  ),
                   const SizedBox(height: 6),
                   TextField(
                     controller: descController,
@@ -1619,7 +1831,9 @@ class _TodayScreenState extends State<TodayScreen> {
                       hintText: 'Optional description',
                       hintStyle: TextStyle(color: textSecondary.withAlpha(128)),
                       filled: true,
-                      fillColor: isDark ? AppColors.surfaceLight : LightColors.surfaceLight,
+                      fillColor: isDark
+                          ? AppColors.surfaceLight
+                          : LightColors.surfaceLight,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide.none,
@@ -1629,12 +1843,17 @@ class _TodayScreenState extends State<TodayScreen> {
                   const SizedBox(height: 16),
 
                   // Category dropdown
-                  Text('Category', style: TextStyle(fontSize: 13, color: textSecondary)),
+                  Text(
+                    'Category',
+                    style: TextStyle(fontSize: 13, color: textSecondary),
+                  ),
                   const SizedBox(height: 6),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     decoration: BoxDecoration(
-                      color: isDark ? AppColors.surfaceLight : LightColors.surfaceLight,
+                      color: isDark
+                          ? AppColors.surfaceLight
+                          : LightColors.surfaceLight,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: DropdownButtonHideUnderline(
@@ -1643,12 +1862,17 @@ class _TodayScreenState extends State<TodayScreen> {
                         value: selectedCategoryId,
                         dropdownColor: surfaceColor,
                         style: TextStyle(color: textPrimary),
-                        items: state.categories.map((cat) => DropdownMenuItem(
-                          value: cat.id,
-                          child: Text(cat.name),
-                        )).toList(),
+                        items: state.categories
+                            .map(
+                              (cat) => DropdownMenuItem(
+                                value: cat.id,
+                                child: Text(cat.name),
+                              ),
+                            )
+                            .toList(),
                         onChanged: (val) {
-                          if (val != null) setSheetState(() => selectedCategoryId = val);
+                          if (val != null)
+                            setSheetState(() => selectedCategoryId = val);
                         },
                       ),
                     ),
@@ -1656,12 +1880,17 @@ class _TodayScreenState extends State<TodayScreen> {
                   const SizedBox(height: 20),
 
                   // Frequency type
-                  Text('Frequency', style: TextStyle(fontSize: 13, color: textSecondary)),
+                  Text(
+                    'Frequency',
+                    style: TextStyle(fontSize: 13, color: textSecondary),
+                  ),
                   const SizedBox(height: 6),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     decoration: BoxDecoration(
-                      color: isDark ? AppColors.surfaceLight : LightColors.surfaceLight,
+                      color: isDark
+                          ? AppColors.surfaceLight
+                          : LightColors.surfaceLight,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: DropdownButtonHideUnderline(
@@ -1670,12 +1899,20 @@ class _TodayScreenState extends State<TodayScreen> {
                         value: frequencyType,
                         dropdownColor: surfaceColor,
                         style: TextStyle(color: textPrimary),
-                        items: HabitFrequencyType.values.map((type) => DropdownMenuItem(
-                          value: type,
-                          child: Text(type.label, style: TextStyle(color: textPrimary)),
-                        )).toList(),
+                        items: HabitFrequencyType.values
+                            .map(
+                              (type) => DropdownMenuItem(
+                                value: type,
+                                child: Text(
+                                  type.label,
+                                  style: TextStyle(color: textPrimary),
+                                ),
+                              ),
+                            )
+                            .toList(),
                         onChanged: (val) {
-                          if (val != null) setSheetState(() => frequencyType = val);
+                          if (val != null)
+                            setSheetState(() => frequencyType = val);
                         },
                       ),
                     ),
@@ -1684,7 +1921,10 @@ class _TodayScreenState extends State<TodayScreen> {
 
                   // Frequency-specific options
                   if (frequencyType == HabitFrequencyType.specificDays) ...[
-                    Text('Days', style: TextStyle(fontSize: 13, color: textSecondary)),
+                    Text(
+                      'Days',
+                      style: TextStyle(fontSize: 13, color: textSecondary),
+                    ),
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
@@ -1706,18 +1946,30 @@ class _TodayScreenState extends State<TodayScreen> {
                             width: 36,
                             height: 36,
                             decoration: BoxDecoration(
-                              color: isSelected ? AppColors.primary.withAlpha(30) : (isDark ? AppColors.surfaceLight : LightColors.surfaceLight),
+                              color: isSelected
+                                  ? AppColors.primary.withAlpha(30)
+                                  : (isDark
+                                        ? AppColors.surfaceLight
+                                        : LightColors.surfaceLight),
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
-                                color: isSelected ? AppColors.primary : (isDark ? AppColors.glassBorder : LightColors.glassBorder),
+                                color: isSelected
+                                    ? AppColors.primary
+                                    : (isDark
+                                          ? AppColors.glassBorder
+                                          : LightColors.glassBorder),
                               ),
                             ),
                             alignment: Alignment.center,
                             child: Text(
                               dayNames[i],
                               style: TextStyle(
-                                color: isSelected ? AppColors.primary : textSecondary,
-                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                color: isSelected
+                                    ? AppColors.primary
+                                    : textSecondary,
+                                fontWeight: isSelected
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
                               ),
                             ),
                           ),
@@ -1737,10 +1989,17 @@ class _TodayScreenState extends State<TodayScreen> {
                             textAlign: TextAlign.center,
                             style: TextStyle(color: textPrimary),
                             decoration: InputDecoration(
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 8,
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
                             ),
-                            controller: TextEditingController(text: '$repeatInterval'),
+                            controller: TextEditingController(
+                              text: '$repeatInterval',
+                            ),
                             onChanged: (val) {
                               final parsed = int.tryParse(val);
                               if (parsed != null && parsed >= 1) {
@@ -1754,7 +2013,8 @@ class _TodayScreenState extends State<TodayScreen> {
                     ),
                   ],
 
-                  if (frequencyType == HabitFrequencyType.someDaysPerPeriod) ...[
+                  if (frequencyType ==
+                      HabitFrequencyType.someDaysPerPeriod) ...[
                     Row(
                       children: [
                         SizedBox(
@@ -1764,28 +2024,44 @@ class _TodayScreenState extends State<TodayScreen> {
                             textAlign: TextAlign.center,
                             style: TextStyle(color: textPrimary),
                             decoration: InputDecoration(
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 8,
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
                             ),
-                            controller: TextEditingController(text: '$daysPerPeriod'),
+                            controller: TextEditingController(
+                              text: '$daysPerPeriod',
+                            ),
                             onChanged: (val) {
                               final parsed = int.tryParse(val);
-                              if (parsed != null && parsed >= 1 && parsed <= 7) {
+                              if (parsed != null &&
+                                  parsed >= 1 &&
+                                  parsed <= 7) {
                                 daysPerPeriod = parsed;
                               }
                             },
                           ),
                         ),
-                        Text(' days per week', style: TextStyle(color: textPrimary)),
+                        Text(
+                          ' days per week',
+                          style: TextStyle(color: textPrimary),
+                        ),
                       ],
                     ),
                   ],
 
-                  if (frequencyType == HabitFrequencyType.specificDatesOfYear) ...[
+                  if (frequencyType ==
+                      HabitFrequencyType.specificDatesOfYear) ...[
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Selected dates:', style: TextStyle(color: textSecondary, fontSize: 12)),
+                        Text(
+                          'Selected dates:',
+                          style: TextStyle(color: textSecondary, fontSize: 12),
+                        ),
                         TextButton.icon(
                           icon: const Icon(Icons.add, size: 16),
                           label: const Text('Add'),
@@ -1797,8 +2073,16 @@ class _TodayScreenState extends State<TodayScreen> {
                               lastDate: DateTime(2100),
                             );
                             if (picked != null) {
-                              final newDate = DateTime(2000, picked.month, picked.day);
-                              if (!specificDates.any((d) => d.month == newDate.month && d.day == newDate.day)) {
+                              final newDate = DateTime(
+                                2000,
+                                picked.month,
+                                picked.day,
+                              );
+                              if (!specificDates.any(
+                                (d) =>
+                                    d.month == newDate.month &&
+                                    d.day == newDate.day,
+                              )) {
                                 setSheetState(() => specificDates.add(newDate));
                               }
                             }
@@ -1811,11 +2095,25 @@ class _TodayScreenState extends State<TodayScreen> {
                         spacing: 8,
                         runSpacing: 8,
                         children: specificDates.map((d) {
-                          final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                          final months = [
+                            'Jan',
+                            'Feb',
+                            'Mar',
+                            'Apr',
+                            'May',
+                            'Jun',
+                            'Jul',
+                            'Aug',
+                            'Sep',
+                            'Oct',
+                            'Nov',
+                            'Dec',
+                          ];
                           return Chip(
                             label: Text('${months[d.month - 1]} ${d.day}'),
                             deleteIcon: const Icon(Icons.close, size: 16),
-                            onDeleted: () => setSheetState(() => specificDates.remove(d)),
+                            onDeleted: () =>
+                                setSheetState(() => specificDates.remove(d)),
                           );
                         }).toList(),
                       ),
@@ -1831,7 +2129,9 @@ class _TodayScreenState extends State<TodayScreen> {
                         final name = nameController.text.trim();
                         if (name.isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Please enter a name')),
+                            const SnackBar(
+                              content: Text('Please enter a name'),
+                            ),
                           );
                           return;
                         }
@@ -1843,16 +2143,29 @@ class _TodayScreenState extends State<TodayScreen> {
                         task.categoryId = selectedCategoryId;
                         task.frequencyType = frequencyType;
                         task.scheduledDays = selectedDays;
-                        task.repeatInterval = frequencyType == HabitFrequencyType.repeatEvery ? repeatInterval : null;
-                        task.daysPerPeriod = frequencyType == HabitFrequencyType.someDaysPerPeriod ? daysPerPeriod : null;
-                        task.specificDates = frequencyType == HabitFrequencyType.specificDatesOfYear ? specificDates : null;
+                        task.repeatInterval =
+                            frequencyType == HabitFrequencyType.repeatEvery
+                            ? repeatInterval
+                            : null;
+                        task.daysPerPeriod =
+                            frequencyType ==
+                                HabitFrequencyType.someDaysPerPeriod
+                            ? daysPerPeriod
+                            : null;
+                        task.specificDates =
+                            frequencyType ==
+                                HabitFrequencyType.specificDatesOfYear
+                            ? specificDates
+                            : null;
 
                         state.updateRecurringTask(task);
                         Navigator.pop(ctx);
                         setState(() {});
 
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Recurring task updated')),
+                          const SnackBar(
+                            content: Text('Recurring task updated'),
+                          ),
                         );
                       },
                       style: ElevatedButton.styleFrom(
@@ -1964,20 +2277,21 @@ class _TodayScreenState extends State<TodayScreen> {
     // Smart priority handling:
     // - SWAP priorities when they're different (efficient, preserves structure)
     // - Only ADD/SUBTRACT when priorities are equal (to create differentiation)
-    
+
     final movedItem = reordered[newIndex];
-    final movedUp = newIndex < oldIndex; // Item was dragged upward (higher priority)
-    
+    final movedUp =
+        newIndex < oldIndex; // Item was dragged upward (higher priority)
+
     // Get the item that was displaced (the one we're swapping with)
     // If moved up, it's the item now below us (newIndex + 1 in original list, but we need the one that was at newIndex)
     // If moved down, it's the item now above us
     final displacedIndex = movedUp ? newIndex + 1 : newIndex - 1;
-    
+
     if (displacedIndex >= 0 && displacedIndex < reordered.length) {
       final displacedItem = reordered[displacedIndex];
       final movedPriority = movedItem.numericPriority;
       final displacedPriority = displacedItem.numericPriority;
-      
+
       if (movedPriority != displacedPriority) {
         // SWAP: Priorities are different, just exchange them
         _setItemPriority(movedItem, displacedPriority);
@@ -1993,7 +2307,7 @@ class _TodayScreenState extends State<TodayScreen> {
         }
       }
     }
-    
+
     // Update sortOrder for all items to reflect visual order
     for (var i = 0; i < reordered.length; i++) {
       final item = reordered[i];
@@ -2011,7 +2325,10 @@ class _TodayScreenState extends State<TodayScreen> {
 
     // Persist only the items that changed (moved item and displaced item)
     final futures = <Future<void>>[];
-    final indicesToSave = {newIndex, displacedIndex}.where((i) => i >= 0 && i < reordered.length);
+    final indicesToSave = {
+      newIndex,
+      displacedIndex,
+    }.where((i) => i >= 0 && i < reordered.length);
     for (final idx in indicesToSave) {
       final item = reordered[idx];
       if (item.isHabit) {
@@ -2024,7 +2341,7 @@ class _TodayScreenState extends State<TodayScreen> {
     }
     await Future.wait(futures);
   }
-  
+
   /// Helper to set priority on any item type
   void _setItemPriority(_TodayItem item, int priority) {
     if (item.isHabit) {
@@ -2186,7 +2503,6 @@ class _TodayItemCard extends StatelessWidget {
     final textSecondary = isDark
         ? AppColors.textSecondary
         : LightColors.textSecondary;
-    final cardColor = isDark ? AppColors.surface : LightColors.surface;
 
     // Get category for ribbon
     final appState = context.read<AppState>();
@@ -2221,214 +2537,187 @@ class _TodayItemCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       onLongPress: onLongPress,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        margin: const EdgeInsets.only(bottom: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 1),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
         decoration: BoxDecoration(
-          color: cardColor,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isDark ? AppColors.glassBorder : LightColors.glassBorder,
-            width: 1,
+          border: Border(
+            bottom: BorderSide(
+              color: (isDark ? AppColors.glassBorder : LightColors.glassBorder)
+                  .withAlpha(40),
+              width: 0.5,
+            ),
           ),
-          // Priority glow effect for uncompleted high-priority items
-          boxShadow: !isCompleted && numericPriority > 10
-              ? AppShadows.highPriorityGlow
-              : !isCompleted && numericPriority > 5
-              ? AppShadows.mediumPriorityGlow
-              : isCompleted
-              ? AppShadows.successGlow
-              : AppShadows.card,
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: IntrinsicHeight(
-            child: Row(
-              children: [
-                // Category ribbon (left edge)
-                if (category != null)
-                  Container(
-                    width: 4,
-                    decoration: BoxDecoration(
-                      color: category.color,
-                      boxShadow: [
-                        BoxShadow(
-                          color: category.color.withAlpha(60),
-                          blurRadius: 4,
-                          offset: const Offset(2, 0),
-                        ),
-                      ],
-                    ),
-                  ),
-                // Main content
-                Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.only(
-                      left: category != null ? 10 : 12,
-                      top: 8,
-                      right: 12,
-                      bottom: 8,
-                    ),
-                    child: Row(
-                      children: [
-                        // Category icon with priority indicator - DRAG HANDLE
-                        ReorderableDragStartListener(
-                          index: index,
-                          child: Stack(
-                            children: [
-                              Container(
-                                width: 32,
-                                height: 32,
-                                decoration: BoxDecoration(
-                                  color: _getItemColor().withAlpha(30),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Icon(
-                                  _getItemIcon(),
-                                  color: _getItemColor(),
-                                  size: 18,
-                                ),
-                              ),
-                              if (numericPriority != 0)
-                                Positioned(
-                                  right: -2,
-                                  top: -2,
-                                  child: Container(
-                                    width: 14,
-                                    height: 14,
-                                    decoration: BoxDecoration(
-                                      color: _getNumericPriorityColor(numericPriority),
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: cardColor,
-                                        width: 1.5,
-                                      ),
-                                    ),
-                                    child: Center(
-                                      child: Text(
-                                        numericPriority > 0 ? '+' : '',
-                                        style: const TextStyle(
-                                          fontSize: 7,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-
-                        // Content
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                item.name,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: isCompleted
-                                      ? textSecondary
-                                      : textPrimary,
-                                  decoration: isCompleted
-                                      ? TextDecoration.lineThrough
-                                      : null,
-                                ),
-                              ),
-                              // If-Then trigger for habits
-                              if (item.isHabit &&
-                                  item.habit!.triggerResponse != null &&
-                                  item.habit!.triggerResponse!.isNotEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 2),
-                                  child: Text(
-                                    item.habit!.triggerResponse!,
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: textSecondary,
-                                      fontStyle: FontStyle.italic,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              const SizedBox(height: 2),
-                              Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 6,
-                                      vertical: 1,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: _getItemColor().withAlpha(30),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Text(
-                                      item.itemTypeLabel,
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w500,
-                                        color: _getItemColor(),
-                                      ),
-                                    ),
-                                  ),
-                                  // Show score if scoring enabled and has score
-                                  if (item.isHabit &&
-                                      item.habit!.scoringEnabled &&
-                                      score != null) ...[
-                                    const SizedBox(width: 6),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 5,
-                                        vertical: 1,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: _getScoreColor(
-                                          score,
-                                        ).withAlpha(30),
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Text(
-                                        '$score%',
-                                        style: TextStyle(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w600,
-                                          color: _getScoreColor(score),
-                                        ),
-                                      ),
-                                    ),
-                                  ] else if (item.isHabit &&
-                                      item.habit!.effectiveEvaluationType ==
-                                          HabitEvaluationType.numeric) ...[
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      'Current: ${item.habit!.getCurrentValueFor(selectedDate)}',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: textSecondary,
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        // Completion indicator
-                        _buildCompletionIndicator(isCompleted, score),
-                      ],
-                    ),
+        child: IntrinsicHeight(
+          child: Row(
+            children: [
+              // Category ribbon (left edge)
+              if (category != null)
+                Container(
+                  width: 4,
+                  decoration: BoxDecoration(
+                    color: category.color,
+                    boxShadow: [
+                      BoxShadow(
+                        color: category.color.withAlpha(60),
+                        blurRadius: 4,
+                        offset: const Offset(2, 0),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
+              // Main content
+              Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    left: category != null ? 6 : 8,
+                    top: 4,
+                    right: 8,
+                    bottom: 4,
+                  ),
+                  child: Row(
+                    children: [
+                      // Category icon with priority indicator - DRAG HANDLE
+                      ReorderableDragStartListener(
+                        index: index,
+                        child: Stack(
+                          children: [
+                            Container(
+                              width: 24,
+                              height: 24,
+                              decoration: BoxDecoration(
+                                color: _getItemColor().withAlpha(25),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Icon(
+                                _getItemIcon(),
+                                color: _getItemColor(),
+                                size: 14,
+                              ),
+                            ),
+                            if (numericPriority != 0)
+                              Positioned(
+                                right: -2,
+                                top: -2,
+                                child: Container(
+                                  width: 10,
+                                  height: 10,
+                                  decoration: BoxDecoration(
+                                    color: _getNumericPriorityColor(
+                                      numericPriority,
+                                    ),
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+
+                      // Content
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item.name,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: isCompleted
+                                    ? textSecondary
+                                    : textPrimary,
+                                decoration: isCompleted
+                                    ? TextDecoration.lineThrough
+                                    : null,
+                              ),
+                            ),
+                            // If-Then trigger for habits
+                            if (item.isHabit &&
+                                item.habit!.triggerResponse != null &&
+                                item.habit!.triggerResponse!.isNotEmpty)
+                              Text(
+                                item.habit!.triggerResponse!,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: textSecondary,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                    vertical: 0,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: _getItemColor().withAlpha(20),
+                                    borderRadius: BorderRadius.circular(3),
+                                  ),
+                                  child: Text(
+                                    item.itemTypeLabel,
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w500,
+                                      color: _getItemColor(),
+                                    ),
+                                  ),
+                                ),
+                                // Show score if scoring enabled and has score
+                                if (item.isHabit &&
+                                    item.habit!.scoringEnabled &&
+                                    score != null) ...[
+                                  const SizedBox(width: 4),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                      vertical: 0,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: _getScoreColor(
+                                        score,
+                                      ).withAlpha(20),
+                                      borderRadius: BorderRadius.circular(3),
+                                    ),
+                                    child: Text(
+                                      '$score%',
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w600,
+                                        color: _getScoreColor(score),
+                                      ),
+                                    ),
+                                  ),
+                                ] else if (item.isHabit &&
+                                    item.habit!.effectiveEvaluationType ==
+                                        HabitEvaluationType.numeric) ...[
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Current: ${item.habit!.getCurrentValueFor(selectedDate)}',
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      color: textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Completion indicator
+                      _buildCompletionIndicator(isCompleted, score),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -2489,18 +2778,18 @@ class _TodayItemCard extends StatelessWidget {
     if (item.isHabit && item.habit!.scoringEnabled && score != null) {
       final color = _getScoreColor(score);
       return Container(
-        width: 28,
-        height: 28,
+        width: 20,
+        height: 20,
         decoration: BoxDecoration(
-          color: color.withAlpha(30),
+          color: color.withAlpha(25),
           shape: BoxShape.circle,
-          border: Border.all(color: color, width: 2),
+          border: Border.all(color: color, width: 1.5),
         ),
         child: Center(
           child: Text(
             '$score',
             style: TextStyle(
-              fontSize: 9,
+              fontSize: 8,
               fontWeight: FontWeight.bold,
               color: color,
             ),
@@ -2511,24 +2800,24 @@ class _TodayItemCard extends StatelessWidget {
 
     if (isCompleted) {
       return Container(
-        width: 28,
-        height: 28,
+        width: 20,
+        height: 20,
         decoration: const BoxDecoration(
           color: Colors.green,
           shape: BoxShape.circle,
         ),
-        child: const Icon(Icons.check_rounded, color: Colors.white, size: 18),
+        child: const Icon(Icons.check_rounded, color: Colors.white, size: 14),
       );
     }
 
     // Show different indicators based on item type
     return Container(
-      width: 28,
-      height: 28,
+      width: 20,
+      height: 20,
       decoration: BoxDecoration(
         color: Colors.transparent,
         shape: BoxShape.circle,
-        border: Border.all(color: Colors.grey, width: 2),
+        border: Border.all(color: Colors.grey, width: 1.5),
       ),
     );
   }
@@ -2842,7 +3131,7 @@ class _DrawerItem extends StatelessWidget {
 class _TodaySearchDelegate extends SearchDelegate<_TodayItem?> {
   final AppState state;
   final Function(_TodayItem) onItemSelected;
-  
+
   // Filter state
   String? _selectedCategoryId;
   String? _selectedType; // 'habit', 'task', 'recurring'
@@ -2899,9 +3188,11 @@ class _TodaySearchDelegate extends SearchDelegate<_TodayItem?> {
 
   void _showFilterSheet(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textPrimary = isDark ? AppColors.textPrimary : LightColors.textPrimary;
+    final textPrimary = isDark
+        ? AppColors.textPrimary
+        : LightColors.textPrimary;
     final bgColor = isDark ? AppColors.surface : LightColors.surface;
-    
+
     showModalBottomSheet(
       context: context,
       backgroundColor: bgColor,
@@ -2940,9 +3231,15 @@ class _TodaySearchDelegate extends SearchDelegate<_TodayItem?> {
                 ],
               ),
               const SizedBox(height: 16),
-              
+
               // Type filter
-              Text('Type', style: TextStyle(color: textPrimary, fontWeight: FontWeight.w500)),
+              Text(
+                'Type',
+                style: TextStyle(
+                  color: textPrimary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
@@ -2950,41 +3247,65 @@ class _TodaySearchDelegate extends SearchDelegate<_TodayItem?> {
                   FilterChip(
                     label: const Text('Habits'),
                     selected: _selectedType == 'habit',
-                    onSelected: (sel) => setSheetState(() => _selectedType = sel ? 'habit' : null),
+                    onSelected: (sel) => setSheetState(
+                      () => _selectedType = sel ? 'habit' : null,
+                    ),
                     selectedColor: AppColors.primary.withAlpha(50),
                   ),
                   FilterChip(
                     label: const Text('Tasks'),
                     selected: _selectedType == 'task',
-                    onSelected: (sel) => setSheetState(() => _selectedType = sel ? 'task' : null),
+                    onSelected: (sel) => setSheetState(
+                      () => _selectedType = sel ? 'task' : null,
+                    ),
                     selectedColor: AppColors.primary.withAlpha(50),
                   ),
                   FilterChip(
                     label: const Text('Recurring'),
                     selected: _selectedType == 'recurring',
-                    onSelected: (sel) => setSheetState(() => _selectedType = sel ? 'recurring' : null),
+                    onSelected: (sel) => setSheetState(
+                      () => _selectedType = sel ? 'recurring' : null,
+                    ),
                     selectedColor: AppColors.primary.withAlpha(50),
                   ),
                 ],
               ),
               const SizedBox(height: 16),
-              
+
               // Priority filter
-              Text('Priority', style: TextStyle(color: textPrimary, fontWeight: FontWeight.w500)),
+              Text(
+                'Priority',
+                style: TextStyle(
+                  color: textPrimary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
-                children: PriorityLevel.values.map((p) => FilterChip(
-                  label: Text(p.label),
-                  selected: _selectedPriority == p,
-                  onSelected: (sel) => setSheetState(() => _selectedPriority = sel ? p : null),
-                  selectedColor: AppColors.primary.withAlpha(50),
-                )).toList(),
+                children: PriorityLevel.values
+                    .map(
+                      (p) => FilterChip(
+                        label: Text(p.label),
+                        selected: _selectedPriority == p,
+                        onSelected: (sel) => setSheetState(
+                          () => _selectedPriority = sel ? p : null,
+                        ),
+                        selectedColor: AppColors.primary.withAlpha(50),
+                      ),
+                    )
+                    .toList(),
               ),
               const SizedBox(height: 16),
-              
+
               // Status filter
-              Text('Status', style: TextStyle(color: textPrimary, fontWeight: FontWeight.w500)),
+              Text(
+                'Status',
+                style: TextStyle(
+                  color: textPrimary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
@@ -2992,27 +3313,39 @@ class _TodaySearchDelegate extends SearchDelegate<_TodayItem?> {
                   FilterChip(
                     label: const Text('Active'),
                     selected: _selectedStatus == 'active',
-                    onSelected: (sel) => setSheetState(() => _selectedStatus = sel ? 'active' : null),
+                    onSelected: (sel) => setSheetState(
+                      () => _selectedStatus = sel ? 'active' : null,
+                    ),
                     selectedColor: AppColors.primary.withAlpha(50),
                   ),
                   FilterChip(
                     label: const Text('Completed'),
                     selected: _selectedStatus == 'completed',
-                    onSelected: (sel) => setSheetState(() => _selectedStatus = sel ? 'completed' : null),
+                    onSelected: (sel) => setSheetState(
+                      () => _selectedStatus = sel ? 'completed' : null,
+                    ),
                     selectedColor: AppColors.primary.withAlpha(50),
                   ),
                   FilterChip(
                     label: const Text('Archived'),
                     selected: _selectedStatus == 'archived',
-                    onSelected: (sel) => setSheetState(() => _selectedStatus = sel ? 'archived' : null),
+                    onSelected: (sel) => setSheetState(
+                      () => _selectedStatus = sel ? 'archived' : null,
+                    ),
                     selectedColor: AppColors.primary.withAlpha(50),
                   ),
                 ],
               ),
               const SizedBox(height: 16),
-              
+
               // Category filter
-              Text('Category', style: TextStyle(color: textPrimary, fontWeight: FontWeight.w500)),
+              Text(
+                'Category',
+                style: TextStyle(
+                  color: textPrimary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
               const SizedBox(height: 8),
               SizedBox(
                 height: 40,
@@ -3022,24 +3355,29 @@ class _TodaySearchDelegate extends SearchDelegate<_TodayItem?> {
                     FilterChip(
                       label: const Text('All'),
                       selected: _selectedCategoryId == null,
-                      onSelected: (_) => setSheetState(() => _selectedCategoryId = null),
+                      onSelected: (_) =>
+                          setSheetState(() => _selectedCategoryId = null),
                       selectedColor: AppColors.primary.withAlpha(50),
                     ),
                     const SizedBox(width: 8),
-                    ...state.categories.map((cat) => Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: FilterChip(
-                        label: Text(cat.name),
-                        selected: _selectedCategoryId == cat.id,
-                        onSelected: (sel) => setSheetState(() => _selectedCategoryId = sel ? cat.id : null),
-                        selectedColor: AppColors.primary.withAlpha(50),
+                    ...state.categories.map(
+                      (cat) => Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: FilterChip(
+                          label: Text(cat.name),
+                          selected: _selectedCategoryId == cat.id,
+                          onSelected: (sel) => setSheetState(
+                            () => _selectedCategoryId = sel ? cat.id : null,
+                          ),
+                          selectedColor: AppColors.primary.withAlpha(50),
+                        ),
                       ),
-                    )),
+                    ),
                   ],
                 ),
               ),
               const SizedBox(height: 20),
-              
+
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -3118,38 +3456,62 @@ class _TodaySearchDelegate extends SearchDelegate<_TodayItem?> {
     final lowerQuery = query.toLowerCase();
 
     // Search habits with filters
-    var matchingHabits = state.habits.where((h) {
-      if (query.isNotEmpty && !h.name.toLowerCase().contains(lowerQuery)) return false;
-      if (_selectedType != null && _selectedType != 'habit') return false;
-      if (_selectedCategoryId != null && h.categoryId != _selectedCategoryId) return false;
-      if (_selectedPriority != null && h.priorityLevel != _selectedPriority) return false;
-      if (_selectedStatus == 'active' && h.isArchived) return false;
-      if (_selectedStatus == 'archived' && !h.isArchived) return false;
-      return true;
-    }).map((h) => _TodayItem.habit(h)).toList();
+    var matchingHabits = state.habits
+        .where((h) {
+          if (query.isNotEmpty && !h.name.toLowerCase().contains(lowerQuery))
+            return false;
+          if (_selectedType != null && _selectedType != 'habit') return false;
+          if (_selectedCategoryId != null &&
+              h.categoryId != _selectedCategoryId)
+            return false;
+          if (_selectedPriority != null && h.priorityLevel != _selectedPriority)
+            return false;
+          if (_selectedStatus == 'active' && h.isArchived) return false;
+          if (_selectedStatus == 'archived' && !h.isArchived) return false;
+          return true;
+        })
+        .map((h) => _TodayItem.habit(h))
+        .toList();
 
     // Search tasks with filters
-    var matchingTasks = state.tasks.where((t) {
-      if (query.isNotEmpty && !t.title.toLowerCase().contains(lowerQuery)) return false;
-      if (_selectedType != null && _selectedType != 'task') return false;
-      if (_selectedCategoryId != null && t.categoryId != _selectedCategoryId) return false;
-      if (_selectedPriority != null && t.priorityLevel != _selectedPriority) return false;
-      if (_selectedStatus == 'active' && (t.isCompleted || t.isArchived)) return false;
-      if (_selectedStatus == 'completed' && !t.isCompleted) return false;
-      if (_selectedStatus == 'archived' && !t.isArchived) return false;
-      return true;
-    }).map((t) => _TodayItem.task(t)).toList();
+    var matchingTasks = state.tasks
+        .where((t) {
+          if (query.isNotEmpty && !t.title.toLowerCase().contains(lowerQuery))
+            return false;
+          if (_selectedType != null && _selectedType != 'task') return false;
+          if (_selectedCategoryId != null &&
+              t.categoryId != _selectedCategoryId)
+            return false;
+          if (_selectedPriority != null && t.priorityLevel != _selectedPriority)
+            return false;
+          if (_selectedStatus == 'active' && (t.isCompleted || t.isArchived))
+            return false;
+          if (_selectedStatus == 'completed' && !t.isCompleted) return false;
+          if (_selectedStatus == 'archived' && !t.isArchived) return false;
+          return true;
+        })
+        .map((t) => _TodayItem.task(t))
+        .toList();
 
     // Search recurring tasks with filters
-    var matchingRecurring = state.recurringTasks.where((rt) {
-      if (query.isNotEmpty && !rt.name.toLowerCase().contains(lowerQuery)) return false;
-      if (_selectedType != null && _selectedType != 'recurring') return false;
-      if (_selectedCategoryId != null && rt.categoryId != _selectedCategoryId) return false;
-      if (_selectedPriority != null && rt.priorityLevel != _selectedPriority) return false;
-      if (_selectedStatus == 'active' && rt.isArchived) return false;
-      if (_selectedStatus == 'archived' && !rt.isArchived) return false;
-      return true;
-    }).map((rt) => _TodayItem.recurringTask(rt)).toList();
+    var matchingRecurring = state.recurringTasks
+        .where((rt) {
+          if (query.isNotEmpty && !rt.name.toLowerCase().contains(lowerQuery))
+            return false;
+          if (_selectedType != null && _selectedType != 'recurring')
+            return false;
+          if (_selectedCategoryId != null &&
+              rt.categoryId != _selectedCategoryId)
+            return false;
+          if (_selectedPriority != null &&
+              rt.priorityLevel != _selectedPriority)
+            return false;
+          if (_selectedStatus == 'active' && rt.isArchived) return false;
+          if (_selectedStatus == 'archived' && !rt.isArchived) return false;
+          return true;
+        })
+        .map((rt) => _TodayItem.recurringTask(rt))
+        .toList();
 
     final allResults = [
       ...matchingHabits,
@@ -3171,7 +3533,9 @@ class _TodaySearchDelegate extends SearchDelegate<_TodayItem?> {
               ),
               const SizedBox(height: 16),
               Text(
-                query.isNotEmpty ? 'No results for "$query"' : 'No items match filters',
+                query.isNotEmpty
+                    ? 'No results for "$query"'
+                    : 'No items match filters',
                 style: TextStyle(color: textSecondary),
               ),
               if (_hasActiveFilters) ...[
@@ -3228,7 +3592,12 @@ class _TodaySearchDelegate extends SearchDelegate<_TodayItem?> {
                             }),
                           if (_selectedCategoryId != null)
                             _buildFilterTag(
-                              state.categories.firstWhere((c) => c.id == _selectedCategoryId, orElse: () => state.categories.first).name,
+                              state.categories
+                                  .firstWhere(
+                                    (c) => c.id == _selectedCategoryId,
+                                    orElse: () => state.categories.first,
+                                  )
+                                  .name,
                               () {
                                 _selectedCategoryId = null;
                                 showResults(context);
@@ -3290,9 +3659,15 @@ class _TodaySearchDelegate extends SearchDelegate<_TodayItem?> {
                   ),
                   title: Text(
                     item.name,
-                    style: TextStyle(fontWeight: FontWeight.w500, color: textPrimary),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w500,
+                      color: textPrimary,
+                    ),
                   ),
-                  subtitle: Text(subtitle, style: TextStyle(color: textSecondary)),
+                  subtitle: Text(
+                    subtitle,
+                    style: TextStyle(color: textSecondary),
+                  ),
                   onTap: () {
                     close(context, item);
                     onItemSelected(item);
@@ -3366,7 +3741,9 @@ class _NumericPriorityPickerState extends State<_NumericPriorityPicker> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textPrimary = isDark ? AppColors.textPrimary : LightColors.textPrimary;
+    final textPrimary = isDark
+        ? AppColors.textPrimary
+        : LightColors.textPrimary;
     final priority = _sliderValue.round();
 
     return Padding(
@@ -3386,10 +3763,7 @@ class _NumericPriorityPickerState extends State<_NumericPriorityPicker> {
           const SizedBox(height: 8),
           Text(
             'Higher priority items appear at the top',
-            style: TextStyle(
-              fontSize: 13,
-              color: textPrimary.withAlpha(150),
-            ),
+            style: TextStyle(fontSize: 13, color: textPrimary.withAlpha(150)),
           ),
           const SizedBox(height: 24),
 
@@ -3534,7 +3908,9 @@ class _QuickPriorityButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary : AppColors.primary.withAlpha(20),
+          color: isSelected
+              ? AppColors.primary
+              : AppColors.primary.withAlpha(20),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(
@@ -3543,6 +3919,82 @@ class _QuickPriorityButton extends StatelessWidget {
             fontWeight: FontWeight.w600,
             color: isSelected ? Colors.white : AppColors.primary,
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Compact action button for Grid Action Sheet
+class _ActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Widget? subtitle;
+  final VoidCallback onTap;
+  final Color? color;
+
+  const _ActionButton({
+    required this.icon,
+    required this.label,
+    this.subtitle,
+    required this.onTap,
+    this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textPrimary = isDark
+        ? AppColors.textPrimary
+        : LightColors.textPrimary;
+    final textMuted = isDark ? AppColors.textMuted : LightColors.textMuted;
+    final actionColor = color ?? textPrimary;
+
+    // Calculate width to fit 3 items per row with spacing
+    final screenWidth = MediaQuery.of(context).size.width;
+    // 16*2 horizontal padding on sheet + 8*2 spacing between 3 items
+    final itemWidth = (screenWidth - 48) / 3;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: itemWidth,
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+        decoration: BoxDecoration(
+          color: (color != null
+              ? color!.withAlpha(15)
+              : (isDark ? AppColors.surfaceLight : LightColors.surfaceLight)),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: (isDark ? AppColors.glassBorder : LightColors.glassBorder)
+                .withAlpha(40),
+            width: 0.5,
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: actionColor, size: 26),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                color: actionColor,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            if (subtitle != null) ...[
+              const SizedBox(height: 3),
+              DefaultTextStyle(
+                style: TextStyle(fontSize: 9, color: textMuted),
+                child: subtitle!,
+              ),
+            ],
+          ],
         ),
       ),
     );

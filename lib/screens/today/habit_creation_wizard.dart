@@ -8,6 +8,7 @@ import '../../providers/app_state.dart';
 import '../../models/habit.dart';
 import '../../models/habit_enums.dart';
 import '../../models/category_model.dart';
+import '../../widgets/growth_area_selector.dart';
 
 /// Multi-page wizard for creating a new habit
 class HabitCreationWizard extends StatefulWidget {
@@ -52,6 +53,7 @@ class _HabitCreationWizardState extends State<HabitCreationWizard> {
   String _description = '';
   bool _scoringEnabled = false; // Optional scoring (0-100) for completion
   String _triggerResponse = ''; // If-Then plan: "If X, then I will Y"
+  String? _selectedFactorId; // Dissected tree (GrowthArea) to link habit to
 
   static const int _totalPages = 5;
 
@@ -98,9 +100,15 @@ class _HabitCreationWizardState extends State<HabitCreationWizard> {
       evaluationType: _evaluationType,
       frequencyType: _frequencyType,
       scheduledDays: _scheduledDays,
-      repeatInterval: _frequencyType == HabitFrequencyType.repeatEvery ? _repeatInterval : null,
-      daysPerPeriod: _frequencyType == HabitFrequencyType.someDaysPerPeriod ? _daysPerPeriod : null,
-      specificDates: _frequencyType == HabitFrequencyType.specificDatesOfYear ? _specificDates : null,
+      repeatInterval: _frequencyType == HabitFrequencyType.repeatEvery
+          ? _repeatInterval
+          : null,
+      daysPerPeriod: _frequencyType == HabitFrequencyType.someDaysPerPeriod
+          ? _daysPerPeriod
+          : null,
+      specificDates: _frequencyType == HabitFrequencyType.specificDatesOfYear
+          ? _specificDates
+          : null,
       targetValue: _targetValue,
       unit: _unit.isNotEmpty ? _unit : null,
       checklistItems: _checklistItems.isNotEmpty ? _checklistItems : null,
@@ -115,6 +123,7 @@ class _HabitCreationWizardState extends State<HabitCreationWizard> {
           .toList(),
       description: _description.isNotEmpty ? _description : null,
       scoringEnabled: _scoringEnabled,
+      factorId: _selectedFactorId,
     );
 
     final appState = context.read<AppState>();
@@ -380,7 +389,10 @@ class _HabitCreationWizardState extends State<HabitCreationWizard> {
               hintText: _habitType == HabitType.build
                   ? 'e.g., After I wake up, I will drink a glass of water'
                   : 'e.g., When I feel stressed, I will take 3 deep breaths instead',
-              hintStyle: TextStyle(color: textSecondary.withAlpha(150), fontSize: 14),
+              hintStyle: TextStyle(
+                color: textSecondary.withAlpha(150),
+                fontSize: 14,
+              ),
               filled: true,
               fillColor: isDark
                   ? AppColors.surfaceLight
@@ -527,7 +539,7 @@ class _HabitCreationWizardState extends State<HabitCreationWizard> {
           ),
         ),
         const SizedBox(height: 24),
-        
+
         // Scoring option toggle
         Container(
           padding: const EdgeInsets.all(16),
@@ -571,7 +583,7 @@ class _HabitCreationWizardState extends State<HabitCreationWizard> {
           ),
         ),
         const SizedBox(height: 24),
-        
+
         Text(
           'Optional: Add a note about this habit',
           style: TextStyle(fontSize: 14, color: textSecondary),
@@ -851,9 +863,8 @@ class _HabitCreationWizardState extends State<HabitCreationWizard> {
             subtitle: 'e.g., every 2 days, every 3 days',
             icon: Icons.replay_rounded,
             isSelected: _frequencyType == HabitFrequencyType.repeatEvery,
-            onTap: () => setState(
-              () => _frequencyType = HabitFrequencyType.repeatEvery,
-            ),
+            onTap: () =>
+                setState(() => _frequencyType = HabitFrequencyType.repeatEvery),
           ),
           const SizedBox(height: 12),
           _FrequencyOption(
@@ -870,7 +881,8 @@ class _HabitCreationWizardState extends State<HabitCreationWizard> {
             title: 'Specific dates',
             subtitle: 'Yearly dates like birthdays',
             icon: Icons.cake_rounded,
-            isSelected: _frequencyType == HabitFrequencyType.specificDatesOfYear,
+            isSelected:
+                _frequencyType == HabitFrequencyType.specificDatesOfYear,
             onTap: () => setState(
               () => _frequencyType = HabitFrequencyType.specificDatesOfYear,
             ),
@@ -995,6 +1007,16 @@ class _HabitCreationWizardState extends State<HabitCreationWizard> {
                   ),
                 )
                 .toList(),
+          ),
+          const SizedBox(height: 24),
+
+          // Growth Area Selector (Dissected Trees - single select for habits)
+          GrowthAreaSelector(
+            selectedAreaIds: _selectedFactorId != null ? [_selectedFactorId!] : [],
+            onSelectionChanged: (ids) =>
+                setState(() => _selectedFactorId = ids.isNotEmpty ? ids.first : null),
+            label: 'Link to Dissected Tree (Optional)',
+            multiSelect: false,
           ),
           const SizedBox(height: 24),
 
@@ -1367,13 +1389,18 @@ class _RepeatIntervalSelector extends StatelessWidget {
   final int interval;
   final Function(int) onChanged;
 
-  const _RepeatIntervalSelector({required this.interval, required this.onChanged});
+  const _RepeatIntervalSelector({
+    required this.interval,
+    required this.onChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textPrimary = isDark ? AppColors.textPrimary : LightColors.textPrimary;
-    
+    final textPrimary = isDark
+        ? AppColors.textPrimary
+        : LightColors.textPrimary;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1399,7 +1426,9 @@ class _RepeatIntervalSelector extends StatelessWidget {
                   constraints: const BoxConstraints(minWidth: 20),
                   icon: const Icon(Icons.remove, size: 16),
                   color: AppColors.primary,
-                  onPressed: interval > 2 ? () => onChanged(interval - 1) : null,
+                  onPressed: interval > 2
+                      ? () => onChanged(interval - 1)
+                      : null,
                 ),
                 Text(
                   '$interval',
@@ -1414,7 +1443,9 @@ class _RepeatIntervalSelector extends StatelessWidget {
                   constraints: const BoxConstraints(minWidth: 20),
                   icon: const Icon(Icons.add, size: 16),
                   color: AppColors.primary,
-                  onPressed: interval < 30 ? () => onChanged(interval + 1) : null,
+                  onPressed: interval < 30
+                      ? () => onChanged(interval + 1)
+                      : null,
                 ),
               ],
             ),
@@ -1432,13 +1463,18 @@ class _DaysPerPeriodSelector extends StatelessWidget {
   final int daysPerPeriod;
   final Function(int) onChanged;
 
-  const _DaysPerPeriodSelector({required this.daysPerPeriod, required this.onChanged});
+  const _DaysPerPeriodSelector({
+    required this.daysPerPeriod,
+    required this.onChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textPrimary = isDark ? AppColors.textPrimary : LightColors.textPrimary;
-    
+    final textPrimary = isDark
+        ? AppColors.textPrimary
+        : LightColors.textPrimary;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1464,10 +1500,14 @@ class _DaysPerPeriodSelector extends StatelessWidget {
                     margin: EdgeInsets.only(right: index < 6 ? 4 : 0),
                     height: 36,
                     decoration: BoxDecoration(
-                      color: isSelected ? AppColors.primary : Colors.transparent,
+                      color: isSelected
+                          ? AppColors.primary
+                          : Colors.transparent,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                        color: isSelected ? AppColors.primary : Colors.grey.withAlpha(100),
+                        color: isSelected
+                            ? AppColors.primary
+                            : Colors.grey.withAlpha(100),
                       ),
                     ),
                     child: Center(
@@ -1500,9 +1540,26 @@ class _SpecificDatesSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textPrimary = isDark ? AppColors.textPrimary : LightColors.textPrimary;
-    final textSecondary = isDark ? AppColors.textSecondary : LightColors.textSecondary;
-    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final textPrimary = isDark
+        ? AppColors.textPrimary
+        : LightColors.textPrimary;
+    final textSecondary = isDark
+        ? AppColors.textSecondary
+        : LightColors.textSecondary;
+    final months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -1518,7 +1575,11 @@ class _SpecificDatesSelector extends StatelessWidget {
             children: [
               Text(
                 'Selected dates',
-                style: TextStyle(color: textPrimary, fontSize: 16, fontWeight: FontWeight.w500),
+                style: TextStyle(
+                  color: textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
               TextButton.icon(
                 icon: const Icon(Icons.add, size: 18),
@@ -1533,7 +1594,9 @@ class _SpecificDatesSelector extends StatelessWidget {
                   if (picked != null) {
                     // Store just month and day for yearly recurrence
                     final newDate = DateTime(2000, picked.month, picked.day);
-                    if (!dates.any((d) => d.month == newDate.month && d.day == newDate.day)) {
+                    if (!dates.any(
+                      (d) => d.month == newDate.month && d.day == newDate.day,
+                    )) {
                       onChanged([...dates, newDate]);
                     }
                   }
@@ -1546,7 +1609,10 @@ class _SpecificDatesSelector extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: Text(
                 'No dates added yet',
-                style: TextStyle(color: textSecondary, fontStyle: FontStyle.italic),
+                style: TextStyle(
+                  color: textSecondary,
+                  fontStyle: FontStyle.italic,
+                ),
               ),
             )
           else

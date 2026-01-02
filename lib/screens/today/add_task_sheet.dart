@@ -8,6 +8,7 @@ import '../../providers/app_state.dart';
 import '../../models/task.dart';
 import '../../models/category_model.dart';
 import '../../models/habit_enums.dart';
+import '../../widgets/growth_area_selector.dart';
 
 /// Bottom sheet for quick task creation
 class AddTaskSheet extends StatefulWidget {
@@ -45,6 +46,7 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
   TimeOfDay? _scheduledTime;
   bool _hasChecklist = false;
   final List<String> _checklistItems = [];
+  List<String> _linkedFactorIds = [];
 
   @override
   void initState() {
@@ -87,6 +89,7 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
       checklistItems: _hasChecklist && _checklistItems.isNotEmpty
           ? _checklistItems
           : null,
+      linkedFactorIds: _linkedFactorIds,
     );
 
     final appState = context.read<AppState>();
@@ -281,6 +284,15 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 16),
+
+            // Growth Area Selector (Dissected Trees)
+            GrowthAreaSelector(
+              selectedAreaIds: _linkedFactorIds,
+              onSelectionChanged: (ids) =>
+                  setState(() => _linkedFactorIds = ids),
+              label: 'Link to Dissected Tree (Optional)',
             ),
             const SizedBox(height: 16),
 

@@ -22,7 +22,10 @@ class SettingsScreen extends StatelessWidget {
         backgroundColor: colors.background,
         title: Text(
           'Settings',
-          style: TextStyle(fontWeight: FontWeight.bold, color: colors.textPrimary),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: colors.textPrimary,
+          ),
         ),
         centerTitle: true,
       ),
@@ -30,7 +33,10 @@ class SettingsScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         children: [
           // Categories Section
-          _SectionHeader(title: 'Organization', textColor: colors.textSecondary),
+          _SectionHeader(
+            title: 'Organization',
+            textColor: colors.textSecondary,
+          ),
           const SizedBox(height: 8),
           _SettingsTile(
             icon: Icons.category_rounded,
@@ -43,7 +49,7 @@ class SettingsScreen extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 8),
 
           // Data Section
           _SectionHeader(title: 'Data', textColor: colors.textSecondary),
@@ -57,7 +63,7 @@ class SettingsScreen extends StatelessWidget {
               MaterialPageRoute(builder: (_) => const DataManagementScreen()),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 8),
 
           // Appearance Section
           _SectionHeader(title: 'Appearance', textColor: colors.textSecondary),
@@ -75,7 +81,7 @@ class SettingsScreen extends StatelessWidget {
               thumbColor: WidgetStatePropertyAll(AppColors.primary),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 8),
 
           // About Section
           _SectionHeader(title: 'About', textColor: colors.textSecondary),
@@ -149,23 +155,27 @@ class _SettingsTile extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: colors.surface,
-          borderRadius: BorderRadius.circular(12),
+          border: Border(
+            bottom: BorderSide(
+              color: colors.glassBorder.withAlpha(40),
+              width: 0.5,
+            ),
+          ),
         ),
         child: Row(
           children: [
             Container(
-              width: 40,
-              height: 40,
+              width: 32,
+              height: 32,
               decoration: BoxDecoration(
-                color: AppColors.primary.withAlpha(30),
-                borderRadius: BorderRadius.circular(10),
+                color: AppColors.primary.withAlpha(25),
+                borderRadius: BorderRadius.circular(6),
               ),
-              child: Icon(icon, color: AppColors.primary, size: 22),
+              child: Icon(icon, color: AppColors.primary, size: 16),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -173,18 +183,24 @@ class _SettingsTile extends StatelessWidget {
                   Text(
                     title,
                     style: TextStyle(
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 13,
                       color: colors.textPrimary,
                     ),
                   ),
                   Text(
                     subtitle,
-                    style: TextStyle(fontSize: 12, color: colors.textSecondary),
+                    style: TextStyle(fontSize: 11, color: colors.textSecondary),
                   ),
                 ],
               ),
             ),
-            trailing ?? Icon(Icons.chevron_right_rounded, color: colors.textSecondary),
+            trailing ??
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: colors.textSecondary,
+                  size: 18,
+                ),
           ],
         ),
       ),

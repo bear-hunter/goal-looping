@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme/theme.dart';
@@ -289,38 +288,8 @@ class _SpeciesCard extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Tree preview
-            Stack(
-              alignment: Alignment.center,
-              children: [
-                Image.asset(
-                  design.getAssetPath(5), // Mature stage for preview
-                  width: 60,
-                  height: 70,
-                  fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) {
-                    // Fallback to emoji
-                    return Text(
-                      design.emoji,
-                      style: const TextStyle(fontSize: 40),
-                    );
-                  },
-                ),
-                if (!isUnlocked)
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withAlpha(150),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.lock_rounded,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ),
-              ],
-            ),
+            // Tree preview - Use cached image with proper loading
+            _TreePreviewImage(design: design, isUnlocked: isUnlocked),
             const SizedBox(height: 12),
             Text(
               design.name,
@@ -368,6 +337,53 @@ class _SpeciesCard extends StatelessWidget {
           ],
         ),
       ),
-    ).animate().fadeIn(duration: 300.ms).scale(begin: const Offset(0.95, 0.95));
+    );
+  }
+}
+
+/// Optimized tree image widget with caching and error handling
+class _TreePreviewImage extends StatelessWidget {
+  final TreeDesign design;
+  final bool isUnlocked;
+
+  const _TreePreviewImage({required this.design, required this.isUnlocked});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 60,
+      height: 70,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Image.asset(
+            design.getAssetPath(5), // Mature stage for preview
+            width: 60,
+            height: 70,
+            fit: BoxFit.contain,
+            // Use cacheWidth/cacheHeight to reduce memory usage
+            cacheWidth: 120, // 2x for retina displays
+            cacheHeight: 140,
+            errorBuilder: (context, error, stackTrace) {
+              // Fallback to emoji
+              return Text(design.emoji, style: const TextStyle(fontSize: 40));
+            },
+          ),
+          if (!isUnlocked)
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.black.withAlpha(150),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.lock_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+        ],
+      ),
+    );
   }
 }

@@ -27,7 +27,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   DateTime _calendarMonth = DateTime.now();
-  
+
   // Edit state
   late TextEditingController _nameController;
   late TextEditingController _descriptionController;
@@ -55,7 +55,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
     _triggerResponseController.dispose();
     super.dispose();
   }
-  
+
   void _initEditState(Habit habit) {
     if (!_isEditMode) {
       _nameController.text = habit.name;
@@ -87,7 +87,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
       body: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrolled) => [
           SliverAppBar(
-            expandedHeight: 200, // Increased for more space
+            expandedHeight: 110,
             floating: false,
             pinned: true,
             backgroundColor: category != null
@@ -99,13 +99,13 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
             ),
             flexibleSpace: FlexibleSpaceBar(
               centerTitle: true,
-              titlePadding: const EdgeInsets.only(bottom: 60), // Space for tabs
+              titlePadding: const EdgeInsets.only(bottom: 50),
               title: Text(
                 habit.name,
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
-                  fontSize: 18,
+                  fontSize: 14,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -130,18 +130,18 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.start,
                     children: [
-                      const SizedBox(height: 50), // Space for back button
+                      const SizedBox(height: 44),
                       Icon(
                         category?.icon ?? Icons.repeat_rounded,
-                        size: 48,
+                        size: 28,
                         color: Colors.white.withAlpha(200),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 4),
                       Text(
                         '${habit.currentStreak} day streak',
                         style: TextStyle(
                           color: Colors.white.withAlpha(220),
-                          fontSize: 14,
+                          fontSize: 11,
                         ),
                       ),
                     ],
@@ -281,12 +281,12 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
           date.month == today.month &&
           date.day == today.day;
       final isFuture = date.isAfter(today);
-      
+
       // Determine cell color based on scoring or completion
       Color? cellColor;
       Color textColor = textPrimary;
       bool showCheckmark = false;
-      
+
       if (habit.scoringEnabled && score != null) {
         if (score >= 70) {
           cellColor = Colors.green;
@@ -319,13 +319,15 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
               border: isToday
                   ? Border.all(color: AppColors.primary, width: 2)
                   : null,
-              boxShadow: showCheckmark ? [
-                BoxShadow(
-                  color: (cellColor ?? Colors.transparent).withAlpha(80),
-                  blurRadius: 4,
-                  spreadRadius: 1,
-                ),
-              ] : null,
+              boxShadow: showCheckmark
+                  ? [
+                      BoxShadow(
+                        color: (cellColor ?? Colors.transparent).withAlpha(80),
+                        blurRadius: 4,
+                        spreadRadius: 1,
+                      ),
+                    ]
+                  : null,
             ),
             child: Stack(
               children: [
@@ -343,7 +345,9 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
                           '$day',
                           style: TextStyle(
                             color: textColor,
-                            fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
+                            fontWeight: isToday
+                                ? FontWeight.bold
+                                : FontWeight.normal,
                             decoration: isScheduled && !isCompleted && !isFuture
                                 ? TextDecoration.underline
                                 : null,
@@ -379,7 +383,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
   void _toggleCompletion(Habit habit, DateTime date) async {
     final appState = context.read<AppState>();
     final isCompleted = habit.isCompletedFor(date);
-    
+
     // If scoring is enabled, show scoring dialog instead of just toggling
     if (habit.scoringEnabled) {
       _showScoringDialogForDate(habit, date, appState);
@@ -389,12 +393,16 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
       setState(() {});
     }
   }
-  
-  void _showScoringDialogForDate(Habit habit, DateTime date, AppState appState) {
+
+  void _showScoringDialogForDate(
+    Habit habit,
+    DateTime date,
+    AppState appState,
+  ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final currentLog = habit.getLogFor(date);
     double sliderValue = (currentLog?.score ?? 50).toDouble();
-    
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -419,17 +427,21 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: isDark ? AppColors.textPrimary : LightColors.textPrimary,
+                  color: isDark
+                      ? AppColors.textPrimary
+                      : LightColors.textPrimary,
                 ),
               ),
               const SizedBox(height: 24),
-              
+
               // Score slider
               Text(
                 'Score: ${sliderValue.round()}%',
                 style: TextStyle(
                   fontSize: 16,
-                  color: isDark ? AppColors.textSecondary : LightColors.textSecondary,
+                  color: isDark
+                      ? AppColors.textSecondary
+                      : LightColors.textSecondary,
                 ),
               ),
               const SizedBox(height: 8),
@@ -443,18 +455,24 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
                   setDialogState(() => sliderValue = value);
                 },
               ),
-              
+
               // Quick score buttons
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [0, 25, 50, 75, 100].map((score) {
                   final isSelected = sliderValue.round() == score;
                   return GestureDetector(
-                    onTap: () => setDialogState(() => sliderValue = score.toDouble()),
+                    onTap: () =>
+                        setDialogState(() => sliderValue = score.toDouble()),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
-                        color: isSelected ? _getScoreColor(score) : Colors.transparent,
+                        color: isSelected
+                            ? _getScoreColor(score)
+                            : Colors.transparent,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: _getScoreColor(score)),
                       ),
@@ -462,7 +480,9 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
                         '$score%',
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
-                          color: isSelected ? Colors.white : _getScoreColor(score),
+                          color: isSelected
+                              ? Colors.white
+                              : _getScoreColor(score),
                         ),
                       ),
                     ),
@@ -470,7 +490,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
                 }).toList(),
               ),
               const SizedBox(height: 24),
-              
+
               // Actions
               Row(
                 children: [
@@ -478,7 +498,11 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
                     child: OutlinedButton(
                       onPressed: () async {
                         Navigator.pop(ctx);
-                        habit.logForDate(date: date, completed: false, score: null);
+                        habit.logForDate(
+                          date: date,
+                          completed: false,
+                          score: null,
+                        );
                         await appState.updateHabit(habit);
                         setState(() {});
                       },
@@ -497,8 +521,8 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
                       onPressed: () async {
                         Navigator.pop(ctx);
                         habit.logForDate(
-                          date: date, 
-                          completed: sliderValue > 0, 
+                          date: date,
+                          completed: sliderValue > 0,
                           score: sliderValue.round(),
                         );
                         await appState.updateHabit(habit);
@@ -520,15 +544,28 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
       ),
     );
   }
-  
+
   Color _getScoreColor(int score) {
     if (score >= 70) return Colors.green;
     if (score >= 40) return Colors.orange;
     return Colors.red;
   }
-  
+
   String _formatDateShort(DateTime date) {
-    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
     return '${months[date.month - 1]} ${date.day}';
   }
 
@@ -834,14 +871,19 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
 
   // ========== DEFENSE TAB ==========
   Widget _buildDefenseTab(Habit habit, bool isDark, Color textPrimary) {
-    final textSecondary = isDark ? AppColors.textSecondary : LightColors.textSecondary;
+    final textSecondary = isDark
+        ? AppColors.textSecondary
+        : LightColors.textSecondary;
     final accentColor = AppColors.primary;
 
     // Get barrier logs from habit logs
-    final logsWithBarriers = habit.logs
-        .where((log) => log.barrierTag != null && log.barrierTag!.isNotEmpty)
-        .toList()
-      ..sort((a, b) => b.date.compareTo(a.date));
+    final logsWithBarriers =
+        habit.logs
+            .where(
+              (log) => log.barrierTag != null && log.barrierTag!.isNotEmpty,
+            )
+            .toList()
+          ..sort((a, b) => b.date.compareTo(a.date));
 
     // Count barriers by type
     final barrierCounts = <String, int>{};
@@ -868,13 +910,11 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
               children: [
                 Text(
                   'Your If-Then Plan',
-                  style: TextStyle(
-                    color: textSecondary,
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: textSecondary, fontSize: 12),
                 ),
                 const SizedBox(height: 8),
-                if (habit.triggerResponse != null && habit.triggerResponse!.isNotEmpty)
+                if (habit.triggerResponse != null &&
+                    habit.triggerResponse!.isNotEmpty)
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
@@ -911,13 +951,17 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
                     _tabController.animateTo(3); // Go to Edit tab
                   },
                   icon: Icon(
-                    habit.triggerResponse != null ? Icons.edit_rounded : Icons.add_rounded,
+                    habit.triggerResponse != null
+                        ? Icons.edit_rounded
+                        : Icons.add_rounded,
                     size: 18,
                   ),
-                  label: Text(habit.triggerResponse != null ? 'Edit Response' : 'Add Response'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: accentColor,
+                  label: Text(
+                    habit.triggerResponse != null
+                        ? 'Edit Response'
+                        : 'Add Response',
                   ),
+                  style: OutlinedButton.styleFrom(foregroundColor: accentColor),
                 ),
               ],
             ),
@@ -943,19 +987,20 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
                 else ...[
                   Text(
                     'Most Common Barriers',
-                    style: TextStyle(
-                      color: textSecondary,
-                      fontSize: 12,
-                    ),
+                    style: TextStyle(color: textSecondary, fontSize: 12),
                   ),
                   const SizedBox(height: 12),
-                  ...sortedBarriers.take(5).map((entry) => _buildBarrierRow(
-                        entry.key,
-                        entry.value,
-                        logsWithBarriers.length,
-                        textPrimary,
-                        textSecondary,
-                      )),
+                  ...sortedBarriers
+                      .take(5)
+                      .map(
+                        (entry) => _buildBarrierRow(
+                          entry.key,
+                          entry.value,
+                          logsWithBarriers.length,
+                          textPrimary,
+                          textSecondary,
+                        ),
+                      ),
                 ],
               ],
             ),
@@ -979,11 +1024,15 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
                     textSecondary,
                   )
                 else ...[
-                  ...logsWithBarriers.take(10).map((log) => _buildBarrierLogEntry(
-                        log,
-                        textPrimary,
-                        textSecondary,
-                      )),
+                  ...logsWithBarriers
+                      .take(10)
+                      .map(
+                        (log) => _buildBarrierLogEntry(
+                          log,
+                          textPrimary,
+                          textSecondary,
+                        ),
+                      ),
                   if (logsWithBarriers.length > 10)
                     Padding(
                       padding: const EdgeInsets.only(top: 8),
@@ -1034,8 +1083,12 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
     bool isDark, {
     required Widget child,
   }) {
-    final surfaceColor = isDark ? AppColors.surfaceLight : LightColors.surfaceLight;
-    final textPrimary = isDark ? AppColors.textPrimary : LightColors.textPrimary;
+    final surfaceColor = isDark
+        ? AppColors.surfaceLight
+        : LightColors.surfaceLight;
+    final textPrimary = isDark
+        ? AppColors.textPrimary
+        : LightColors.textPrimary;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -1086,10 +1139,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
         children: [
           Icon(icon, size: 32, color: textSecondary.withAlpha(100)),
           const SizedBox(height: 8),
-          Text(
-            title,
-            style: TextStyle(color: textSecondary),
-          ),
+          Text(title, style: TextStyle(color: textSecondary)),
           const SizedBox(height: 4),
           Text(
             subtitle,
@@ -1117,10 +1167,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                barrier,
-                style: TextStyle(color: textPrimary, fontSize: 14),
-              ),
+              Text(barrier, style: TextStyle(color: textPrimary, fontSize: 14)),
               Text(
                 '$count ($percentage%)',
                 style: TextStyle(color: textSecondary, fontSize: 12),
@@ -1131,9 +1178,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
           LinearProgressIndicator(
             value: count / total,
             backgroundColor: Colors.grey.withAlpha(50),
-            valueColor: AlwaysStoppedAnimation(
-              _getBarrierColor(barrier),
-            ),
+            valueColor: AlwaysStoppedAnimation(_getBarrierColor(barrier)),
             minHeight: 6,
             borderRadius: BorderRadius.circular(3),
           ),
@@ -1240,7 +1285,9 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
 
   void _showLogBarrierDialog(Habit habit) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textPrimary = isDark ? AppColors.textPrimary : LightColors.textPrimary;
+    final textPrimary = isDark
+        ? AppColors.textPrimary
+        : LightColors.textPrimary;
     String? selectedBarrier;
     final noteController = TextEditingController();
 
@@ -1286,7 +1333,9 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
                     label: Text(tag),
                     selected: isSelected,
                     onSelected: (selected) {
-                      setModalState(() => selectedBarrier = selected ? tag : null);
+                      setModalState(
+                        () => selectedBarrier = selected ? tag : null,
+                      );
                     },
                   );
                 }).toList(),
@@ -1309,7 +1358,11 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
                   onPressed: selectedBarrier == null
                       ? null
                       : () {
-                          _logBarrier(habit, selectedBarrier!, noteController.text);
+                          _logBarrier(
+                            habit,
+                            selectedBarrier!,
+                            noteController.text,
+                          );
                           Navigator.pop(ctx);
                         },
                   child: const Text('Log Barrier'),
@@ -1357,7 +1410,9 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
 
   void _showScriptedResponseDialog(Habit habit) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textPrimary = isDark ? AppColors.textPrimary : LightColors.textPrimary;
+    final textPrimary = isDark
+        ? AppColors.textPrimary
+        : LightColors.textPrimary;
     final accentColor = AppColors.primary;
 
     showDialog(
@@ -1374,7 +1429,8 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (habit.triggerResponse != null && habit.triggerResponse!.isNotEmpty) ...[
+            if (habit.triggerResponse != null &&
+                habit.triggerResponse!.isNotEmpty) ...[
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -1414,9 +1470,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
                 ),
               ),
             ] else ...[
-              const Text(
-                'You haven\'t set up a scripted response yet.',
-              ),
+              const Text('You haven\'t set up a scripted response yet.'),
               const SizedBox(height: 8),
               const Text(
                 'An "If-Then" plan helps you overcome obstacles automatically. '
@@ -1449,10 +1503,14 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
   // ========== EDIT TAB ==========
   Widget _buildEditTab(Habit habit, bool isDark, Color textPrimary) {
     _initEditState(habit);
-    final textSecondary = isDark ? AppColors.textSecondary : LightColors.textSecondary;
-    final surfaceColor = isDark ? AppColors.surfaceLight : LightColors.surfaceLight;
+    final textSecondary = isDark
+        ? AppColors.textSecondary
+        : LightColors.textSecondary;
+    final surfaceColor = isDark
+        ? AppColors.surfaceLight
+        : LightColors.surfaceLight;
     final categories = context.watch<AppState>().categories;
-    
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -1482,14 +1540,26 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
             textPrimary,
           ),
           const SizedBox(height: 16),
-          
+
           // Type & Evaluation (read-only as they affect core behavior)
           _buildEditSection(
             'Type & Evaluation',
             [
-              _buildInfoRow('Type', habit.type.toString().split('.').last, textPrimary),
-              _buildInfoRow('Evaluation', habit.effectiveEvaluationType.label, textPrimary),
-              _buildInfoRow('Frequency', habit.effectiveFrequencyType.label, textPrimary),
+              _buildInfoRow(
+                'Type',
+                habit.type.toString().split('.').last,
+                textPrimary,
+              ),
+              _buildInfoRow(
+                'Evaluation',
+                habit.effectiveEvaluationType.label,
+                textPrimary,
+              ),
+              _buildInfoRow(
+                'Frequency',
+                habit.effectiveFrequencyType.label,
+                textPrimary,
+              ),
             ],
             isDark,
             textPrimary,
@@ -1519,7 +1589,9 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
                     avatar: Icon(
                       Icons.flag_rounded,
                       size: 16,
-                      color: isSelected ? _getPriorityColor(priority) : textSecondary,
+                      color: isSelected
+                          ? _getPriorityColor(priority)
+                          : textSecondary,
                     ),
                   );
                 }).toList(),
@@ -1549,7 +1621,11 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
                         label: Text(category.name),
                         selected: isSelected,
                         selectedColor: color.withAlpha(100),
-                        avatar: Icon(category.icon, size: 16, color: isSelected ? color : textSecondary),
+                        avatar: Icon(
+                          category.icon,
+                          size: 16,
+                          color: isSelected ? color : textSecondary,
+                        ),
                         onSelected: (selected) {
                           setState(() {
                             _selectedCategoryId = selected ? category.id : null;
@@ -1641,11 +1717,15 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
                 style: TextStyle(color: textPrimary),
                 maxLines: 2,
                 decoration: InputDecoration(
-                  hintText: 'e.g., "If I feel tired → I will do just 5 minutes"',
+                  hintText:
+                      'e.g., "If I feel tired → I will do just 5 minutes"',
                   hintStyle: TextStyle(color: textSecondary),
                   filled: true,
                   fillColor: surfaceColor,
-                  prefixIcon: Icon(Icons.psychology_rounded, color: AppColors.primary),
+                  prefixIcon: Icon(
+                    Icons.psychology_rounded,
+                    color: AppColors.primary,
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
                     borderSide: BorderSide.none,
@@ -1721,7 +1801,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
       ),
     ).animate().fadeIn(duration: 200.ms);
   }
-  
+
   Future<void> _saveHabitChanges(Habit habit) async {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
@@ -1730,11 +1810,11 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
       );
       return;
     }
-    
+
     // Update habit properties
     habit.name = name;
-    habit.description = _descriptionController.text.trim().isNotEmpty 
-        ? _descriptionController.text.trim() 
+    habit.description = _descriptionController.text.trim().isNotEmpty
+        ? _descriptionController.text.trim()
         : null;
     habit.triggerResponse = _triggerResponseController.text.trim().isNotEmpty
         ? _triggerResponseController.text.trim()
@@ -1742,28 +1822,32 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
     habit.categoryId = _selectedCategoryId;
     habit.priorityLevel = _selectedPriority;
     habit.scheduledDays = _selectedDays;
-    
+
     final appState = context.read<AppState>();
     await appState.updateHabit(habit);
-    
+
     setState(() {
       _hasChanges = false;
       _isEditMode = false;
     });
-    
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Habit updated successfully')),
       );
     }
   }
-  
+
   Color _getPriorityColor(PriorityLevel priority) {
     switch (priority) {
-      case PriorityLevel.none: return Colors.grey;
-      case PriorityLevel.low: return Colors.blue;
-      case PriorityLevel.medium: return Colors.orange;
-      case PriorityLevel.high: return Colors.red;
+      case PriorityLevel.none:
+        return Colors.grey;
+      case PriorityLevel.low:
+        return Colors.blue;
+      case PriorityLevel.medium:
+        return Colors.orange;
+      case PriorityLevel.high:
+        return Colors.red;
     }
   }
 
@@ -1877,20 +1961,29 @@ class _DayChip extends StatelessWidget {
   final int day;
   final bool isSelected;
   final VoidCallback onTap;
-  
+
   const _DayChip({
     required this.day,
     required this.isSelected,
     required this.onTap,
   });
-  
+
   static const _dayNames = ['', 'M', 'T', 'W', 'T', 'F', 'S', 'S'];
-  static const _fullDayNames = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  
+  static const _fullDayNames = [
+    '',
+    'Mon',
+    'Tue',
+    'Wed',
+    'Thu',
+    'Fri',
+    'Sat',
+    'Sun',
+  ];
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return GestureDetector(
       onTap: onTap,
       child: Tooltip(
@@ -1899,12 +1992,14 @@ class _DayChip extends StatelessWidget {
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-            color: isSelected 
-                ? AppColors.primary 
+            color: isSelected
+                ? AppColors.primary
                 : (isDark ? AppColors.surfaceLight : LightColors.surfaceLight),
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: isSelected ? AppColors.primary : Colors.grey.withAlpha(100),
+              color: isSelected
+                  ? AppColors.primary
+                  : Colors.grey.withAlpha(100),
               width: isSelected ? 2 : 1,
             ),
           ),
@@ -1913,7 +2008,11 @@ class _DayChip extends StatelessWidget {
               _dayNames[day],
               style: TextStyle(
                 fontWeight: FontWeight.w600,
-                color: isSelected ? Colors.white : (isDark ? AppColors.textPrimary : LightColors.textPrimary),
+                color: isSelected
+                    ? Colors.white
+                    : (isDark
+                          ? AppColors.textPrimary
+                          : LightColors.textPrimary),
               ),
             ),
           ),
