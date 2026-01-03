@@ -99,7 +99,10 @@ class Habit extends HiveObject {
 
   // Phase 2: Factor Linkage (Connection to Strategy)
   @HiveField(10)
-  String? factorId; // Link to Strategy Factor
+  String? factorId; // Link to Strategy Factor (DEPRECATED - use linkedFactorIds)
+
+  @HiveField(36)
+  List<String>? linkedFactorIds; // Links to Strategy Factors (multiple trees)
 
   // Phase 2: Flexible Scheduling (HabitNow standard)
   @HiveField(11)
@@ -196,6 +199,7 @@ class Habit extends HiveObject {
     DateTime? createdAt,
     this.isActive = true,
     this.factorId,
+    this.linkedFactorIds,
     List<int>? scheduledDays,
     this.targetFrequency = 1,
     this.motivation = '',

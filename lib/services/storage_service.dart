@@ -18,6 +18,8 @@ import '../models/time_availability.dart';
 import '../models/user_stats.dart';
 import '../models/achievement.dart';
 import '../models/focus_log.dart';
+import '../models/spaced_repetition_subject.dart';
+import '../models/spaced_repetition_topic.dart';
 
 /// Storage service for all app data using Hive
 class StorageService {
@@ -37,6 +39,8 @@ class StorageService {
   static const String reflectionGroupsBox = 'reflectionGroups';
   static const String categoriesBox = 'categories';
   static const String recurringTasksBox = 'recurringTasks';
+  static const String spacedRepetitionSubjectsBox = 'srSubjects';
+  static const String spacedRepetitionTopicsBox = 'srTopics';
 
   static final Uuid _uuid = const Uuid();
 
@@ -74,6 +78,7 @@ class StorageService {
     tryRegister(SprintDurationAdapter());
     tryRegister(TaskAdapter());
     tryRegister(TaskSourceAdapter());
+    tryRegister(EisenhowerQuadrantAdapter());
     tryRegister(TaskEffortAdapter());
     tryRegister(TaskImpactAdapter());
     tryRegister(TaskAbandonReasonAdapter());
@@ -101,6 +106,9 @@ class StorageService {
     tryRegister(HabitEvaluationTypeAdapter());
     tryRegister(HabitFrequencyTypeAdapter());
     tryRegister(PriorityLevelAdapter());
+    // Spaced Repetition adapters
+    tryRegister(SpacedRepetitionSubjectAdapter());
+    tryRegister(SpacedRepetitionTopicAdapter());
   }
 
   /// Ensure a box is open (used for defensive access)
@@ -146,6 +154,8 @@ class StorageService {
       _ensureBoxOpen<ReflectionGroup>(reflectionGroupsBox),
       _ensureBoxOpen<CategoryModel>(categoriesBox),
       _ensureBoxOpen<RecurringTask>(recurringTasksBox),
+      _ensureBoxOpen<SpacedRepetitionSubject>(spacedRepetitionSubjectsBox),
+      _ensureBoxOpen<SpacedRepetitionTopic>(spacedRepetitionTopicsBox),
     ]);
   }
 
@@ -675,5 +685,73 @@ class StorageService {
 
   static Future<void> deleteRecurringTask(String id) async {
     await _recurringTasksBox.delete(id);
+  }
+
+  // ========== SPACED REPETITION SUBJECTS ==========
+
+  static Box<SpacedRepetitionSubject> get _srSubjectsBox {
+    if (!Hive.isBoxOpen(spacedRepetitionSubjectsBox)) {
+      throw StateError(
+        'SpacedRepetition subjects box not open. Ensure StorageService.initialize() is called.',
+      );
+    }
+    return Hive.box<SpacedRepetitionSubject>(spacedRepetitionSubjectsBox);
+  }
+
+  static List<SpacedRepetitionSubject> getAllSubjects() {
+    if (!Hive.isBoxOpen(spacedRepetitionSubjectsBox)) return [];
+    return _srSubjectsBox.values.toList()
+      ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+  }
+
+  static SpacedRepetitionSubject? getSubject(String id) =>
+      _srSubjectsBox.get(id);
+
+  static Future<void> saveSubject(SpacedRepetitionSubject subject) async {
+    await _srSubjectsBox.put(subject.id, subject);
+  }
+
+  static Future<void> deleteSubject(String id) async {
+    await _srSubjectsBox.delete(id);
+    // Also delete all topics for this subject
+    final topics = getTopicsForSubject(id);
+    for (final topic in topics) {
+      await deleteTopic(topic.id);
+    }
+  }
+
+  // ========== SPACED REPETITION TOPICS ==========
+
+  static Box<SpacedRepetitionTopic> get _srTopicsBox {
+    if (!Hive.isBoxOpen(spacedRepetitionTopicsBox)) {
+      throw StateError(
+        'SpacedRepetition topics box not open. Ensure StorageService.initialize() is called.',
+      );
+    }
+    return Hive.box<SpacedRepetitionTopic>(spacedRepetitionTopicsBox);
+  }
+
+  static List<SpacedRepetitionTopic> getAllTopics() {
+    if (!Hive.isBoxOpen(spacedRepetitionTopicsBox)) return [];
+    return _srTopicsBox.values.toList()
+      ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+  }
+
+  static List<SpacedRepetitionTopic> getTopicsForSubject(String subjectId) {
+    return getAllTopics().where((t) => t.subjectId == subjectId).toList();
+  }
+
+  static List<SpacedRepetitionTopic> getDueTopics() {
+    return getAllTopics().where((t) => t.isDue).toList();
+  }
+
+  static SpacedRepetitionTopic? getTopic(String id) => _srTopicsBox.get(id);
+
+  static Future<void> saveTopic(SpacedRepetitionTopic topic) async {
+    await _srTopicsBox.put(topic.id, topic);
+  }
+
+  static Future<void> deleteTopic(String id) async {
+    await _srTopicsBox.delete(id);
   }
 }

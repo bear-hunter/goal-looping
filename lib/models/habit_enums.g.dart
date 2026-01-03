@@ -8,7 +8,7 @@ part of 'habit_enums.dart';
 
 class HabitEvaluationTypeAdapter extends TypeAdapter<HabitEvaluationType> {
   @override
-  final int typeId = 32;
+  final int typeId = 37;
 
   @override
   HabitEvaluationType read(BinaryReader reader) {

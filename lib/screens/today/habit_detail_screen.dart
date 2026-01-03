@@ -6,6 +6,7 @@ import '../../core/theme/theme.dart';
 import '../../providers/app_state.dart';
 import '../../models/habit.dart';
 import '../../models/habit_enums.dart';
+import '../../widgets/growth_area_selector.dart';
 
 /// Habit Detail Screen with tabbed interface
 class HabitDetailScreen extends StatefulWidget {
@@ -35,6 +36,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
   String? _selectedCategoryId;
   PriorityLevel _selectedPriority = PriorityLevel.none;
   List<int> _selectedDays = [];
+  List<String> _linkedFactorIds = [];
   bool _isEditMode = false;
   bool _hasChanges = false;
 
@@ -64,6 +66,10 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
       _selectedCategoryId = habit.categoryId;
       _selectedPriority = habit.effectivePriorityLevel;
       _selectedDays = List<int>.from(habit.scheduledDays);
+      // Initialize linked factor IDs from new field or migrate from old field
+      _linkedFactorIds = habit.linkedFactorIds != null
+          ? List<String>.from(habit.linkedFactorIds!)
+          : (habit.factorId != null ? [habit.factorId!] : []);
     }
   }
 
@@ -1677,6 +1683,32 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
           ),
           const SizedBox(height: 16),
 
+          // Growth Area Selector (Dissected Trees)
+          _buildEditSection(
+            'Link to Dissected Tree',
+            [
+              Consumer<AppState>(
+                builder: (context, state, _) {
+                  return GrowthAreaSelector(
+                    selectedAreaIds: _linkedFactorIds,
+                    onSelectionChanged: (ids) {
+                      setState(() {
+                        _linkedFactorIds = ids;
+                        _hasChanges = true;
+                        _isEditMode = true;
+                      });
+                    },
+                    label: 'Link to Dissected Tree (Optional)',
+                    multiSelect: true,
+                  );
+                },
+              ),
+            ],
+            isDark,
+            textPrimary,
+          ),
+          const SizedBox(height: 16),
+
           // Description
           _buildEditSection(
             'Description',
@@ -1822,6 +1854,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
     habit.categoryId = _selectedCategoryId;
     habit.priorityLevel = _selectedPriority;
     habit.scheduledDays = _selectedDays;
+    habit.linkedFactorIds = _linkedFactorIds.isNotEmpty ? _linkedFactorIds : null;
 
     final appState = context.read<AppState>();
     await appState.updateHabit(habit);

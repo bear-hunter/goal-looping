@@ -54,7 +54,7 @@ class RecurringTaskLogAdapter extends TypeAdapter<RecurringTaskLog> {
 
 class RecurringTaskAdapter extends TypeAdapter<RecurringTask> {
   @override
-  final int typeId = 31;
+  final int typeId = 39;
 
   @override
   RecurringTask read(BinaryReader reader) {

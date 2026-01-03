@@ -3,7 +3,7 @@ import 'package:hive/hive.dart';
 part 'habit_enums.g.dart';
 
 /// How the habit progress is evaluated
-@HiveType(typeId: 32)
+@HiveType(typeId: 37)
 enum HabitEvaluationType {
   @HiveField(0)
   yesNo, // Simple yes/no completion

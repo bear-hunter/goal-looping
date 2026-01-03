@@ -20,6 +20,7 @@ import '../archive/archived_items_screen.dart';
 import '../statistics/statistics_screen.dart';
 import '../barriers/barriers_screen.dart';
 import '../shop/shop_screen.dart';
+import '../spaced_repetition/spaced_repetition_screen.dart';
 
 /// Today Screen - Main daily view with horizontal date picker and item list
 class TodayScreen extends StatefulWidget {
@@ -498,6 +499,20 @@ class _TodayScreenState extends State<TodayScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(builder: (_) => const ShopScreen()),
+                      );
+                    },
+                  ),
+                  const Divider(),
+                  _DrawerItem(
+                    icon: Icons.school_rounded,
+                    label: 'Spaced Repetition',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const SpacedRepetitionScreen(),
+                        ),
                       );
                     },
                   ),

@@ -16,6 +16,29 @@ enum TaskSource {
   backlog, // Promoted from Less Important
 }
 
+/// Eisenhower Matrix quadrant for task prioritization
+/// - Focus: Important + Urgent → Do now
+/// - Schedule: Important + Not Urgent → Plan it
+/// - Branch: Not Important + Urgent → Delegate/batch
+/// - Delete: Not Important + Not Urgent → Remove
+@HiveType(typeId: 36)
+enum EisenhowerQuadrant {
+  @HiveField(0)
+  inbox, // Uncategorized
+
+  @HiveField(1)
+  focus, // Important + Urgent
+
+  @HiveField(2)
+  schedule, // Important + Not Urgent
+
+  @HiveField(3)
+  branch, // Not Important + Urgent
+
+  @HiveField(4)
+  delete, // Not Important + Not Urgent
+}
+
 /// Effort level for a task (legacy - kept for migration)
 @HiveType(typeId: 26)
 enum TaskEffort {
@@ -157,6 +180,9 @@ class Task extends HiveObject {
   @HiveField(31)
   int priority; // Numeric priority (-20 to 20, higher = more important)
 
+  @HiveField(32)
+  EisenhowerQuadrant quadrant; // Eisenhower Matrix categorization
+
   Task({
     required this.id,
     required this.title,
@@ -191,6 +217,7 @@ class Task extends HiveObject {
     this.scheduledTime,
     this.isArchived = false,
     this.priority = 0,
+    this.quadrant = EisenhowerQuadrant.inbox,
   }) : createdAt = createdAt ?? DateTime.now(),
        linkedFactorIds = linkedFactorIds ?? [],
        reminderTimes = reminderTimes ?? [],

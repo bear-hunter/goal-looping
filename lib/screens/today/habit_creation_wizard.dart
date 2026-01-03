@@ -33,8 +33,13 @@ class _HabitCreationWizardState extends State<HabitCreationWizard> {
   final _pageController = PageController();
   int _currentPage = 0;
 
+  // Text controllers to persist values across page navigations
+  final _nameController = TextEditingController();
+  final _triggerResponseController = TextEditingController();
+  final _descriptionController = TextEditingController();
+  final _unitController = TextEditingController();
+
   // Wizard data
-  String _habitName = '';
   String? _selectedCategoryId;
   HabitType _habitType = HabitType.build;
   HabitEvaluationType _evaluationType = HabitEvaluationType.yesNo;
@@ -44,22 +49,23 @@ class _HabitCreationWizardState extends State<HabitCreationWizard> {
   int _daysPerPeriod = 3; // For someDaysPerPeriod (X days per week)
   List<DateTime> _specificDates = []; // For specificDatesOfYear
   int _targetValue = 1;
-  String _unit = '';
   final List<String> _checklistItems = [];
   PriorityLevel _priority = PriorityLevel.none;
   DateTime _startDate = DateTime.now();
   DateTime? _endDate;
   final List<TimeOfDay> _reminderTimes = [];
-  String _description = '';
   bool _scoringEnabled = false; // Optional scoring (0-100) for completion
-  String _triggerResponse = ''; // If-Then plan: "If X, then I will Y"
-  String? _selectedFactorId; // Dissected tree (GrowthArea) to link habit to
+  List<String> _linkedFactorIds = []; // Dissected trees (GrowthAreas) to link habit to
 
   static const int _totalPages = 5;
 
   @override
   void dispose() {
     _pageController.dispose();
+    _nameController.dispose();
+    _triggerResponseController.dispose();
+    _descriptionController.dispose();
+    _unitController.dispose();
     super.dispose();
   }
 
@@ -84,54 +90,70 @@ class _HabitCreationWizardState extends State<HabitCreationWizard> {
   }
 
   Future<void> _createHabit() async {
-    if (_habitName.isEmpty) {
+    final habitName = _nameController.text.trim();
+    final triggerResponse = _triggerResponseController.text.trim();
+    final description = _descriptionController.text.trim();
+    final unit = _unitController.text.trim();
+
+    if (habitName.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a habit name')),
       );
       return;
     }
 
-    final habit = Habit(
-      id: const Uuid().v4(),
-      name: _habitName,
-      type: _habitType,
-      triggerResponse: _triggerResponse.isNotEmpty ? _triggerResponse : null,
-      categoryId: _selectedCategoryId,
-      evaluationType: _evaluationType,
-      frequencyType: _frequencyType,
-      scheduledDays: _scheduledDays,
-      repeatInterval: _frequencyType == HabitFrequencyType.repeatEvery
-          ? _repeatInterval
-          : null,
-      daysPerPeriod: _frequencyType == HabitFrequencyType.someDaysPerPeriod
-          ? _daysPerPeriod
-          : null,
-      specificDates: _frequencyType == HabitFrequencyType.specificDatesOfYear
-          ? _specificDates
-          : null,
-      targetValue: _targetValue,
-      unit: _unit.isNotEmpty ? _unit : null,
-      checklistItems: _checklistItems.isNotEmpty ? _checklistItems : null,
-      priorityLevel: _priority,
-      startDate: _startDate,
-      endDate: _endDate,
-      reminderTimes: _reminderTimes
-          .map(
-            (t) =>
-                '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}',
-          )
-          .toList(),
-      description: _description.isNotEmpty ? _description : null,
-      scoringEnabled: _scoringEnabled,
-      factorId: _selectedFactorId,
-    );
+    try {
+      final habit = Habit(
+        id: const Uuid().v4(),
+        name: habitName,
+        type: _habitType,
+        triggerResponse: triggerResponse.isNotEmpty ? triggerResponse : null,
+        categoryId: _selectedCategoryId,
+        evaluationType: _evaluationType,
+        frequencyType: _frequencyType,
+        scheduledDays: _scheduledDays,
+        repeatInterval: _frequencyType == HabitFrequencyType.repeatEvery
+            ? _repeatInterval
+            : null,
+        daysPerPeriod: _frequencyType == HabitFrequencyType.someDaysPerPeriod
+            ? _daysPerPeriod
+            : null,
+        specificDates: _frequencyType == HabitFrequencyType.specificDatesOfYear
+            ? _specificDates
+            : null,
+        targetValue: _targetValue,
+        unit: unit.isNotEmpty ? unit : null,
+        checklistItems: _checklistItems.isNotEmpty ? _checklistItems : null,
+        priorityLevel: _priority,
+        startDate: _startDate,
+        endDate: _endDate,
+        reminderTimes: _reminderTimes
+            .map(
+              (t) =>
+                  '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}',
+            )
+            .toList(),
+        description: description.isNotEmpty ? description : null,
+        scoringEnabled: _scoringEnabled,
+        factorId: null, // Legacy field, kept for backward compatibility
+        linkedFactorIds: _linkedFactorIds.isNotEmpty ? _linkedFactorIds : null,
+      );
 
-    final appState = context.read<AppState>();
-    await appState.addHabit(habit);
+      final appState = context.read<AppState>();
+      await appState.addHabit(habit);
 
-    if (mounted) {
-      widget.onComplete?.call();
-      Navigator.of(context).pop();
+      if (mounted) {
+        widget.onComplete?.call();
+        Navigator.of(context).pop();
+      }
+    } catch (e, stackTrace) {
+      debugPrint('Error creating habit: $e');
+      debugPrint('Stack trace: $stackTrace');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error creating habit: $e')),
+        );
+      }
     }
   }
 
@@ -289,6 +311,7 @@ class _HabitCreationWizardState extends State<HabitCreationWizard> {
 
           // Habit name input
           TextField(
+            controller: _nameController,
             autofocus: true,
             style: TextStyle(color: textPrimary, fontSize: 18),
             decoration: InputDecoration(
@@ -303,7 +326,6 @@ class _HabitCreationWizardState extends State<HabitCreationWizard> {
                 borderSide: BorderSide.none,
               ),
             ),
-            onChanged: (value) => _habitName = value,
           ),
           const SizedBox(height: 32),
 
@@ -383,6 +405,7 @@ class _HabitCreationWizardState extends State<HabitCreationWizard> {
           ),
           const SizedBox(height: 12),
           TextField(
+            controller: _triggerResponseController,
             style: TextStyle(color: textPrimary, fontSize: 16),
             maxLines: 2,
             decoration: InputDecoration(
@@ -402,7 +425,6 @@ class _HabitCreationWizardState extends State<HabitCreationWizard> {
                 borderSide: BorderSide.none,
               ),
             ),
-            onChanged: (value) => _triggerResponse = value,
           ),
         ],
       ),
@@ -425,7 +447,7 @@ class _HabitCreationWizardState extends State<HabitCreationWizard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'How do you want to track "$_habitName"?',
+            'How do you want to track "${_nameController.text}"?',
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
@@ -590,6 +612,7 @@ class _HabitCreationWizardState extends State<HabitCreationWizard> {
         ),
         const SizedBox(height: 12),
         TextField(
+          controller: _descriptionController,
           style: TextStyle(color: textPrimary),
           maxLines: 3,
           decoration: InputDecoration(
@@ -604,7 +627,6 @@ class _HabitCreationWizardState extends State<HabitCreationWizard> {
               borderSide: BorderSide.none,
             ),
           ),
-          onChanged: (value) => _description = value,
         ),
       ],
     );
@@ -656,6 +678,7 @@ class _HabitCreationWizardState extends State<HabitCreationWizard> {
             Expanded(
               flex: 2,
               child: TextField(
+                controller: _unitController,
                 style: TextStyle(color: textPrimary),
                 decoration: InputDecoration(
                   hintText: 'glasses of water',
@@ -669,7 +692,6 @@ class _HabitCreationWizardState extends State<HabitCreationWizard> {
                     borderSide: BorderSide.none,
                   ),
                 ),
-                onChanged: (value) => _unit = value,
               ),
             ),
           ],
@@ -1010,13 +1032,13 @@ class _HabitCreationWizardState extends State<HabitCreationWizard> {
           ),
           const SizedBox(height: 24),
 
-          // Growth Area Selector (Dissected Trees - single select for habits)
+          // Growth Area Selector (Dissected Trees - multi-select)
           GrowthAreaSelector(
-            selectedAreaIds: _selectedFactorId != null ? [_selectedFactorId!] : [],
+            selectedAreaIds: _linkedFactorIds,
             onSelectionChanged: (ids) =>
-                setState(() => _selectedFactorId = ids.isNotEmpty ? ids.first : null),
+                setState(() => _linkedFactorIds = ids),
             label: 'Link to Dissected Tree (Optional)',
-            multiSelect: false,
+            multiSelect: true,
           ),
           const SizedBox(height: 24),
 
@@ -1040,7 +1062,7 @@ class _HabitCreationWizardState extends State<HabitCreationWizard> {
                 const SizedBox(height: 8),
                 _SummaryRow(
                   label: 'Name',
-                  value: _habitName.isEmpty ? 'Not set' : _habitName,
+                  value: _nameController.text.isEmpty ? 'Not set' : _nameController.text,
                 ),
                 _SummaryRow(
                   label: 'Type',

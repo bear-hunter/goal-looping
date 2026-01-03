@@ -89,7 +89,7 @@ class SettingsScreen extends StatelessWidget {
           _SettingsTile(
             icon: Icons.info_outline_rounded,
             title: 'About Goal Loop',
-            subtitle: 'Version 1.0.0',
+            subtitle: 'Version 2.0.5',
             onTap: () => _showAboutDialog(context),
           ),
         ],

@@ -14,6 +14,8 @@ import '../models/time_availability.dart';
 import '../models/user_stats.dart';
 import '../models/achievement.dart';
 import '../models/focus_log.dart';
+import '../models/spaced_repetition_subject.dart';
+import '../models/spaced_repetition_topic.dart';
 import '../services/storage_service.dart';
 import 'package:uuid/uuid.dart';
 import 'dart:async';
@@ -36,6 +38,8 @@ class AppState extends ChangeNotifier {
   List<ReflectionGroup> _reflectionGroups = [];
   List<CategoryModel> _categories = [];
   List<RecurringTask> _recurringTasks = [];
+  List<SpacedRepetitionSubject> _srSubjects = [];
+  List<SpacedRepetitionTopic> _srTopics = [];
   bool _isLoading = true;
 
   // ========== MEMOIZATION CACHES (Phase 1: Performance Optimization) ==========
@@ -70,6 +74,8 @@ class AppState extends ChangeNotifier {
   List<ReflectionGroup> get reflectionGroups => _reflectionGroups;
   List<CategoryModel> get categories => _categories;
   List<RecurringTask> get recurringTasks => _recurringTasks;
+  List<SpacedRepetitionSubject> get srSubjects => _srSubjects;
+  List<SpacedRepetitionTopic> get srTopics => _srTopics;
   bool get isLoading => _isLoading;
 
   // Computed getters
@@ -79,7 +85,14 @@ class AppState extends ChangeNotifier {
   List<Task> get priorityTasks {
     if (_cachedPriorityTasks != null) return _cachedPriorityTasks!;
     _cachedPriorityTasks =
-        _tasks.where((t) => t.isPriority && !t.isCompleted).toList()
+        _tasks
+            .where(
+              (t) =>
+                  t.isPriority &&
+                  !t.isCompleted &&
+                  t.quadrant != EisenhowerQuadrant.delete,
+            )
+            .toList()
           ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
     return _cachedPriorityTasks!;
   }
@@ -88,7 +101,14 @@ class AppState extends ChangeNotifier {
   List<Task> get backlogTasks {
     if (_cachedBacklogTasks != null) return _cachedBacklogTasks!;
     _cachedBacklogTasks =
-        _tasks.where((t) => !t.isPriority && !t.isCompleted).toList()
+        _tasks
+            .where(
+              (t) =>
+                  !t.isPriority &&
+                  !t.isCompleted &&
+                  t.quadrant != EisenhowerQuadrant.delete,
+            )
+            .toList()
           ..sort((a, b) {
             // Sort by deadline if available, then by sortOrder
             if (a.deadline != null && b.deadline != null) {
@@ -207,74 +227,85 @@ class AppState extends ChangeNotifier {
     try {
       _goals = StorageService.getAllGoals();
     } catch (e) {
+      debugPrint('ERROR loading goals: $e');
       _goals = [];
     }
 
     try {
       _factors = StorageService.getAllFactors();
     } catch (e) {
+      debugPrint('ERROR loading factors: $e');
       _factors = [];
     }
 
     try {
       _sprintTargets = StorageService.getAllSprintTargets();
     } catch (e) {
+      debugPrint('ERROR loading sprint targets: $e');
       _sprintTargets = [];
     }
 
     try {
       _tasks = StorageService.getAllTasks();
     } catch (e) {
+      debugPrint('ERROR loading tasks: $e');
       _tasks = [];
     }
 
     try {
       _habits = StorageService.getAllHabits();
     } catch (e) {
+      debugPrint('ERROR loading habits: $e');
       _habits = [];
     }
 
     try {
       _reflections = StorageService.getAllReflections();
     } catch (e) {
+      debugPrint('ERROR loading reflections: $e');
       _reflections = [];
     }
 
     try {
       _experiments = StorageService.getAllExperiments();
     } catch (e) {
+      debugPrint('ERROR loading experiments: $e');
       _experiments = [];
     }
 
     try {
       _barriers = StorageService.getAllBarriers();
     } catch (e) {
+      debugPrint('ERROR loading barriers: $e');
       _barriers = [];
     }
 
     try {
       _timeAvailability = StorageService.getTimeAvailability();
     } catch (e) {
+      debugPrint('ERROR loading time availability: $e');
       _timeAvailability = null;
     }
 
     try {
       _userStats = StorageService.getUserStats();
     } catch (e) {
+      debugPrint('ERROR loading user stats: $e');
       _userStats = UserStats();
     }
 
     try {
       _focusLogs = StorageService.getAllFocusLogs();
     } catch (e) {
+      debugPrint('ERROR loading focus logs: $e');
       _focusLogs = [];
     }
 
     try {
       _taskCategories = StorageService.getTaskCategories();
     } catch (e) {
-      _taskCategories =
-          []; // Will fallback to default in StorageService, but safely empty here
+      debugPrint('ERROR loading task categories: $e');
+      _taskCategories = [];
     }
 
     try {
@@ -299,6 +330,19 @@ class AppState extends ChangeNotifier {
       _recurringTasks = StorageService.getAllRecurringTasks();
     } catch (e) {
       _recurringTasks = [];
+    }
+
+    // Spaced Repetition
+    try {
+      _srSubjects = StorageService.getAllSubjects();
+    } catch (e) {
+      _srSubjects = [];
+    }
+
+    try {
+      _srTopics = StorageService.getAllTopics();
+    } catch (e) {
+      _srTopics = [];
     }
 
     // Run migration for legacy string-based categories
@@ -1616,5 +1660,93 @@ class AppState extends ChangeNotifier {
     return getHabitsForDate(date).length +
         getTasksForDate(date).length +
         getRecurringTasksForDate(date).length;
+  }
+
+  // ========== SPACED REPETITION ==========
+
+  /// Get due topics count
+  int get dueTopicsCount => _srTopics.where((t) => t.isDue).length;
+
+  /// Get topics for a subject
+  List<SpacedRepetitionTopic> getTopicsForSubject(String subjectId) {
+    return _srTopics.where((t) => t.subjectId == subjectId).toList()
+      ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+  }
+
+  /// Get due topics count for a subject
+  int getDueCountForSubject(String subjectId) {
+    return _srTopics.where((t) => t.subjectId == subjectId && t.isDue).length;
+  }
+
+  /// Add a new subject
+  Future<void> addSubject(SpacedRepetitionSubject subject) async {
+    _srSubjects.add(subject);
+    notifyListeners();
+    await StorageService.saveSubject(subject);
+  }
+
+  /// Update a subject
+  Future<void> updateSubject(SpacedRepetitionSubject subject) async {
+    final index = _srSubjects.indexWhere((s) => s.id == subject.id);
+    if (index != -1) _srSubjects[index] = subject;
+    notifyListeners();
+    await StorageService.saveSubject(subject);
+  }
+
+  /// Delete a subject and its topics
+  Future<void> deleteSubject(String id) async {
+    _srSubjects.removeWhere((s) => s.id == id);
+    _srTopics.removeWhere((t) => t.subjectId == id);
+    notifyListeners();
+    await StorageService.deleteSubject(id);
+  }
+
+  /// Toggle subject expanded state
+  Future<void> toggleSubjectExpanded(String id) async {
+    final subject = _srSubjects.firstWhere((s) => s.id == id);
+    final updated = subject.copyWith(isExpanded: !subject.isExpanded);
+    final index = _srSubjects.indexWhere((s) => s.id == id);
+    if (index != -1) _srSubjects[index] = updated;
+    notifyListeners();
+    await StorageService.saveSubject(updated);
+  }
+
+  /// Add a new topic
+  Future<void> addTopic(SpacedRepetitionTopic topic) async {
+    _srTopics.add(topic);
+    notifyListeners();
+    await StorageService.saveTopic(topic);
+  }
+
+  /// Update a topic
+  Future<void> updateTopic(SpacedRepetitionTopic topic) async {
+    final index = _srTopics.indexWhere((t) => t.id == topic.id);
+    if (index != -1) _srTopics[index] = topic;
+    notifyListeners();
+    await StorageService.saveTopic(topic);
+  }
+
+  /// Delete a topic
+  Future<void> deleteTopic(String id) async {
+    _srTopics.removeWhere((t) => t.id == id);
+    notifyListeners();
+    await StorageService.deleteTopic(id);
+  }
+
+  /// Complete a topic review and schedule next review
+  Future<void> completeTopic(String id, int intervalDays) async {
+    final topic = _srTopics.firstWhere((t) => t.id == id);
+    final updated = topic.markReviewed(intervalDays);
+    final index = _srTopics.indexWhere((t) => t.id == id);
+    if (index != -1) _srTopics[index] = updated;
+
+    // Award XP for completing review
+    _userStats.earnReward(
+      xp: 5 + (intervalDays > 7 ? 5 : 0), // Bonus XP for longer intervals
+      coinReward: 1,
+    );
+
+    notifyListeners();
+    await StorageService.saveTopic(updated);
   }
 }

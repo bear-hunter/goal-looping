@@ -9,8 +9,10 @@ import 'services/storage_service.dart';
 import 'services/notification_service.dart';
 import 'screens/today/today_screen.dart';
 import 'screens/strategy/strategy_screen.dart';
+import 'screens/tasks/tasks_screen.dart';
 import 'screens/habits/habits_list_screen.dart';
 import 'screens/reflection/reflection_screen.dart';
+import 'screens/spaced_repetition/spaced_repetition_screen.dart';
 import 'screens/onboarding/onboarding_screen.dart';
 import 'widgets/achievement_notification.dart';
 
@@ -20,14 +22,14 @@ void main() async {
   try {
     await StorageService.initialize();
   } catch (e) {
-    // If Hive fails (corrupted data), try to clear and reinitialize
+    // Log the error but don't clear data - this preserves user data
     debugPrint('Hive init failed: $e');
+    // Try to reinitialize without clearing data
     try {
-      await StorageService.clearAllData();
-      await StorageService.initialize();
+      await StorageService.reopenBoxes();
     } catch (e2) {
-      debugPrint('Hive reset also failed: $e2');
-      // Continue anyway - app will work without persistence
+      debugPrint('Hive reopen also failed: $e2');
+      // Continue anyway - app may work with limited persistence
     }
   }
 
@@ -169,7 +171,9 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
   final List<Widget> _screens = const [
     TodayScreen(),
     StrategyScreen(),
+    TasksScreen(),
     HabitsListScreen(),
+    SpacedRepetitionScreen(),
     ReflectionScreen(),
   ];
 
@@ -185,9 +189,19 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
       label: 'Strategy',
     ),
     NavigationDestination(
+      icon: Icon(Icons.checklist_outlined),
+      selectedIcon: Icon(Icons.checklist_rounded),
+      label: 'Tasks',
+    ),
+    NavigationDestination(
       icon: Icon(Icons.shield_outlined),
       selectedIcon: Icon(Icons.shield_rounded),
       label: 'Habits',
+    ),
+    NavigationDestination(
+      icon: Icon(Icons.school_outlined),
+      selectedIcon: Icon(Icons.school_rounded),
+      label: 'Review',
     ),
     NavigationDestination(
       icon: Icon(Icons.psychology_outlined),

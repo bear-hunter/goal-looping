@@ -49,13 +49,14 @@ class TaskAdapter extends TypeAdapter<Task> {
       scheduledTime: fields[29] as String?,
       isArchived: fields[30] as bool,
       priority: fields[31] as int,
+      quadrant: fields[32] as EisenhowerQuadrant,
     );
   }
 
   @override
   void write(BinaryWriter writer, Task obj) {
     writer
-      ..writeByte(32)
+      ..writeByte(33)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -119,7 +120,9 @@ class TaskAdapter extends TypeAdapter<Task> {
       ..writeByte(30)
       ..write(obj.isArchived)
       ..writeByte(31)
-      ..write(obj.priority);
+      ..write(obj.priority)
+      ..writeByte(32)
+      ..write(obj.quadrant);
   }
 
   @override
@@ -173,6 +176,60 @@ class TaskSourceAdapter extends TypeAdapter<TaskSource> {
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is TaskSourceAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
+}
+
+class EisenhowerQuadrantAdapter extends TypeAdapter<EisenhowerQuadrant> {
+  @override
+  final int typeId = 36;
+
+  @override
+  EisenhowerQuadrant read(BinaryReader reader) {
+    switch (reader.readByte()) {
+      case 0:
+        return EisenhowerQuadrant.inbox;
+      case 1:
+        return EisenhowerQuadrant.focus;
+      case 2:
+        return EisenhowerQuadrant.schedule;
+      case 3:
+        return EisenhowerQuadrant.branch;
+      case 4:
+        return EisenhowerQuadrant.delete;
+      default:
+        return EisenhowerQuadrant.inbox;
+    }
+  }
+
+  @override
+  void write(BinaryWriter writer, EisenhowerQuadrant obj) {
+    switch (obj) {
+      case EisenhowerQuadrant.inbox:
+        writer.writeByte(0);
+        break;
+      case EisenhowerQuadrant.focus:
+        writer.writeByte(1);
+        break;
+      case EisenhowerQuadrant.schedule:
+        writer.writeByte(2);
+        break;
+      case EisenhowerQuadrant.branch:
+        writer.writeByte(3);
+        break;
+      case EisenhowerQuadrant.delete:
+        writer.writeByte(4);
+        break;
+    }
+  }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is EisenhowerQuadrantAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

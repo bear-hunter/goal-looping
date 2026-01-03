@@ -86,6 +86,7 @@ class HabitAdapter extends TypeAdapter<Habit> {
       createdAt: fields[8] as DateTime?,
       isActive: fields[9] as bool,
       factorId: fields[10] as String?,
+      linkedFactorIds: (fields[36] as List?)?.cast<String>(),
       scheduledDays: (fields[11] as List?)?.cast<int>(),
       targetFrequency: fields[12] as int,
       motivation: fields[13] as String,
@@ -117,7 +118,7 @@ class HabitAdapter extends TypeAdapter<Habit> {
   @override
   void write(BinaryWriter writer, Habit obj) {
     writer
-      ..writeByte(36)
+      ..writeByte(37)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -140,6 +141,8 @@ class HabitAdapter extends TypeAdapter<Habit> {
       ..write(obj.isActive)
       ..writeByte(10)
       ..write(obj.factorId)
+      ..writeByte(36)
+      ..write(obj.linkedFactorIds)
       ..writeByte(11)
       ..write(obj.scheduledDays)
       ..writeByte(12)

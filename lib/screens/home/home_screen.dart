@@ -900,6 +900,7 @@ class _HomeScreenState extends State<HomeScreen> {
     String? titleError; // Validation error message
     bool showAdvanced = false; // Progressive disclosure toggle
     List<String> selectedFactorIds = []; // Linked factors
+    EisenhowerQuadrant quadrant = EisenhowerQuadrant.focus; // Default to Focus
     final state = context.read<AppState>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final surfaceColor = isDark ? AppColors.surface : LightColors.surface;
@@ -1212,6 +1213,52 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(height: 16),
 
+                // Prioritization (Eisenhower Quadrant)
+                Text(
+                  'Prioritization:',
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                ),
+                const SizedBox(height: 8),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _ChoiceChip(
+                        label: '🔥 Focus',
+                        selected: quadrant == EisenhowerQuadrant.focus,
+                        onSelected: (_) => setModalState(
+                          () => quadrant = EisenhowerQuadrant.focus,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      _ChoiceChip(
+                        label: '📅 Schedule',
+                        selected: quadrant == EisenhowerQuadrant.schedule,
+                        onSelected: (_) => setModalState(
+                          () => quadrant = EisenhowerQuadrant.schedule,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      _ChoiceChip(
+                        label: '🌿 Branch',
+                        selected: quadrant == EisenhowerQuadrant.branch,
+                        onSelected: (_) => setModalState(
+                          () => quadrant = EisenhowerQuadrant.branch,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      _ChoiceChip(
+                        label: '🗑️ Delete',
+                        selected: quadrant == EisenhowerQuadrant.delete,
+                        onSelected: (_) => setModalState(
+                          () => quadrant = EisenhowerQuadrant.delete,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+
                 // Deadline Selection
                 Row(
                   children: [
@@ -1463,6 +1510,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           deadline,
                           customTag,
                           selectedFactorIds,
+                          quadrant,
                         );
                         Navigator.pop(context);
                       },
@@ -1941,6 +1989,7 @@ class _HomeScreenState extends State<HomeScreen> {
     DateTime? deadline,
     String? customTag,
     List<String> linkedFactorIds,
+    EisenhowerQuadrant quadrant,
   ) {
     final state = context.read<AppState>();
     final task = Task(
@@ -1955,6 +2004,7 @@ class _HomeScreenState extends State<HomeScreen> {
       deadline: deadline,
       customTag: customTag,
       linkedFactorIds: linkedFactorIds,
+      quadrant: quadrant,
     );
     state.addTask(task);
   }

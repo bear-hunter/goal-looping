@@ -32,7 +32,7 @@ class RecurringTaskLog extends HiveObject {
 
 /// Recurring Task - An activity that repeats over time
 /// Connected to dissected trees (Factors) for goal tracking
-@HiveType(typeId: 31)
+@HiveType(typeId: 39)
 class RecurringTask extends HiveObject {
   @HiveField(0)
   String id;
