@@ -43,7 +43,15 @@ class CategoryModel extends HiveObject {
   }) : createdAt = createdAt ?? DateTime.now();
 
   /// Get the IconData for this category
-  IconData get icon => IconData(iconCodePoint, fontFamily: iconFontFamily);
+  /// Uses a lookup to return const IconData for tree shaking support
+  IconData get icon {
+    for (final iconData in DefaultCategories.availableIcons) {
+      if (iconData.codePoint == iconCodePoint) {
+        return iconData;
+      }
+    }
+    return Icons.category_rounded; // fallback
+  }
 
   /// Get the Color for this category
   Color get color => Color(colorValue);

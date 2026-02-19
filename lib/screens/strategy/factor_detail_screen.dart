@@ -52,8 +52,10 @@ class _FactorDetailScreenState extends State<FactorDetailScreen> {
   Widget build(BuildContext context) {
     return Consumer<AppState>(
       builder: (context, state, _) {
-        final factor = state.factors.where((f) => f.id == widget.factorId).firstOrNull;
-        
+        final factor = state.factors
+            .where((f) => f.id == widget.factorId)
+            .firstOrNull;
+
         if (factor == null) {
           return Scaffold(
             appBar: AppBar(title: const Text('Factor')),
@@ -82,15 +84,21 @@ class _FactorDetailScreenState extends State<FactorDetailScreen> {
             backgroundColor: Colors.transparent,
             actions: [
               IconButton(
-                icon: Icon(_isEditing ? Icons.check_rounded : Icons.edit_rounded),
+                icon: Icon(
+                  _isEditing ? Icons.check_rounded : Icons.edit_rounded,
+                ),
                 onPressed: () {
                   if (_isEditing) {
                     // Save changes
                     factor.name = _nameController.text.trim();
                     factor.targetDescription = _targetDescController.text;
                     factor.currentDescription = _currentDescController.text;
-                    factor.targetLevel = int.tryParse(_targetLevelController.text) ?? factor.targetLevel;
-                    factor.currentLevel = int.tryParse(_currentLevelController.text) ?? factor.currentLevel;
+                    factor.targetLevel =
+                        int.tryParse(_targetLevelController.text) ??
+                        factor.targetLevel;
+                    factor.currentLevel =
+                        int.tryParse(_currentLevelController.text) ??
+                        factor.currentLevel;
                     // Clamp levels
                     factor.targetLevel = factor.targetLevel.clamp(1, 10);
                     factor.currentLevel = factor.currentLevel.clamp(1, 10);
@@ -111,25 +119,44 @@ class _FactorDetailScreenState extends State<FactorDetailScreen> {
                 TreePlatform(
                   factor: factor,
                   effortUnits: effortUnits,
-                  tasksCompleted: linkedTasks.where((t) => t.isCompleted).length,
-                  habitsLogged: linkedHabits.where((h) => h.isLoggedToday).length,
+                  tasksCompleted: linkedTasks
+                      .where((t) => t.isCompleted)
+                      .length,
+                  habitsLogged: linkedHabits
+                      .where((h) => h.isLoggedToday)
+                      .length,
                   reflections: linkedReflections.length,
                 ).animate().fadeIn(duration: 500.ms),
 
                 const SizedBox(height: 24),
 
                 // Gap Analysis
-                _SectionHeader(title: _isEditing ? 'Edit Details' : 'Gap Analysis', icon: _isEditing ? Icons.edit_rounded : Icons.analytics_rounded, color: AppColors.info),
+                _SectionHeader(
+                  title: _isEditing ? 'Edit Details' : 'Gap Analysis',
+                  icon: _isEditing
+                      ? Icons.edit_rounded
+                      : Icons.analytics_rounded,
+                  color: AppColors.info,
+                ),
                 GlassCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Name field (editable or display)
                       if (_isEditing) ...[
-                        Text('Name', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                        Text(
+                          'Name',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
                         const SizedBox(height: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: AppColors.surfaceLight,
                             borderRadius: BorderRadius.circular(10),
@@ -137,7 +164,11 @@ class _FactorDetailScreenState extends State<FactorDetailScreen> {
                           ),
                           child: TextField(
                             controller: _nameController,
-                            style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 16),
+                            style: TextStyle(
+                              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                            ),
                             decoration: const InputDecoration(
                               isDense: true,
                               contentPadding: EdgeInsets.symmetric(vertical: 8),
@@ -158,7 +189,11 @@ class _FactorDetailScreenState extends State<FactorDetailScreen> {
                                     controller: _targetLevelController,
                                     color: AppColors.primary,
                                   )
-                                : _LevelDisplay(label: 'Target', level: factor.targetLevel, color: AppColors.primary),
+                                : _LevelDisplay(
+                                    label: 'Target',
+                                    level: factor.targetLevel,
+                                    color: AppColors.primary,
+                                  ),
                           ),
                           const SizedBox(width: 8),
                           // Current
@@ -169,12 +204,28 @@ class _FactorDetailScreenState extends State<FactorDetailScreen> {
                                     controller: _currentLevelController,
                                     color: AppColors.success,
                                   )
-                                : _LevelDisplay(label: 'Current', level: factor.currentLevel, color: AppColors.success),
+                                : _LevelDisplay(
+                                    label: 'Current',
+                                    level: factor.currentLevel,
+                                    color: AppColors.success,
+                                  ),
                           ),
                           if (!_isEditing) ...[
-                            Container(width: 1, height: 50, color: AppColors.glassBorder),
+                            Container(
+                              width: 1,
+                              height: 50,
+                              color: AppColors.glassBorder,
+                            ),
                             // Gap (always read-only)
-                            Expanded(child: _LevelDisplay(label: 'Gap', level: factor.gap, color: factor.needsFocus ? AppColors.danger : AppColors.warning)),
+                            Expanded(
+                              child: _LevelDisplay(
+                                label: 'Gap',
+                                level: factor.gap,
+                                color: factor.needsFocus
+                                    ? AppColors.danger
+                                    : AppColors.warning,
+                              ),
+                            ),
                           ],
                         ],
                       ),
@@ -183,18 +234,37 @@ class _FactorDetailScreenState extends State<FactorDetailScreen> {
                         const SizedBox(height: 12),
                         Center(
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
                             decoration: BoxDecoration(
-                              color: (factor.needsFocus ? AppColors.danger : AppColors.warning).withAlpha(20),
+                              color:
+                                  (factor.needsFocus
+                                          ? AppColors.danger
+                                          : AppColors.warning)
+                                      .withAlpha(20),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text('Gap: ', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                                Text(
+                                  'Gap: ',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.textMuted,
+                                  ),
+                                ),
                                 Text(
                                   '${factor.gap}',
-                                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: factor.needsFocus ? AppColors.danger : AppColors.warning),
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: factor.needsFocus
+                                        ? AppColors.danger
+                                        : AppColors.warning,
+                                  ),
                                 ),
                               ],
                             ),
@@ -208,29 +278,47 @@ class _FactorDetailScreenState extends State<FactorDetailScreen> {
                 const SizedBox(height: 24),
 
                 // Focus Status (Activate/Deactivate)
-                _SectionHeader(title: 'Focus Status', icon: Icons.local_fire_department_rounded, color: factor.isActiveFocus ? AppColors.success : AppColors.textMuted),
+                _SectionHeader(
+                  title: 'Focus Status',
+                  icon: Icons.local_fire_department_rounded,
+                  color: factor.isActiveFocus
+                      ? AppColors.success
+                      : AppColors.textMuted,
+                ),
                 GlassCard(
                   highlighted: factor.isActiveFocus,
                   child: Column(
                     children: [
                       Row(
                         children: [
-                          Text(factor.treeEmoji, style: const TextStyle(fontSize: 32)),
+                          Text(
+                            factor.treeEmoji,
+                            style: const TextStyle(fontSize: 32),
+                          ),
                           const SizedBox(width: 16),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  factor.isActiveFocus ? '⭐ Active Focus' : '💤 Dissected',
-                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                                  factor.isActiveFocus
+                                      ? '⭐ Active Focus'
+                                      : '💤 Dissected',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.textPrimary,
+                                  ),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  factor.isActiveFocus 
+                                  factor.isActiveFocus
                                       ? 'Health: ${factor.healthPercent.toInt()}%'
                                       : 'Frozen - no decay penalty',
-                                  style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.textMuted,
+                                  ),
                                 ),
                               ],
                             ),
@@ -245,7 +333,11 @@ class _FactorDetailScreenState extends State<FactorDetailScreen> {
                             onPressed: () {
                               state.setFactorDormant(factor.id);
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('${factor.name} is now dormant 💤')),
+                                SnackBar(
+                                  content: Text(
+                                    '${factor.name} is now dormant 💤',
+                                  ),
+                                ),
                               );
                             },
                             icon: const Icon(Icons.pause_rounded),
@@ -263,10 +355,17 @@ class _FactorDetailScreenState extends State<FactorDetailScreen> {
                             onPressed: () {
                               state.setFactorActive(factor.id);
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('${factor.name} is now active! 🔥'), backgroundColor: AppColors.success),
+                                SnackBar(
+                                  content: Text(
+                                    '${factor.name} is now active! 🔥',
+                                  ),
+                                  backgroundColor: AppColors.success,
+                                ),
                               );
                             },
-                            icon: const Icon(Icons.local_fire_department_rounded),
+                            icon: const Icon(
+                              Icons.local_fire_department_rounded,
+                            ),
                             label: const Text('Activate Focus'),
                           ),
                         )
@@ -279,12 +378,19 @@ class _FactorDetailScreenState extends State<FactorDetailScreen> {
                           ),
                           child: Row(
                             children: [
-                              Icon(Icons.info_rounded, color: AppColors.warning, size: 18),
+                              Icon(
+                                Icons.info_rounded,
+                                color: AppColors.warning,
+                                size: 18,
+                              ),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
                                   'Max 2 active focus areas. Deactivate one to activate this.',
-                                  style: TextStyle(fontSize: 12, color: AppColors.warning),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.warning,
+                                  ),
                                 ),
                               ),
                             ],
@@ -295,8 +401,12 @@ class _FactorDetailScreenState extends State<FactorDetailScreen> {
                 ),
 
                 const SizedBox(height: 24),
-                _SectionHeader(title: 'Level Criteria', icon: Icons.description_rounded, color: AppColors.warning),
-                
+                _SectionHeader(
+                  title: 'Level Criteria',
+                  icon: Icons.description_rounded,
+                  color: AppColors.warning,
+                ),
+
                 // Target Description
                 GlassCard(
                   child: Column(
@@ -304,9 +414,19 @@ class _FactorDetailScreenState extends State<FactorDetailScreen> {
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.flag_rounded, color: AppColors.primary, size: 18),
+                          Icon(
+                            Icons.flag_rounded,
+                            color: AppColors.primary,
+                            size: 18,
+                          ),
                           const SizedBox(width: 8),
-                          Text('Level 10 looks like...', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.primary)),
+                          Text(
+                            'Level ${factor.targetLevel} looks like...',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primary,
+                            ),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 12),
@@ -315,11 +435,19 @@ class _FactorDetailScreenState extends State<FactorDetailScreen> {
                               controller: _targetDescController,
                               maxLines: 3,
                               style: TextStyle(color: AppColors.textPrimary),
-                              decoration: InputDecoration(hintText: 'Describe mastery level...'),
+                              decoration: InputDecoration(
+                                hintText: 'Describe mastery level...',
+                              ),
                             )
                           : Text(
-                              factor.targetDescription.isEmpty ? 'Tap edit to define your target...' : factor.targetDescription,
-                              style: TextStyle(color: factor.targetDescription.isEmpty ? AppColors.textMuted : AppColors.textSecondary),
+                              factor.targetDescription.isEmpty
+                                  ? 'Tap edit to define your target...'
+                                  : factor.targetDescription,
+                              style: TextStyle(
+                                color: factor.targetDescription.isEmpty
+                                    ? AppColors.textMuted
+                                    : AppColors.textSecondary,
+                              ),
                             ),
                     ],
                   ),
@@ -334,9 +462,19 @@ class _FactorDetailScreenState extends State<FactorDetailScreen> {
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.person_rounded, color: AppColors.success, size: 18),
+                          Icon(
+                            Icons.person_rounded,
+                            color: AppColors.success,
+                            size: 18,
+                          ),
                           const SizedBox(width: 8),
-                          Text('Why Level ${factor.currentLevel}?', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.success)),
+                          Text(
+                            'Why Level ${factor.currentLevel}?',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.success,
+                            ),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 12),
@@ -345,11 +483,19 @@ class _FactorDetailScreenState extends State<FactorDetailScreen> {
                               controller: _currentDescController,
                               maxLines: 3,
                               style: TextStyle(color: AppColors.textPrimary),
-                              decoration: InputDecoration(hintText: 'Explain your current state...'),
+                              decoration: InputDecoration(
+                                hintText: 'Explain your current state...',
+                              ),
                             )
                           : Text(
-                              factor.currentDescription.isEmpty ? 'Tap edit to explain your current level...' : factor.currentDescription,
-                              style: TextStyle(color: factor.currentDescription.isEmpty ? AppColors.textMuted : AppColors.textSecondary),
+                              factor.currentDescription.isEmpty
+                                  ? 'Tap edit to explain your current level...'
+                                  : factor.currentDescription,
+                              style: TextStyle(
+                                color: factor.currentDescription.isEmpty
+                                    ? AppColors.textMuted
+                                    : AppColors.textSecondary,
+                              ),
                             ),
                     ],
                   ),
@@ -358,16 +504,38 @@ class _FactorDetailScreenState extends State<FactorDetailScreen> {
                 const SizedBox(height: 24),
 
                 // History Timeline
-                _SectionHeader(title: 'Work History', icon: Icons.history_rounded, color: AppColors.success),
-                
+                _SectionHeader(
+                  title: 'Work History',
+                  icon: Icons.history_rounded,
+                  color: AppColors.success,
+                ),
+
                 // Stats Row
                 Row(
                   children: [
-                    Expanded(child: _StatChip(label: 'Tasks', count: linkedTasks.length, color: AppColors.primary)),
+                    Expanded(
+                      child: _StatChip(
+                        label: 'Tasks',
+                        count: linkedTasks.length,
+                        color: AppColors.primary,
+                      ),
+                    ),
                     const SizedBox(width: 8),
-                    Expanded(child: _StatChip(label: 'Habits', count: linkedHabits.length, color: AppColors.success)),
+                    Expanded(
+                      child: _StatChip(
+                        label: 'Habits',
+                        count: linkedHabits.length,
+                        color: AppColors.success,
+                      ),
+                    ),
                     const SizedBox(width: 8),
-                    Expanded(child: _StatChip(label: 'Reflects', count: linkedReflections.length, color: AppColors.info)),
+                    Expanded(
+                      child: _StatChip(
+                        label: 'Reflects',
+                        count: linkedReflections.length,
+                        color: AppColors.info,
+                      ),
+                    ),
                   ],
                 ),
 
@@ -376,16 +544,29 @@ class _FactorDetailScreenState extends State<FactorDetailScreen> {
                 // Tasks List
                 if (linkedTasks.isNotEmpty) ...[
                   _SubsectionLabel(label: 'Linked Tasks'),
-                  ...linkedTasks.take(5).map((task) => _HistoryItem(
-                    icon: task.isCompleted ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
-                    color: task.isCompleted ? AppColors.success : AppColors.textMuted,
-                    title: task.title,
-                    subtitle: task.isCompleted ? 'Completed' : 'In progress',
-                  )),
+                  ...linkedTasks
+                      .take(5)
+                      .map(
+                        (task) => _HistoryItem(
+                          icon: task.isCompleted
+                              ? Icons.check_circle_rounded
+                              : Icons.radio_button_unchecked_rounded,
+                          color: task.isCompleted
+                              ? AppColors.success
+                              : AppColors.textMuted,
+                          title: task.title,
+                          subtitle: task.isCompleted
+                              ? 'Completed'
+                              : 'In progress',
+                        ),
+                      ),
                   if (linkedTasks.length > 5)
                     Padding(
                       padding: const EdgeInsets.only(left: 40, top: 8),
-                      child: Text('+${linkedTasks.length - 5} more tasks', style: TextStyle(color: AppColors.textMuted)),
+                      child: Text(
+                        '+${linkedTasks.length - 5} more tasks',
+                        style: TextStyle(color: AppColors.textMuted),
+                      ),
                     ),
                 ],
 
@@ -393,24 +574,33 @@ class _FactorDetailScreenState extends State<FactorDetailScreen> {
                 if (linkedHabits.isNotEmpty) ...[
                   const SizedBox(height: 16),
                   _SubsectionLabel(label: 'Linked Habits'),
-                  ...linkedHabits.map((habit) => _HistoryItem(
-                    icon: Icons.repeat_rounded,
-                    color: AppColors.success,
-                    title: habit.name,
-                    subtitle: '${habit.currentStreak} day streak • ${habit.completionCount} total',
-                  )),
+                  ...linkedHabits.map(
+                    (habit) => _HistoryItem(
+                      icon: Icons.repeat_rounded,
+                      color: AppColors.success,
+                      title: habit.name,
+                      subtitle:
+                          '${habit.currentStreak} day streak • ${habit.completionCount} total',
+                    ),
+                  ),
                 ],
 
                 // Reflections List
                 if (linkedReflections.isNotEmpty) ...[
                   const SizedBox(height: 16),
                   _SubsectionLabel(label: 'Linked Reflections'),
-                  ...linkedReflections.take(3).map((ref) => _HistoryItem(
-                    icon: Icons.psychology_rounded,
-                    color: AppColors.info,
-                    title: ref.experience.isNotEmpty ? ref.experience : 'Untitled reflection',
-                    subtitle: '${ref.experimentIds.length} experiments',
-                  )),
+                  ...linkedReflections
+                      .take(3)
+                      .map(
+                        (ref) => _HistoryItem(
+                          icon: Icons.psychology_rounded,
+                          color: AppColors.info,
+                          title: ref.experience.isNotEmpty
+                              ? ref.experience
+                              : 'Untitled reflection',
+                          subtitle: '${ref.experimentIds.length} experiments',
+                        ),
+                      ),
                 ],
 
                 const SizedBox(height: 100),
@@ -447,7 +637,10 @@ class _EditableLevelBox extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(label, style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+          Text(
+            label,
+            style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+          ),
           const SizedBox(height: 4),
           SizedBox(
             width: 50,
@@ -455,7 +648,11 @@ class _EditableLevelBox extends StatelessWidget {
               controller: controller,
               keyboardType: TextInputType.number,
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: color),
+              style: TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
               decoration: const InputDecoration(
                 isDense: true,
                 contentPadding: EdgeInsets.symmetric(vertical: 2),
@@ -474,7 +671,11 @@ class _SectionHeader extends StatelessWidget {
   final IconData icon;
   final Color color;
 
-  const _SectionHeader({required this.title, required this.icon, required this.color});
+  const _SectionHeader({
+    required this.title,
+    required this.icon,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -484,7 +685,14 @@ class _SectionHeader extends StatelessWidget {
         children: [
           Icon(icon, color: color, size: 20),
           const SizedBox(width: 12),
-          Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
+          ),
         ],
       ),
     );
@@ -496,13 +704,24 @@ class _LevelDisplay extends StatelessWidget {
   final int level;
   final Color color;
 
-  const _LevelDisplay({required this.label, required this.level, required this.color});
+  const _LevelDisplay({
+    required this.label,
+    required this.level,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Text('$level', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: color)),
+        Text(
+          '$level',
+          style: TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
         Text(label, style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
       ],
     );
@@ -514,7 +733,11 @@ class _StatChip extends StatelessWidget {
   final int count;
   final Color color;
 
-  const _StatChip({required this.label, required this.count, required this.color});
+  const _StatChip({
+    required this.label,
+    required this.count,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -526,8 +749,18 @@ class _StatChip extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Text('$count', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: color)),
-          Text(label, style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+          Text(
+            '$count',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+          Text(
+            label,
+            style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+          ),
         ],
       ),
     );
@@ -544,7 +777,12 @@ class _SubsectionLabel extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 8),
       child: Text(
         label.toUpperCase(),
-        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textMuted, letterSpacing: 1.2),
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: AppColors.textMuted,
+          letterSpacing: 1.2,
+        ),
       ),
     );
   }
@@ -556,7 +794,12 @@ class _HistoryItem extends StatelessWidget {
   final String title;
   final String subtitle;
 
-  const _HistoryItem({required this.icon, required this.color, required this.title, required this.subtitle});
+  const _HistoryItem({
+    required this.icon,
+    required this.color,
+    required this.title,
+    required this.subtitle,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -570,8 +813,16 @@ class _HistoryItem extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: TextStyle(color: AppColors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
-                Text(subtitle, style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                Text(
+                  title,
+                  style: TextStyle(color: AppColors.textPrimary),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  subtitle,
+                  style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                ),
               ],
             ),
           ),
@@ -580,4 +831,3 @@ class _HistoryItem extends StatelessWidget {
     );
   }
 }
-

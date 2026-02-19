@@ -28,7 +28,8 @@ class StrategyScreen extends StatelessWidget {
             slivers: [
               _buildHeader(context),
               _buildGoalSection(context, state),
-              if (state.activeGoal != null) _buildFactorsSection(context, state),
+              if (state.activeGoal != null)
+                _buildFactorsSection(context, state),
               _buildTimeSection(context, state),
               _buildSprintSection(context, state),
               const SliverToBoxAdapter(child: SizedBox(height: 100)),
@@ -46,13 +47,17 @@ class StrategyScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Strategy', style: Theme.of(context).textTheme.displayMedium)
-                .animate().fadeIn(duration: 400.ms),
+            Text(
+              'Strategy',
+              style: Theme.of(context).textTheme.displayMedium,
+            ).animate().fadeIn(duration: 400.ms),
             const SizedBox(height: 8),
-            Text('Anchor your goal and plan your direction',
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: Theme.of(context).textTheme.bodySmall?.color, // Muted
-                )),
+            Text(
+              'Anchor your goal and plan your direction',
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: Theme.of(context).textTheme.bodySmall?.color, // Muted
+              ),
+            ),
           ],
         ),
       ),
@@ -63,7 +68,11 @@ class StrategyScreen extends StatelessWidget {
     return SliverToBoxAdapter(
       child: Column(
         children: [
-          _SectionHeader(title: 'Goal Anchor', icon: Icons.flag_rounded, color: AppColors.primary),
+          _SectionHeader(
+            title: 'Goal Anchor',
+            icon: Icons.flag_rounded,
+            color: AppColors.primary,
+          ),
           if (state.activeGoal == null)
             GlassCard(
               onTap: () => _showAddGoalDialog(context),
@@ -71,7 +80,12 @@ class StrategyScreen extends StatelessWidget {
                 children: [
                   Icon(Icons.add_circle_rounded, color: AppColors.primary),
                   const SizedBox(width: 12),
-                  Text('Set Your Medium-Term Goal', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textPrimary)),
+                  Text(
+                    'Set Your Medium-Term Goal',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
                 ],
               ),
             )
@@ -80,31 +94,60 @@ class StrategyScreen extends StatelessWidget {
               highlighted: true,
               onTap: () => Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => GoalDetailScreen(goalId: state.activeGoal!.id)),
+                MaterialPageRoute(
+                  builder: (_) =>
+                      GoalDetailScreen(goalId: state.activeGoal!.id),
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.park_rounded, color: AppColors.primary, size: 20),
+                      Icon(
+                        Icons.park_rounded,
+                        color: AppColors.primary,
+                        size: 20,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
-                        child: Text(state.activeGoal!.title, 
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 18)),
+                        child: Text(
+                          state.activeGoal!.title,
+                          style: Theme.of(
+                            context,
+                          ).textTheme.titleLarge?.copyWith(fontSize: 18),
+                        ),
                       ),
-                      Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        color: AppColors.textMuted,
+                      ),
                     ],
                   ),
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      Icon(Icons.schedule_rounded, size: 14, color: AppColors.textMuted),
+                      Icon(
+                        Icons.schedule_rounded,
+                        size: 14,
+                        color: AppColors.textMuted,
+                      ),
                       const SizedBox(width: 4),
-                      Text('${state.activeGoal!.daysRemaining} days remaining',
-                          style: TextStyle(color: AppColors.primary, fontSize: 13)),
+                      Text(
+                        '${state.activeGoal!.daysRemaining} days remaining',
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 13,
+                        ),
+                      ),
                       const Spacer(),
-                      Text('Tap to view forest →', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                      Text(
+                        'Tap to view forest →',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
                     ],
                   ),
                 ],
@@ -125,22 +168,30 @@ class StrategyScreen extends StatelessWidget {
             title: 'Active Focus (${state.activeFocusFactors.length}/2)',
             icon: Icons.local_fire_department_rounded,
             color: AppColors.success,
-            onAdd: state.canAddActiveFocus && state.dormantFactors.isNotEmpty 
+            onAdd: state.canAddActiveFocus && state.dormantFactors.isNotEmpty
                 ? () => _showSelectFactorToActivate(context, state)
                 : null,
           ),
-          
+
           if (state.activeFocusFactors.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: GlassCard(
                 child: Column(
                   children: [
-                    Text('🎯 Select up to 2 Trees to focus on', 
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textMuted)),
+                    Text(
+                      '🎯 Select up to 2 Trees to focus on',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppColors.textMuted,
+                      ),
+                    ),
                     const SizedBox(height: 8),
-                    Text('Only active Trees grow or decay',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMuted)),
+                    Text(
+                      'Only active Trees grow or decay',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.textMuted,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -149,73 +200,102 @@ class StrategyScreen extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Column(
-                children: state.activeFocusFactors.map((f) => Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Stack(
-                    children: [
-                      FactorHealthTree(
-                        factor: f,
-                        onTap: () => Navigator.push(context, MaterialPageRoute(
-                          builder: (_) => FactorDetailScreen(factorId: f.id),
-                        )),
-                      ),
-                      // Deactivate button in top-right corner
-                      Positioned(
-                        top: 8,
-                        right: 8,
-                        child: GestureDetector(
-                          onTap: () {
-                            state.setFactorDormant(f.id);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('${f.name} moved to Dissected Trees 💤')),
-                            );
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: AppColors.textMuted.withAlpha(30),
-                              borderRadius: BorderRadius.circular(12),
+                children: state.activeFocusFactors
+                    .map(
+                      (f) => Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Stack(
+                          children: [
+                            FactorHealthTree(
+                              factor: f,
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      FactorDetailScreen(factorId: f.id),
+                                ),
+                              ),
                             ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.pause_rounded, size: 14, color: AppColors.textMuted),
-                                const SizedBox(width: 4),
-                                Text('Pause', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
-                              ],
+                            // Deactivate button in top-right corner
+                            Positioned(
+                              top: 8,
+                              right: 8,
+                              child: GestureDetector(
+                                onTap: () {
+                                  state.setFactorDormant(f.id);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        '${f.name} moved to Dissected Trees 💤',
+                                      ),
+                                    ),
+                                  );
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.textMuted.withAlpha(30),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.pause_rounded,
+                                        size: 14,
+                                        color: AppColors.textMuted,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'Pause',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: AppColors.textMuted,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
                             ),
-                          ),
+                          ],
                         ),
                       ),
-                    ],
-                  ),
-                )).toList(),
+                    )
+                    .toList(),
               ),
             ),
-          
+
           // Dissected Trees - ALWAYS show section header
           _SectionHeader(
             title: '🌳 Dissected Trees',
             icon: Icons.nightlight_round,
             color: AppColors.textMuted,
-            onAdd: state.activeGoal != null 
+            onAdd: state.activeGoal != null
                 ? () => _showAddFactorDialog(context, state.activeGoal!.id)
                 : null,
           ),
-          
+
           if (state.factors.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: GlassCard(
-                onTap: state.activeGoal != null 
+                onTap: state.activeGoal != null
                     ? () => _showAddFactorDialog(context, state.activeGoal!.id)
                     : null,
                 child: Row(
                   children: [
                     Icon(Icons.add_circle_rounded, color: AppColors.textMuted),
                     const SizedBox(width: 12),
-                    Text('Add Trees from Goal Dissection', 
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textMuted)),
+                    Text(
+                      'Add Trees from Goal Dissection',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppColors.textMuted,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -233,12 +313,19 @@ class StrategyScreen extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.check_circle_rounded, color: AppColors.success, size: 20),
+                    Icon(
+                      Icons.check_circle_rounded,
+                      color: AppColors.success,
+                      size: 20,
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         'All trees are in Active Focus! Tap "Pause" above to move one here.',
-                        style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textMuted,
+                        ),
                       ),
                     ),
                   ],
@@ -248,30 +335,49 @@ class StrategyScreen extends StatelessWidget {
           else
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: state.dormantFactors.map((f) => GestureDetector(
-                  onTap: () => Navigator.push(context, MaterialPageRoute(
-                    builder: (_) => FactorDetailScreen(factorId: f.id),
-                  )),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceLight,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: AppColors.glassBorder),
+              child: Column(
+                children: [
+                  for (var i = 0; i < state.dormantFactors.length; i += 2)
+                    Padding(
+                      padding: EdgeInsets.only(
+                        bottom: i + 2 < state.dormantFactors.length ? 8 : 0,
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: _DormantFactorChip(
+                              factor: state.dormantFactors[i],
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => FactorDetailScreen(
+                                    factorId: state.dormantFactors[i].id,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          if (i + 1 < state.dormantFactors.length)
+                            Expanded(
+                              child: _DormantFactorChip(
+                                factor: state.dormantFactors[i + 1],
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => FactorDetailScreen(
+                                      factorId: state.dormantFactors[i + 1].id,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            )
+                          else
+                            const Expanded(child: SizedBox()),
+                        ],
+                      ),
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(f.treeEmoji, style: const TextStyle(fontSize: 16)),
-                        const SizedBox(width: 8),
-                        Text(f.name, style: Theme.of(context).textTheme.bodyMedium),
-                      ],
-                    ),
-                  ),
-                )).toList(),
+                ],
               ),
             ),
         ],
@@ -292,21 +398,34 @@ class StrategyScreen extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Select Tree to Activate', style: Theme.of(context).textTheme.titleLarge),
+            Text(
+              'Select Tree to Activate',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
             const SizedBox(height: 8),
-            Text('You can focus on up to 2 Factors at a time', 
-                style: TextStyle(color: AppColors.textMuted)),
+            Text(
+              'You can focus on up to 2 Factors at a time',
+              style: TextStyle(color: AppColors.textMuted),
+            ),
             const SizedBox(height: 16),
-            ...state.dormantFactors.map((f) => ListTile(
-              leading: Text(f.treeEmoji, style: const TextStyle(fontSize: 24)),
-              title: Text(f.name),
-              subtitle: Text(f.typeName),
-              trailing: Icon(Icons.add_circle_rounded, color: AppColors.primary),
-              onTap: () {
-                state.setFactorActive(f.id);
-                Navigator.pop(ctx);
-              },
-            )),
+            ...state.dormantFactors.map(
+              (f) => ListTile(
+                leading: Text(
+                  f.treeEmoji,
+                  style: const TextStyle(fontSize: 24),
+                ),
+                title: Text(f.name),
+                subtitle: Text(f.typeName),
+                trailing: Icon(
+                  Icons.add_circle_rounded,
+                  color: AppColors.primary,
+                ),
+                onTap: () {
+                  state.setFactorActive(f.id);
+                  Navigator.pop(ctx);
+                },
+              ),
+            ),
           ],
         ),
       ),
@@ -318,13 +437,17 @@ class StrategyScreen extends StatelessWidget {
     final hoursPerWeek = availability.hoursPerWeekMin;
     final tasksCompleted = state.completedTasks.length;
     final habitsLogged = state.habits.where((h) => h.isLoggedToday).length;
-    
+
     return SliverToBoxAdapter(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _SectionHeader(title: 'Time Defense', icon: Icons.schedule_rounded, color: AppColors.warning),
-          
+          _SectionHeader(
+            title: 'Time Defense',
+            icon: Icons.schedule_rounded,
+            color: AppColors.warning,
+          ),
+
           // Weekly Budget Card
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -332,7 +455,10 @@ class StrategyScreen extends StatelessWidget {
               padding: const EdgeInsets.all(AppSpacing.md),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [AppColors.warning.withAlpha(20), AppColors.primary.withAlpha(15)], // Subtler
+                  colors: [
+                    AppColors.warning.withAlpha(20),
+                    AppColors.primary.withAlpha(15),
+                  ], // Subtler
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -351,17 +477,30 @@ class StrategyScreen extends StatelessWidget {
                           color: AppColors.warning.withAlpha(40),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Icon(Icons.timer_rounded, color: AppColors.warning, size: 24),
+                        child: Icon(
+                          Icons.timer_rounded,
+                          color: AppColors.warning,
+                          size: 24,
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Weekly Budget', style: Theme.of(context).textTheme.labelLarge),
                             Text(
-                              hoursPerWeek == 0 ? 'No time set' : '$hoursPerWeek+ hours/week',
-                              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.warning),
+                              'Weekly Budget',
+                              style: Theme.of(context).textTheme.labelLarge,
+                            ),
+                            Text(
+                              hoursPerWeek == 0
+                                  ? 'No time set'
+                                  : '$hoursPerWeek+ hours/week',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.warning,
+                              ),
                             ),
                           ],
                         ),
@@ -369,9 +508,27 @@ class StrategyScreen extends StatelessWidget {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          Text('This week', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
-                          Text('$tasksCompleted tasks', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-                          Text('$habitsLogged habits', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                          Text(
+                            'This week',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                          Text(
+                            '$tasksCompleted tasks',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                          Text(
+                            '$habitsLogged habits',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
                         ],
                       ),
                     ],
@@ -389,37 +546,64 @@ class StrategyScreen extends StatelessWidget {
               ),
             ),
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           // Time availability options
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Text('Set your availability:', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMuted)),
+            child: Text(
+              'Set your availability:',
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
+            ),
           ),
           const SizedBox(height: 8),
           ...TimeAvailability.values.map((a) {
             final isDark = Theme.of(context).brightness == Brightness.dark;
             final isSelected = state.timeAvailability == a;
-            final surfaceColor = isDark ? AppColors.surface : LightColors.surface;
-            final glassBorder = isDark ? AppColors.glassBorder : LightColors.glassBorder;
-            
+            final surfaceColor = isDark
+                ? AppColors.surface
+                : LightColors.surface;
+            final glassBorder = isDark
+                ? AppColors.glassBorder
+                : LightColors.glassBorder;
+
             return GestureDetector(
               onTap: () => state.setTimeAvailability(a),
               child: Container(
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                 padding: const EdgeInsets.all(AppSpacing.md),
                 decoration: BoxDecoration(
-                  color: isSelected ? AppColors.primary.withAlpha(20) : surfaceColor,
+                  color: isSelected
+                      ? AppColors.primary.withAlpha(20)
+                      : surfaceColor,
                   borderRadius: BorderRadius.circular(AppRadius.md),
-                  border: Border.all(color: isSelected ? AppColors.primary.withAlpha(50) : glassBorder),
+                  border: Border.all(
+                    color: isSelected
+                        ? AppColors.primary.withAlpha(50)
+                        : glassBorder,
+                  ),
                 ),
                 child: Row(
                   children: [
-                    Icon(isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
-                        color: isSelected ? AppColors.primary : AppColors.textMuted, size: 20),
+                    Icon(
+                      isSelected
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_off,
+                      color: isSelected
+                          ? AppColors.primary
+                          : AppColors.textMuted,
+                      size: 20,
+                    ),
                     const SizedBox(width: 12),
-                    Expanded(child: Text(a.label, style: Theme.of(context).textTheme.bodyMedium)),
+                    Expanded(
+                      child: Text(
+                        a.label,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -431,9 +615,13 @@ class StrategyScreen extends StatelessWidget {
   }
 
   Widget _buildSprintSection(BuildContext context, AppState state) {
-    final thirtyDayGoals = state.sprintTargets.where((t) => t.duration == SprintDuration.thirtyDays).toList();
-    final fourteenDayGoals = state.sprintTargets.where((t) => t.duration == SprintDuration.fourteenDays).toList();
-    
+    final thirtyDayGoals = state.sprintTargets
+        .where((t) => t.duration == SprintDuration.thirtyDays)
+        .toList();
+    final fourteenDayGoals = state.sprintTargets
+        .where((t) => t.duration == SprintDuration.fourteenDays)
+        .toList();
+
     return SliverToBoxAdapter(
       child: Column(
         children: [
@@ -442,48 +630,69 @@ class StrategyScreen extends StatelessWidget {
             title: '30-Day Performance Goals',
             icon: Icons.calendar_month_rounded,
             color: AppColors.info,
-            onAdd: () => _showAddSprintDialog(context, state, SprintDuration.thirtyDays),
+            onAdd: () =>
+                _showAddSprintDialog(context, state, SprintDuration.thirtyDays),
           ),
           if (thirtyDayGoals.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text('No 30-day goals set', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textMuted)),
+              child: Text(
+                'No 30-day goals set',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: AppColors.textMuted),
+              ),
             )
           else
-            ...thirtyDayGoals.map((t) => _SprintGoalCard(
-              target: t,
-              factors: state.factors,
-              onEdit: () => _showEditSprintDialog(context, state, t),
-              onDelete: () => _showDeleteSprintConfirmation(context, state, t),
-              onComplete: () => state.markSprintComplete(t.id),
-              onFail: () => state.markSprintFailed(t.id),
-              onReset: () => state.resetSprintTarget(t.id),
-            )),
-          
+            ...thirtyDayGoals.map(
+              (t) => _SprintGoalCard(
+                target: t,
+                factors: state.factors,
+                onEdit: () => _showEditSprintDialog(context, state, t),
+                onDelete: () =>
+                    _showDeleteSprintConfirmation(context, state, t),
+                onComplete: () => state.markSprintComplete(t.id),
+                onFail: () => state.markSprintFailed(t.id),
+                onReset: () => state.resetSprintTarget(t.id),
+              ),
+            ),
+
           const SizedBox(height: 8),
-          
+
           // 14-Day Performance Goals
           _SectionHeader(
             title: '14-Day Performance Goals',
             icon: Icons.bolt_rounded,
             color: AppColors.warning,
-            onAdd: () => _showAddSprintDialog(context, state, SprintDuration.fourteenDays),
+            onAdd: () => _showAddSprintDialog(
+              context,
+              state,
+              SprintDuration.fourteenDays,
+            ),
           ),
           if (fourteenDayGoals.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text('No 14-day goals set', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textMuted)),
+              child: Text(
+                'No 14-day goals set',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: AppColors.textMuted),
+              ),
             )
           else
-            ...fourteenDayGoals.map((t) => _SprintGoalCard(
-              target: t,
-              factors: state.factors,
-              onEdit: () => _showEditSprintDialog(context, state, t),
-              onDelete: () => _showDeleteSprintConfirmation(context, state, t),
-              onComplete: () => state.markSprintComplete(t.id),
-              onFail: () => state.markSprintFailed(t.id),
-              onReset: () => state.resetSprintTarget(t.id),
-            )),
+            ...fourteenDayGoals.map(
+              (t) => _SprintGoalCard(
+                target: t,
+                factors: state.factors,
+                onEdit: () => _showEditSprintDialog(context, state, t),
+                onDelete: () =>
+                    _showDeleteSprintConfirmation(context, state, t),
+                onComplete: () => state.markSprintComplete(t.id),
+                onFail: () => state.markSprintFailed(t.id),
+                onReset: () => state.resetSprintTarget(t.id),
+              ),
+            ),
         ],
       ),
     );
@@ -493,33 +702,152 @@ class StrategyScreen extends StatelessWidget {
     final controller = TextEditingController();
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final surfaceColor = isDark ? AppColors.surface : LightColors.surface;
+    int selectedDays = 270; // Default: 9 months
+    DateTime? customDate;
 
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: surfaceColor,
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: controller, decoration: const InputDecoration(hintText: 'Your goal')),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () {
-                if (controller.text.isNotEmpty) {
-                  context.read<AppState>().addGoal(Goal(
-                    id: StorageService.generateId(),
-                    title: controller.text,
-                    targetDate: DateTime.now().add(const Duration(days: 270)),
-                  ));
-                  Navigator.pop(ctx);
-                }
-              },
-              child: const Text('Save'),
-            ),
-          ],
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) => Padding(
+          padding: EdgeInsets.fromLTRB(
+            20,
+            20,
+            20,
+            MediaQuery.of(ctx).viewInsets.bottom + 20,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextField(
+                controller: controller,
+                decoration: const InputDecoration(hintText: 'Your goal'),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Timeline',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: isDark
+                      ? AppColors.textSecondary
+                      : LightColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _buildTimelineChip('3 months', 90, selectedDays, customDate, (
+                    days,
+                  ) {
+                    setModalState(() {
+                      selectedDays = days;
+                      customDate = null;
+                    });
+                  }),
+                  _buildTimelineChip(
+                    '6 months',
+                    180,
+                    selectedDays,
+                    customDate,
+                    (days) {
+                      setModalState(() {
+                        selectedDays = days;
+                        customDate = null;
+                      });
+                    },
+                  ),
+                  _buildTimelineChip(
+                    '9 months',
+                    270,
+                    selectedDays,
+                    customDate,
+                    (days) {
+                      setModalState(() {
+                        selectedDays = days;
+                        customDate = null;
+                      });
+                    },
+                  ),
+                  _buildTimelineChip('1 year', 365, selectedDays, customDate, (
+                    days,
+                  ) {
+                    setModalState(() {
+                      selectedDays = days;
+                      customDate = null;
+                    });
+                  }),
+                  ChoiceChip(
+                    label: Text(
+                      customDate != null
+                          ? '${customDate!.day}/${customDate!.month}/${customDate!.year}'
+                          : 'Custom',
+                    ),
+                    selected: customDate != null,
+                    onSelected: (_) async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: DateTime.now().add(
+                          Duration(days: selectedDays),
+                        ),
+                        firstDate: DateTime.now().add(const Duration(days: 1)),
+                        lastDate: DateTime.now().add(
+                          const Duration(days: 3650),
+                        ),
+                      );
+                      if (picked != null) {
+                        setModalState(() {
+                          customDate = picked;
+                          selectedDays = picked
+                              .difference(DateTime.now())
+                              .inDays;
+                        });
+                      }
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  if (controller.text.isNotEmpty) {
+                    final targetDate =
+                        customDate ??
+                        DateTime.now().add(Duration(days: selectedDays));
+                    context.read<AppState>().addGoal(
+                      Goal(
+                        id: StorageService.generateId(),
+                        title: controller.text,
+                        targetDate: targetDate,
+                      ),
+                    );
+                    Navigator.pop(ctx);
+                  }
+                },
+                child: const Text('Save'),
+              ),
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildTimelineChip(
+    String label,
+    int days,
+    int selectedDays,
+    DateTime? customDate,
+    ValueChanged<int> onSelected,
+  ) {
+    return ChoiceChip(
+      label: Text(label),
+      selected: selectedDays == days && customDate == null,
+      onSelected: (_) => onSelected(days),
     );
   }
 
@@ -532,21 +860,31 @@ class StrategyScreen extends StatelessWidget {
       context: context,
       backgroundColor: surfaceColor,
       builder: (ctx) => Padding(
-        padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+        padding: EdgeInsets.fromLTRB(
+          20,
+          20,
+          20,
+          MediaQuery.of(ctx).viewInsets.bottom + 20,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(controller: controller, decoration: const InputDecoration(hintText: 'Factor name')),
+            TextField(
+              controller: controller,
+              decoration: const InputDecoration(hintText: 'Factor name'),
+            ),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () {
                 if (controller.text.isNotEmpty) {
-                  context.read<AppState>().addFactor(Factor(
-                    id: StorageService.generateId(),
-                    name: controller.text,
-                    type: FactorType.skill,
-                    goalId: goalId,
-                  ));
+                  context.read<AppState>().addFactor(
+                    Factor(
+                      id: StorageService.generateId(),
+                      name: controller.text,
+                      type: FactorType.skill,
+                      goalId: goalId,
+                    ),
+                  );
                   Navigator.pop(ctx);
                 }
               },
@@ -558,31 +896,48 @@ class StrategyScreen extends StatelessWidget {
     );
   }
 
-  void _showAddSprintDialog(BuildContext context, AppState state, SprintDuration duration) {
+  void _showAddSprintDialog(
+    BuildContext context,
+    AppState state,
+    SprintDuration duration,
+  ) {
     final controller = TextEditingController();
     List<String> selectedFactorIds = [];
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final surfaceColor = isDark ? AppColors.surface : LightColors.surface;
-    
+
     showModalBottomSheet(
       context: context,
       backgroundColor: surfaceColor,
       isScrollControlled: true,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => Padding(
-          padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+          padding: EdgeInsets.fromLTRB(
+            20,
+            20,
+            20,
+            MediaQuery.of(ctx).viewInsets.bottom + 20,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                duration == SprintDuration.thirtyDays ? 'New 30-Day Goal' : 'New 14-Day Goal',
+                duration == SprintDuration.thirtyDays
+                    ? 'New 30-Day Goal'
+                    : 'New 14-Day Goal',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 16),
-              TextField(controller: controller, decoration: const InputDecoration(hintText: 'Performance goal')),
+              TextField(
+                controller: controller,
+                decoration: const InputDecoration(hintText: 'Performance goal'),
+              ),
               const SizedBox(height: 12),
-              Text('Link to Factors', style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
+              Text(
+                'Link to Factors',
+                style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+              ),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
@@ -598,16 +953,32 @@ class StrategyScreen extends StatelessWidget {
                       }
                     }),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: isSelected ? AppColors.primary.withAlpha(30) : AppColors.surfaceLight,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: isSelected ? AppColors.primary : AppColors.glassBorder),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
                       ),
-                      child: Text(f.name, style: TextStyle(
-                        color: isSelected ? AppColors.primary : AppColors.textSecondary,
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                      )),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? AppColors.primary.withAlpha(30)
+                            : AppColors.surfaceLight,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: isSelected
+                              ? AppColors.primary
+                              : AppColors.glassBorder,
+                        ),
+                      ),
+                      child: Text(
+                        f.name,
+                        style: TextStyle(
+                          color: isSelected
+                              ? AppColors.primary
+                              : AppColors.textSecondary,
+                          fontWeight: isSelected
+                              ? FontWeight.w600
+                              : FontWeight.normal,
+                        ),
+                      ),
                     ),
                   );
                 }).toList(),
@@ -616,12 +987,14 @@ class StrategyScreen extends StatelessWidget {
               ElevatedButton(
                 onPressed: () {
                   if (controller.text.isNotEmpty) {
-                    context.read<AppState>().addSprintTarget(SprintTarget(
-                      id: StorageService.generateId(),
-                      title: controller.text,
-                      duration: duration,
-                      linkedFactorIds: selectedFactorIds,
-                    ));
+                    context.read<AppState>().addSprintTarget(
+                      SprintTarget(
+                        id: StorageService.generateId(),
+                        title: controller.text,
+                        duration: duration,
+                        linkedFactorIds: selectedFactorIds,
+                      ),
+                    );
                     Navigator.pop(ctx);
                   }
                 },
@@ -634,19 +1007,28 @@ class StrategyScreen extends StatelessWidget {
     );
   }
 
-  void _showEditSprintDialog(BuildContext context, AppState state, SprintTarget target) {
+  void _showEditSprintDialog(
+    BuildContext context,
+    AppState state,
+    SprintTarget target,
+  ) {
     final controller = TextEditingController(text: target.title);
     List<String> selectedFactorIds = List.from(target.linkedFactorIds);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final surfaceColor = isDark ? AppColors.surface : LightColors.surface;
-    
+
     showModalBottomSheet(
       context: context,
       backgroundColor: surfaceColor,
       isScrollControlled: true,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => Padding(
-          padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+          padding: EdgeInsets.fromLTRB(
+            20,
+            20,
+            20,
+            MediaQuery.of(ctx).viewInsets.bottom + 20,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -656,9 +1038,15 @@ class StrategyScreen extends StatelessWidget {
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 16),
-              TextField(controller: controller, decoration: const InputDecoration(hintText: 'Performance goal')),
+              TextField(
+                controller: controller,
+                decoration: const InputDecoration(hintText: 'Performance goal'),
+              ),
               const SizedBox(height: 12),
-              Text('Link to Factors', style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
+              Text(
+                'Link to Factors',
+                style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+              ),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
@@ -674,16 +1062,32 @@ class StrategyScreen extends StatelessWidget {
                       }
                     }),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: isSelected ? AppColors.primary.withAlpha(30) : AppColors.surfaceLight,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: isSelected ? AppColors.primary : AppColors.glassBorder),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
                       ),
-                      child: Text(f.name, style: TextStyle(
-                        color: isSelected ? AppColors.primary : AppColors.textSecondary,
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                      )),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? AppColors.primary.withAlpha(30)
+                            : AppColors.surfaceLight,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: isSelected
+                              ? AppColors.primary
+                              : AppColors.glassBorder,
+                        ),
+                      ),
+                      child: Text(
+                        f.name,
+                        style: TextStyle(
+                          color: isSelected
+                              ? AppColors.primary
+                              : AppColors.textSecondary,
+                          fontWeight: isSelected
+                              ? FontWeight.w600
+                              : FontWeight.normal,
+                        ),
+                      ),
                     ),
                   );
                 }).toList(),
@@ -716,7 +1120,11 @@ class StrategyScreen extends StatelessWidget {
     );
   }
 
-  void _showDeleteSprintConfirmation(BuildContext context, AppState state, SprintTarget target) {
+  void _showDeleteSprintConfirmation(
+    BuildContext context,
+    AppState state,
+    SprintTarget target,
+  ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final surfaceColor = isDark ? AppColors.surface : LightColors.surface;
 
@@ -735,9 +1143,9 @@ class StrategyScreen extends StatelessWidget {
             onPressed: () {
               state.deleteSprintTarget(target.id);
               Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Goal deleted')),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('Goal deleted')));
             },
             style: TextButton.styleFrom(foregroundColor: AppColors.danger),
             child: const Text('Delete'),
@@ -754,12 +1162,22 @@ class _SectionHeader extends StatelessWidget {
   final Color color;
   final VoidCallback? onAdd;
 
-  const _SectionHeader({required this.title, required this.icon, required this.color, this.onAdd});
+  const _SectionHeader({
+    required this.title,
+    required this.icon,
+    required this.color,
+    this.onAdd,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, AppSpacing.lg, 20, AppSpacing.sm), // More top padding
+      padding: const EdgeInsets.fromLTRB(
+        20,
+        AppSpacing.lg,
+        20,
+        AppSpacing.sm,
+      ), // More top padding
       child: Row(
         children: [
           Container(
@@ -771,11 +1189,56 @@ class _SectionHeader extends StatelessWidget {
             child: Icon(icon, color: color, size: 18),
           ),
           const SizedBox(width: AppSpacing.md),
-          Expanded(child: Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w700, // Bold headers
-          ))),
-          if (onAdd != null) IconButton(onPressed: onAdd, icon: Icon(Icons.add_rounded, color: color)),
+          Expanded(
+            child: Text(
+              title,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700, // Bold headers
+              ),
+            ),
+          ),
+          if (onAdd != null)
+            IconButton(
+              onPressed: onAdd,
+              icon: Icon(Icons.add_rounded, color: color),
+            ),
         ],
+      ),
+    );
+  }
+}
+
+class _DormantFactorChip extends StatelessWidget {
+  final Factor factor;
+  final VoidCallback onTap;
+
+  const _DormantFactorChip({required this.factor, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceLight,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.glassBorder),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(factor.treeEmoji, style: const TextStyle(fontSize: 16)),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                factor.name,
+                style: Theme.of(context).textTheme.bodyMedium,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -802,13 +1265,15 @@ class _SprintGoalCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final linkedFactors = factors.where((f) => target.linkedFactorIds.contains(f.id)).toList();
+    final linkedFactors = factors
+        .where((f) => target.linkedFactorIds.contains(f.id))
+        .toList();
     final isOverdue = target.isOverdue;
     final daysLeft = target.daysRemaining;
     final isCompleted = target.isCompleted;
     final isFailed = target.isFailed;
     final isActive = target.isActive;
-    
+
     return GlassCard(
       onTap: isActive ? onEdit : null,
       child: Opacity(
@@ -820,13 +1285,22 @@ class _SprintGoalCard extends StatelessWidget {
               children: [
                 // Status icon - changes based on completion state
                 Icon(
-                  isCompleted ? Icons.check_circle_rounded :
-                  isFailed ? Icons.cancel_rounded :
-                  target.duration == SprintDuration.thirtyDays ? Icons.calendar_month_rounded : Icons.bolt_rounded,
-                  color: isCompleted ? AppColors.success :
-                         isFailed ? AppColors.danger :
-                         isOverdue ? AppColors.danger : 
-                         (target.duration == SprintDuration.thirtyDays ? AppColors.info : AppColors.warning),
+                  isCompleted
+                      ? Icons.check_circle_rounded
+                      : isFailed
+                      ? Icons.cancel_rounded
+                      : target.duration == SprintDuration.thirtyDays
+                      ? Icons.calendar_month_rounded
+                      : Icons.bolt_rounded,
+                  color: isCompleted
+                      ? AppColors.success
+                      : isFailed
+                      ? AppColors.danger
+                      : isOverdue
+                      ? AppColors.danger
+                      : (target.duration == SprintDuration.thirtyDays
+                            ? AppColors.info
+                            : AppColors.warning),
                   size: 20,
                 ),
                 const SizedBox(width: 12),
@@ -835,29 +1309,48 @@ class _SprintGoalCard extends StatelessWidget {
                     target.title,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontSize: 15,
-                      decoration: isCompleted || isFailed ? TextDecoration.lineThrough : null,
-                      color: isCompleted || isFailed ? AppColors.textMuted : null,
+                      decoration: isCompleted || isFailed
+                          ? TextDecoration.lineThrough
+                          : null,
+                      color: isCompleted || isFailed
+                          ? AppColors.textMuted
+                          : null,
                     ),
                   ),
                 ),
                 // Status badge
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
-                    color: isCompleted ? AppColors.success.withAlpha(30) :
-                           isFailed ? AppColors.danger.withAlpha(30) :
-                           isOverdue ? AppColors.danger.withAlpha(30) : AppColors.surfaceLight,
+                    color: isCompleted
+                        ? AppColors.success.withAlpha(30)
+                        : isFailed
+                        ? AppColors.danger.withAlpha(30)
+                        : isOverdue
+                        ? AppColors.danger.withAlpha(30)
+                        : AppColors.surfaceLight,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    isCompleted ? '✓ Done' :
-                    isFailed ? '✗ Failed' :
-                    isOverdue ? 'Overdue' : '${daysLeft}d left',
+                    isCompleted
+                        ? '✓ Done'
+                        : isFailed
+                        ? '✗ Failed'
+                        : isOverdue
+                        ? 'Overdue'
+                        : '${daysLeft}d left',
                     style: TextStyle(
                       fontSize: 12,
-                      color: isCompleted ? AppColors.success :
-                             isFailed ? AppColors.danger :
-                             isOverdue ? AppColors.danger : AppColors.textMuted,
+                      color: isCompleted
+                          ? AppColors.success
+                          : isFailed
+                          ? AppColors.danger
+                          : isOverdue
+                          ? AppColors.danger
+                          : AppColors.textMuted,
                     ),
                   ),
                 ),
@@ -868,14 +1361,27 @@ class _SprintGoalCard extends StatelessWidget {
               Wrap(
                 spacing: 6,
                 runSpacing: 4,
-                children: linkedFactors.map((f) => Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withAlpha(20),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(f.name, style: TextStyle(fontSize: 11, color: AppColors.primary)),
-                )).toList(),
+                children: linkedFactors
+                    .map(
+                      (f) => Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withAlpha(20),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          f.name,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                    )
+                    .toList(),
               ),
             ],
             const SizedBox(height: 12),
@@ -892,14 +1398,27 @@ class _SprintGoalCard extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: AppColors.success.withAlpha(30),
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: AppColors.success.withAlpha(50)),
+                          border: Border.all(
+                            color: AppColors.success.withAlpha(50),
+                          ),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.check_rounded, color: AppColors.success, size: 18),
+                            Icon(
+                              Icons.check_rounded,
+                              color: AppColors.success,
+                              size: 18,
+                            ),
                             const SizedBox(width: 4),
-                            Text('Complete', style: TextStyle(fontSize: 12, color: AppColors.success, fontWeight: FontWeight.w600)),
+                            Text(
+                              'Complete',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.success,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -915,14 +1434,27 @@ class _SprintGoalCard extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: AppColors.danger.withAlpha(20),
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: AppColors.danger.withAlpha(40)),
+                          border: Border.all(
+                            color: AppColors.danger.withAlpha(40),
+                          ),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.close_rounded, color: AppColors.danger, size: 18),
+                            Icon(
+                              Icons.close_rounded,
+                              color: AppColors.danger,
+                              size: 18,
+                            ),
                             const SizedBox(width: 4),
-                            Text('Failed', style: TextStyle(fontSize: 12, color: AppColors.danger, fontWeight: FontWeight.w600)),
+                            Text(
+                              'Failed',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.danger,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -942,9 +1474,19 @@ class _SprintGoalCard extends StatelessWidget {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.refresh_rounded, color: AppColors.textMuted, size: 18),
+                            Icon(
+                              Icons.refresh_rounded,
+                              color: AppColors.textMuted,
+                              size: 18,
+                            ),
                             const SizedBox(width: 4),
-                            Text('Undo', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                            Text(
+                              'Undo',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textMuted,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -961,7 +1503,11 @@ class _SprintGoalCard extends StatelessWidget {
                       color: AppColors.textMuted.withAlpha(20),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Icon(Icons.delete_outline_rounded, color: AppColors.textMuted, size: 18),
+                    child: Icon(
+                      Icons.delete_outline_rounded,
+                      color: AppColors.textMuted,
+                      size: 18,
+                    ),
                   ),
                 ),
               ],
@@ -973,17 +1519,16 @@ class _SprintGoalCard extends StatelessWidget {
   }
 }
 
-
 /// Time-based recommendations widget
 class _TimeRecommendation extends StatelessWidget {
   final int hoursPerWeek;
-  
+
   const _TimeRecommendation({required this.hoursPerWeek});
-  
+
   @override
   Widget build(BuildContext context) {
     final (icon, text, color) = _getRecommendation();
-    
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -996,16 +1541,13 @@ class _TimeRecommendation extends StatelessWidget {
           Icon(icon, color: color, size: 18),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(
-              text,
-              style: TextStyle(fontSize: 12, color: color),
-            ),
+            child: Text(text, style: TextStyle(fontSize: 12, color: color)),
           ),
         ],
       ),
     );
   }
-  
+
   (IconData, String, Color) _getRecommendation() {
     if (hoursPerWeek <= 2) {
       return (

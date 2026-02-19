@@ -524,8 +524,8 @@ class SpacedRepetitionScreen extends StatelessWidget {
   }
 }
 
-/// Subject card with expandable topic list
-class _SubjectCard extends StatelessWidget {
+/// Subject card with expandable topic list and multi-select combining
+class _SubjectCard extends StatefulWidget {
   final SpacedRepetitionSubject subject;
   final List<SpacedRepetitionTopic> topics;
   final int dueCount;
@@ -545,6 +545,41 @@ class _SubjectCard extends StatelessWidget {
   });
 
   @override
+  State<_SubjectCard> createState() => _SubjectCardState();
+}
+
+class _SubjectCardState extends State<_SubjectCard> {
+  bool _isSelecting = false;
+  final Set<String> _selectedTopicIds = {};
+
+  void _toggleSelection(String topicId) {
+    setState(() {
+      if (_selectedTopicIds.contains(topicId)) {
+        _selectedTopicIds.remove(topicId);
+        if (_selectedTopicIds.isEmpty) _isSelecting = false;
+      } else {
+        _selectedTopicIds.add(topicId);
+      }
+    });
+  }
+
+  void _exitSelectionMode() {
+    setState(() {
+      _isSelecting = false;
+      _selectedTopicIds.clear();
+    });
+  }
+
+  void _combineSelected() {
+    if (_selectedTopicIds.length < 2) return;
+    context.read<AppState>().mergeTopics(
+      widget.subject.id,
+      _selectedTopicIds.toList(),
+    );
+    _exitSelectionMode();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final colors = context.colors;
 
@@ -560,20 +595,22 @@ class _SubjectCard extends StatelessWidget {
         children: [
           // Subject header - tap to expand/collapse
           InkWell(
-            onTap: onToggleExpand,
+            onTap: _isSelecting ? _exitSelectionMode : widget.onToggleExpand,
             onLongPress: () => _showSubjectOptions(context),
             borderRadius: BorderRadius.circular(AppRadius.md),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               child: Row(
                 children: [
-                  // Expand/collapse icon
+                  // Expand/collapse icon (or close icon in selection mode)
                   Icon(
-                    subject.isExpanded
+                    _isSelecting
+                        ? Icons.close_rounded
+                        : widget.subject.isExpanded
                         ? Icons.expand_more_rounded
                         : Icons.chevron_right_rounded,
                     size: 20,
-                    color: colors.textMuted,
+                    color: _isSelecting ? colors.primary : colors.textMuted,
                   ),
                   const SizedBox(width: 8),
                   // Subject icon
@@ -581,16 +618,22 @@ class _SubjectCard extends StatelessWidget {
                     width: 32,
                     height: 32,
                     decoration: BoxDecoration(
-                      color: subject.color.withAlpha(25),
+                      color: widget.subject.color.withAlpha(25),
                       borderRadius: BorderRadius.circular(6),
                     ),
-                    child: Icon(subject.icon, size: 18, color: subject.color),
+                    child: Icon(
+                      widget.subject.icon,
+                      size: 18,
+                      color: widget.subject.color,
+                    ),
                   ),
                   const SizedBox(width: 10),
-                  // Subject name
+                  // Subject name (or selection count)
                   Expanded(
                     child: Text(
-                      subject.name,
+                      _isSelecting
+                          ? '${_selectedTopicIds.length} selected'
+                          : widget.subject.name,
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
@@ -598,40 +641,53 @@ class _SubjectCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  // Due count badge
-                  if (dueCount > 0)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
+                  if (_isSelecting && _selectedTopicIds.length >= 2)
+                    TextButton.icon(
+                      onPressed: _combineSelected,
+                      icon: const Icon(Icons.merge_rounded, size: 16),
+                      label: const Text('Combine'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: colors.primary,
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        minimumSize: const Size(0, 32),
                       ),
-                      decoration: BoxDecoration(
-                        color: AppColors.warning.withAlpha(25),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        '$dueCount',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.warning,
+                    )
+                  else if (!_isSelecting) ...[
+                    // Due count badge
+                    if (widget.dueCount > 0)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.warning.withAlpha(25),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          '${widget.dueCount}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.warning,
+                          ),
                         ),
                       ),
+                    // Topic count
+                    const SizedBox(width: 8),
+                    Text(
+                      '${widget.topics.length}',
+                      style: TextStyle(fontSize: 12, color: colors.textMuted),
                     ),
-                  // Topic count
-                  const SizedBox(width: 8),
-                  Text(
-                    '${topics.length}',
-                    style: TextStyle(fontSize: 12, color: colors.textMuted),
-                  ),
+                  ],
                 ],
               ),
             ),
           ),
           // Topics list (when expanded)
-          if (subject.isExpanded) ...[
+          if (widget.subject.isExpanded) ...[
             Divider(height: 1, thickness: 1, color: colors.divider),
-            if (topics.isEmpty)
+            if (widget.topics.isEmpty)
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Text(
@@ -644,12 +700,24 @@ class _SubjectCard extends StatelessWidget {
                 ),
               )
             else
-              ...topics.map(
-                (topic) => _TopicRow(topic: topic, subjectColor: subject.color),
+              ...widget.topics.map(
+                (topic) => _TopicRow(
+                  topic: topic,
+                  subjectColor: widget.subject.color,
+                  isSelecting: _isSelecting,
+                  isSelected: _selectedTopicIds.contains(topic.id),
+                  onToggleSelect: () => _toggleSelection(topic.id),
+                  onEnterSelectMode: () {
+                    setState(() {
+                      _isSelecting = true;
+                      _selectedTopicIds.add(topic.id);
+                    });
+                  },
+                ),
               ),
             // Add topic button
             InkWell(
-              onTap: onAddTopic,
+              onTap: widget.onAddTopic,
               child: Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,
@@ -691,7 +759,7 @@ class _SubjectCard extends StatelessWidget {
               title: const Text('Edit Subject'),
               onTap: () {
                 Navigator.pop(ctx);
-                onEditSubject();
+                widget.onEditSubject();
               },
             ),
             ListTile(
@@ -702,7 +770,7 @@ class _SubjectCard extends StatelessWidget {
               ),
               onTap: () {
                 Navigator.pop(ctx);
-                onDeleteSubject();
+                widget.onDeleteSubject();
               },
             ),
           ],
@@ -716,8 +784,19 @@ class _SubjectCard extends StatelessWidget {
 class _TopicRow extends StatelessWidget {
   final SpacedRepetitionTopic topic;
   final Color subjectColor;
+  final bool isSelecting;
+  final bool isSelected;
+  final VoidCallback? onToggleSelect;
+  final VoidCallback? onEnterSelectMode;
 
-  const _TopicRow({required this.topic, required this.subjectColor});
+  const _TopicRow({
+    required this.topic,
+    required this.subjectColor,
+    this.isSelecting = false,
+    this.isSelected = false,
+    this.onToggleSelect,
+    this.onEnterSelectMode,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -726,8 +805,8 @@ class _TopicRow extends StatelessWidget {
     final isNew = topic.isNew;
 
     return InkWell(
-      onTap: () => _showIntervalPicker(context),
-      onLongPress: () => _showTopicOptions(context),
+      onTap: isSelecting ? onToggleSelect : () => _showIntervalPicker(context),
+      onLongPress: isSelecting ? null : () => _showTopicOptions(context),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
@@ -735,19 +814,28 @@ class _TopicRow extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // Status indicator
-            Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isNew
-                    ? colors.textMuted
-                    : isDue
-                    ? AppColors.warning
-                    : AppColors.success,
+            // Status indicator or checkbox
+            if (isSelecting)
+              Icon(
+                isSelected
+                    ? Icons.check_box_rounded
+                    : Icons.check_box_outline_blank_rounded,
+                size: 20,
+                color: isSelected ? subjectColor : colors.textMuted,
+              )
+            else
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isNew
+                      ? colors.textMuted
+                      : isDue
+                      ? AppColors.warning
+                      : AppColors.success,
+                ),
               ),
-            ),
             const SizedBox(width: 12),
             // Topic name
             Expanded(
@@ -918,6 +1006,15 @@ class _TopicRow extends StatelessWidget {
                 _showEditTopicDialog(context);
               },
             ),
+            if (onEnterSelectMode != null)
+              ListTile(
+                leading: Icon(Icons.merge_rounded, color: colors.primary),
+                title: const Text('Select to combine'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  onEnterSelectMode!();
+                },
+              ),
             ListTile(
               leading: Icon(Icons.delete_outline, color: AppColors.danger),
               title: Text(

@@ -43,7 +43,15 @@ class SpacedRepetitionSubject extends HiveObject {
   }) : createdAt = createdAt ?? DateTime.now();
 
   /// Get the IconData for this subject
-  IconData get icon => IconData(iconCodePoint, fontFamily: iconFontFamily);
+  /// Uses a lookup to return const IconData for tree shaking support
+  IconData get icon {
+    for (final iconData in DefaultSubjects.availableIcons) {
+      if (iconData.codePoint == iconCodePoint) {
+        return iconData;
+      }
+    }
+    return Icons.category_rounded; // fallback
+  }
 
   /// Get the Color for this subject
   Color get color => Color(colorValue);

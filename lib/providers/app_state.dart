@@ -1733,6 +1733,42 @@ class AppState extends ChangeNotifier {
     await StorageService.deleteTopic(id);
   }
 
+  /// Merge multiple topics into one (first topic keeps its review data)
+  Future<void> mergeTopics(String subjectId, List<String> topicIds) async {
+    if (topicIds.length < 2) return;
+
+    // Get all topics in order
+    final topicsToMerge = topicIds
+        .map(
+          (id) => _srTopics.cast<SpacedRepetitionTopic?>().firstWhere(
+            (t) => t?.id == id,
+            orElse: () => null,
+          ),
+        )
+        .whereType<SpacedRepetitionTopic>()
+        .toList();
+
+    if (topicsToMerge.length < 2) return;
+
+    // Keep the first topic, merge names
+    final primary = topicsToMerge.first;
+    final combinedName = topicsToMerge.map((t) => t.name).join(' / ');
+    final updated = primary.copyWith(name: combinedName);
+
+    // Update the primary topic
+    final index = _srTopics.indexWhere((t) => t.id == primary.id);
+    if (index != -1) _srTopics[index] = updated;
+    await StorageService.saveTopic(updated);
+
+    // Delete the other topics
+    for (int i = 1; i < topicsToMerge.length; i++) {
+      _srTopics.removeWhere((t) => t.id == topicsToMerge[i].id);
+      await StorageService.deleteTopic(topicsToMerge[i].id);
+    }
+
+    notifyListeners();
+  }
+
   /// Complete a topic review and schedule next review
   Future<void> completeTopic(String id, int intervalDays) async {
     final topic = _srTopics.firstWhere((t) => t.id == id);

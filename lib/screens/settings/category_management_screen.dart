@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../core/theme/theme.dart';
+import '../../models/category_model.dart';
 import '../../providers/app_state.dart';
 import '../../widgets/glass_card.dart';
 
@@ -139,7 +141,16 @@ class CategoryManagementScreen extends StatelessWidget {
           ElevatedButton(
             onPressed: () {
               if (controller.text.trim().isNotEmpty) {
-                state.addTaskCategory(controller.text.trim());
+                final name = controller.text.trim();
+                state.addTaskCategory(name);
+                // Also add to CategoryModel system so it appears in New Task sheet
+                final categoryModel = CategoryModel.create(
+                  id: const Uuid().v4(),
+                  name: name,
+                  icon: Icons.category_rounded,
+                  color: Colors.blue,
+                );
+                state.addCategory(categoryModel);
                 Navigator.pop(ctx);
               }
             },
@@ -193,8 +204,19 @@ class CategoryManagementScreen extends StatelessWidget {
                   task.category = newName;
                   state.updateTask(task);
                 }
-                // Replace the category
+                // Replace the category in legacy system
                 state.renameTaskCategory(oldCategory, newName);
+                // Also update matching CategoryModel
+                final matchingCategory = state.categories
+                    .where(
+                      (c) => c.name.toLowerCase() == oldCategory.toLowerCase(),
+                    )
+                    .firstOrNull;
+                if (matchingCategory != null) {
+                  state.updateCategory(
+                    matchingCategory.copyWith(name: newName),
+                  );
+                }
                 Navigator.pop(ctx);
               }
             },
@@ -279,6 +301,13 @@ class CategoryManagementScreen extends StatelessWidget {
                 state.updateTask(task);
               }
               state.deleteTaskCategory(category);
+              // Also delete matching CategoryModel
+              final matchingCategory = state.categories
+                  .where((c) => c.name.toLowerCase() == category.toLowerCase())
+                  .firstOrNull;
+              if (matchingCategory != null && !matchingCategory.isDefault) {
+                state.deleteCategory(matchingCategory.id);
+              }
               Navigator.pop(ctx);
             },
             child: Text('Delete', style: TextStyle(color: AppColors.danger)),

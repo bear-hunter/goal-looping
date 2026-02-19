@@ -79,7 +79,7 @@ class TaskCard extends StatelessWidget {
       label: semanticLabel,
       button: true,
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         child: Material(
           color: Colors.transparent,
           child: InkWell(
@@ -88,7 +88,10 @@ class TaskCard extends StatelessWidget {
             child: Hero(
               tag: 'task-${task.id}',
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,

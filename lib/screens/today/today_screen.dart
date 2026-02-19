@@ -231,6 +231,7 @@ class _TodayScreenState extends State<TodayScreen> {
                     child: allItems.isEmpty
                         ? _buildEmptyState(textSecondary)
                         : ReorderableListView.builder(
+                            buildDefaultDragHandles: false,
                             padding: const EdgeInsets.symmetric(
                               horizontal: 12,
                               vertical: 4,
@@ -282,6 +283,10 @@ class _TodayScreenState extends State<TodayScreen> {
 
                               return Dismissible(
                                 key: Key('dismiss_$itemKey'),
+                                dismissThresholds: const {
+                                  DismissDirection.startToEnd: 0.25,
+                                  DismissDirection.endToStart: 0.25,
+                                },
                                 // Swipe right = priority adjustment
                                 background: _buildSwipeBackground(
                                   color: Colors.orange,

@@ -42,7 +42,7 @@ class _SwipeableTaskCardState extends State<SwipeableTaskCard>
   bool _leftActionTriggered = false;
 
   // Threshold for triggering action (40% of card width)
-  static const double _actionThreshold = 0.4;
+  static const double _actionThreshold = 0.25;
 
   // Maximum drag extent (80% of card width)
   static const double _maxDragExtent = 0.8;
