@@ -114,10 +114,10 @@ class Task extends HiveObject {
 
   // Legacy fields (kept for migration)
 
-  @HiveField(11)
+  @HiveField(11, defaultValue: TaskEffort.quick)
   TaskEffort effort;
 
-  @HiveField(12)
+  @HiveField(12, defaultValue: TaskImpact.high)
   TaskImpact impact;
 
   @HiveField(13)
@@ -129,7 +129,7 @@ class Task extends HiveObject {
   @HiveField(15)
   String? blockedByTaskId; // Task dependency
 
-  @HiveField(16)
+  @HiveField(16, defaultValue: 'General')
   String category; // Legacy string-based category
 
   @HiveField(17)
@@ -142,7 +142,7 @@ class Task extends HiveObject {
   @HiveField(19)
   String? marginalGainDescription;
 
-  @HiveField(20)
+  @HiveField(20, defaultValue: false)
   bool isResearchTask;
 
   // === Phase 3: Today page enhancements ===
@@ -156,13 +156,13 @@ class Task extends HiveObject {
   @HiveField(23)
   List<bool>? checklistCompleted; // Completion state for each checklist item
 
-  @HiveField(24)
+  @HiveField(24, defaultValue: PriorityLevel.none)
   PriorityLevel priorityLevel; // Priority (none, low, medium, high)
 
   @HiveField(25)
   String? note; // Additional notes
 
-  @HiveField(26)
+  @HiveField(26, defaultValue: false)
   bool isPending; // Show each day until completed
 
   @HiveField(27)
@@ -174,14 +174,18 @@ class Task extends HiveObject {
   @HiveField(29)
   String? scheduledTime; // Time of day as "HH:MM"
 
-  @HiveField(30)
+  @HiveField(30, defaultValue: false)
   bool isArchived; // Archived tasks (hidden but not deleted)
 
-  @HiveField(31)
+  @HiveField(31, defaultValue: 0)
   int priority; // Numeric priority (-20 to 20, higher = more important)
 
-  @HiveField(32)
+  @HiveField(32, defaultValue: EisenhowerQuadrant.inbox)
   EisenhowerQuadrant quadrant; // Eisenhower Matrix categorization
+
+  /// Persisted guard against earning completion rewards more than once.
+  @HiveField(33)
+  bool? completionRewardGranted;
 
   Task({
     required this.id,
@@ -218,6 +222,7 @@ class Task extends HiveObject {
     this.isArchived = false,
     this.priority = 0,
     this.quadrant = EisenhowerQuadrant.inbox,
+    this.completionRewardGranted,
   }) : createdAt = createdAt ?? DateTime.now(),
        linkedFactorIds = linkedFactorIds ?? [],
        reminderTimes = reminderTimes ?? [],
@@ -230,6 +235,13 @@ class Task extends HiveObject {
       return !date.isBefore(
         DateTime(scheduledDate.year, scheduledDate.month, scheduledDate.day),
       );
+    }
+    // Once a rolling pending task is completed, keep it on the day where the
+    // user actually completed it rather than moving it back to its start date.
+    if (isPending && completedAt != null) {
+      return date.year == completedAt!.year &&
+          date.month == completedAt!.month &&
+          date.day == completedAt!.day;
     }
     // Otherwise, only show on the scheduled date
     return date.year == scheduledDate.year &&

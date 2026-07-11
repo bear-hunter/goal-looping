@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
@@ -34,17 +33,17 @@ class _AnimatedTreeWidgetState extends State<AnimatedTreeWidget>
   @override
   void initState() {
     super.initState();
-    
+
     _swayController = AnimationController(
       duration: const Duration(seconds: 3),
       vsync: this,
     )..repeat(reverse: true);
-    
+
     _growthController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
     )..forward();
-    
+
     _swayAnimation = Tween<double>(begin: -0.02, end: 0.02).animate(
       CurvedAnimation(parent: _swayController, curve: Curves.easeInOut),
     );
@@ -59,9 +58,10 @@ class _AnimatedTreeWidgetState extends State<AnimatedTreeWidget>
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final design = TreeDesigns.getById(widget.area.treeDesignId);
-    final color = _getColorFromHex(design.colorHex);
-    
+    final color = CategoryPalette.snap(context, _hexToColor(design.colorHex));
+
     return GestureDetector(
       onTap: widget.onTap,
       child: SizedBox(
@@ -70,7 +70,6 @@ class _AnimatedTreeWidgetState extends State<AnimatedTreeWidget>
         child: Stack(
           alignment: Alignment.center,
           children: [
-            // Background glow for active areas
             if (widget.area.isActiveFocus)
               Container(
                 width: widget.size * 0.8,
@@ -78,37 +77,38 @@ class _AnimatedTreeWidgetState extends State<AnimatedTreeWidget>
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
-                    colors: [
-                      color.withAlpha(30),
-                      Colors.transparent,
-                    ],
+                    colors: [color.withAlpha(30), Colors.transparent],
                   ),
                 ),
               ),
-            
-            // The tree
+
             AnimatedBuilder(
               animation: _swayAnimation,
               builder: (context, child) {
                 return Transform(
                   alignment: Alignment.bottomCenter,
                   transform: Matrix4.identity()
-                    ..rotateZ(_swayAnimation.value * (widget.area.isActiveFocus ? 1 : 0)),
+                    ..rotateZ(
+                      _swayAnimation.value *
+                          (widget.area.isActiveFocus ? 1 : 0),
+                    ),
                   child: child,
                 );
               },
-              child: _buildTree(design, color),
+              child: _buildTree(context, design, color),
             ),
-            
-            // Level badge
+
             if (widget.showDetails)
               Positioned(
                 bottom: 0,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(12),
+                    color: colors.surface,
+                    borderRadius: BorderRadius.circular(AppRadius.md),
                     border: Border.all(color: color.withAlpha(100)),
                   ),
                   child: Text(
@@ -127,97 +127,129 @@ class _AnimatedTreeWidgetState extends State<AnimatedTreeWidget>
     );
   }
 
-  Widget _buildTree(TreeDesign design, Color color) {
+  Widget _buildTree(BuildContext context, TreeDesign design, Color color) {
+    final colors = context.colors;
     final stage = widget.area.growthStage;
-    final health = widget.area.healthPercent;
-    
-    // Determine tint based on health
-    // We use modulate to tint the image if it's unhealthy
-    final Color healthTint = health >= 75
-        ? Colors.white
+    final health = widget.area.effectiveHealthPercent;
+
+    final Color? healthTint = health >= 75
+        ? null
         : health >= 50
-            ? const Color(0xFFFFF9C4) // Yellow tint
-            : health >= 25
-                ? const Color(0xFFFFCCBC) // Orange tint
-                : const Color(0xFFBDBDBD); // Grey tint
-    
+        ? Color.lerp(Colors.white, colors.warning, 0.25)
+        : health >= 25
+        ? Color.lerp(Colors.white, colors.danger, 0.3)
+        : Color.lerp(Colors.white, colors.textMuted, 0.45);
+
     return ScaleTransition(
       scale: CurvedAnimation(
         parent: _growthController,
         curve: Curves.elasticOut,
       ),
-      child: _buildCanopy(stage, healthTint, design),
+      child: _buildCanopy(context, stage, healthTint, design),
     );
   }
 
-  Widget _buildCanopy(int stage, Color tint, TreeDesign design) {
+  Widget _buildCanopy(
+    BuildContext context,
+    int stage,
+    Color? tint,
+    TreeDesign design,
+  ) {
+    final colors = context.colors;
     final baseSize = widget.size * 0.4;
-    // Growth factor makes the tree larger as it levels up
     final growthFactor = 1.0 + (stage * 0.2);
     final size = baseSize * growthFactor;
-    
+
     if (!widget.area.isActiveFocus) {
-      // Dormant: show sleeping emoji
-      return Text('💤', style: TextStyle(fontSize: size * 0.8));
-    }
-    
-    if (widget.area.healthStatus == 'dead') {
-      // Dead tree
-      return Text('💀', style: TextStyle(fontSize: size * 0.8));
+      return Icon(
+        Icons.bedtime_rounded,
+        size: size * 0.8,
+        color: colors.textMuted,
+      );
     }
 
-    // Get the appropriate asset image
+    if (widget.area.healthStatus == 'dead') {
+      return Opacity(
+        opacity: 0.4,
+        child: Image.asset(
+          design.getAssetPath(stage),
+          width: size,
+          fit: BoxFit.contain,
+          color: colors.textMuted,
+          colorBlendMode: BlendMode.modulate,
+          errorBuilder: (context, error, stackTrace) =>
+              Text(design.emoji, style: TextStyle(fontSize: size)),
+        ),
+      );
+    }
+
     final assetPath = design.getAssetPath(stage);
-    
-    // Animation effects based on stage
+
     Widget treeImage = Image.asset(
       assetPath,
       width: size,
       fit: BoxFit.contain,
-      color: tint != Colors.white ? tint : null,
-      colorBlendMode: tint != Colors.white ? BlendMode.modulate : null,
-      errorBuilder: (context, error, stackTrace) {
-        // Fallback to emoji if image fails
-        return Text(design.emoji, style: TextStyle(fontSize: size));
-      },
+      color: tint,
+      colorBlendMode: tint != null ? BlendMode.modulate : null,
+      errorBuilder: (context, error, stackTrace) =>
+          Text(design.emoji, style: TextStyle(fontSize: size)),
     );
 
-    // Apply animations based on growth stage
-    if (stage <= 1) { // Sprout
-      return treeImage.animate(onPlay: (c) => c.repeat(reverse: true))
-          .scale(begin: const Offset(1, 1), end: const Offset(1.05, 1.05), duration: 1.seconds);
-    } else if (stage == 2) { // Sapling
-      return treeImage.animate(onPlay: (c) => c.repeat(reverse: true))
-          .scale(begin: const Offset(1, 1), end: const Offset(1.02, 1.03), duration: 2.seconds);
-    } else if (stage >= 3 && stage < 5) { // Mature
-      return treeImage.animate(onPlay: (c) => c.repeat(reverse: true))
-          .shimmer(duration: 3.seconds, color: Colors.white.withAlpha(30));
-    } else { // Mastered or higher
-         return Stack(
-          alignment: Alignment.topCenter,
-          children: [
-            treeImage,
-            Positioned(
-              top: -10,
-              child: Text('👑', style: TextStyle(fontSize: size * 0.35))
-                .animate(onPlay: (c) => c.repeat(reverse: true))
-                .scale(begin: const Offset(1, 1), end: const Offset(1.1, 1.1), duration: 500.ms),
-            ),
-          ],
-        ).animate()
-          .shimmer(duration: 1.5.seconds, color: Colors.amber.withAlpha(80));
+    if (stage <= 1) {
+      return treeImage
+          .animate(onPlay: (c) => c.repeat(reverse: true))
+          .scale(
+            begin: const Offset(1, 1),
+            end: const Offset(1.05, 1.05),
+            duration: 1.seconds,
+          );
+    } else if (stage == 2) {
+      return treeImage
+          .animate(onPlay: (c) => c.repeat(reverse: true))
+          .scale(
+            begin: const Offset(1, 1),
+            end: const Offset(1.02, 1.03),
+            duration: 2.seconds,
+          );
+    } else if (stage >= 3 && stage < 5) {
+      return treeImage
+          .animate(onPlay: (c) => c.repeat(reverse: true))
+          .shimmer(duration: 3.seconds, color: colors.onPrimary.withAlpha(30));
+    } else {
+      return Stack(
+        alignment: Alignment.topCenter,
+        children: [
+          treeImage,
+          Positioned(
+            top: -10,
+            child:
+                Icon(
+                      Icons.workspace_premium_rounded,
+                      size: size * 0.35,
+                      color: colors.accent,
+                    )
+                    .animate(onPlay: (c) => c.repeat(reverse: true))
+                    .scale(
+                      begin: const Offset(1, 1),
+                      end: const Offset(1.1, 1.1),
+                      duration: 500.ms,
+                    ),
+          ),
+        ],
+      ).animate().shimmer(
+        duration: 1500.ms,
+        color: colors.accent.withAlpha(80),
+      );
     }
   }
 
-  // Helper to parse hex colors
-  Color _getColorFromHex(String hex) {
-    if (hex.isEmpty) return Colors.green;
+  Color _hexToColor(String hex) {
+    if (hex.isEmpty) return CategoryPalette.light[0];
     try {
       final code = hex.replaceAll('#', '');
       return Color(int.parse('FF$code', radix: 16));
     } catch (e) {
-      return Colors.green;
+      return CategoryPalette.light[0];
     }
   }
 }
-

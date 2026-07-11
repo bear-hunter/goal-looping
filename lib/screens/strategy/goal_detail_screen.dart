@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme/theme.dart';
@@ -7,6 +6,9 @@ import '../../models/goal.dart';
 import '../../models/growth_area.dart';
 import '../../providers/app_state.dart';
 import '../../widgets/forest_platform.dart';
+import '../../widgets/empty_state.dart';
+import '../../widgets/glass_card.dart';
+import '../../widgets/section_header.dart';
 
 import 'factor_detail_screen.dart';
 
@@ -23,254 +25,180 @@ class GoalDetailScreen extends StatefulWidget {
 class _GoalDetailScreenState extends State<GoalDetailScreen> {
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Consumer<AppState>(
       builder: (context, state, _) {
-        final goal = state.goals.where((g) => g.id == widget.goalId).firstOrNull;
-        
+        final goal = state.goals
+            .where((g) => g.id == widget.goalId)
+            .firstOrNull;
+
         if (goal == null) {
           return Scaffold(
             appBar: AppBar(title: const Text('Goal')),
-            body: const Center(child: Text('Goal not found')),
+            body: EmptyState(
+              icon: Icons.flag_outlined,
+              title: 'Goal not found',
+              subtitle: 'This goal may have been removed.',
+              actionLabel: 'Back to Plan',
+              onAction: () => Navigator.pop(context),
+            ),
           );
         }
 
         final factors = state.getFactorsForGoal(goal.id);
         final activeFactors = factors.where((f) => f.isActiveFocus).toList();
-        final dormantFactors = factors.where((f) => !f.isActiveFocus).toList();
-        
-        // Calculate statistics
-        final totalEffort = factors.fold<int>(0, (sum, f) => sum + state.getEffortUnitsForFactor(f.id));
-        final avgHealth = factors.isEmpty ? 0.0 : 
-            factors.where((f) => f.isActiveFocus).fold<double>(0, (sum, f) => sum + f.healthPercent) / 
-            (activeFactors.isEmpty ? 1 : activeFactors.length);
+
+        final totalEffort = factors.fold<int>(
+          0,
+          (sum, f) => sum + state.getEffortUnitsForFactor(f.id),
+        );
         final completedTasks = state.completedTasks.length;
-        final habitsLogged = state.habits.where((h) => h.isLoggedToday).length;
-        final reflectionCount = state.reflections.length;
+        final goalProgress = state.getGoalProgress(goal.id);
+        final needsAttention = activeFactors
+            .where(
+              (f) =>
+                  f.daysSinceWork > 3 ||
+                  f.healthStatus == 'wilting' ||
+                  f.healthStatus == 'dead',
+            )
+            .toList();
 
         return Scaffold(
-          backgroundColor: AppColors.background,
+          backgroundColor: colors.background,
           appBar: AppBar(
             backgroundColor: Colors.transparent,
             elevation: 0,
-            title: Text(goal.title, style: TextStyle(color: AppColors.textPrimary)),
+            title: Text(
+              goal.title,
+              style: TextStyle(color: colors.textPrimary),
+            ),
             leading: IconButton(
-              icon: Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
+              icon: Icon(Icons.arrow_back_rounded, color: colors.textPrimary),
               onPressed: () => Navigator.pop(context),
             ),
             actions: [
               IconButton(
-                icon: Icon(Icons.edit_rounded, color: AppColors.textPrimary),
+                icon: Icon(Icons.edit_rounded, color: colors.textPrimary),
                 onPressed: () => _showEditGoalDialog(context, state, goal),
               ),
             ],
           ),
-          body: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // Days remaining badge
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: goal.isOverdue 
-                        ? AppColors.danger.withAlpha(30)
-                        : AppColors.primary.withAlpha(30),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: goal.isOverdue ? AppColors.danger : AppColors.primary,
-                    ),
+          body: CustomScrollView(
+            slivers: [
+              SliverAppBar(
+                automaticallyImplyLeading: false,
+                expandedHeight: 300,
+                pinned: false,
+                backgroundColor: colors.background,
+                flexibleSpace: FlexibleSpaceBar(
+                  background: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                    child: factors.isEmpty
+                        ? EmptyState(
+                            icon: Icons.eco_rounded,
+                            title: 'No trees yet',
+                            subtitle:
+                                'Plant your first dissected tree from the Plan page.',
+                            accent: EmptyStateAccent.success,
+                            animate: false,
+                          )
+                        : ForestPlatform(
+                            factors: factors,
+                            platformWidth:
+                                MediaQuery.of(context).size.width - 40,
+                            platformHeight: 230,
+                            onTreeTap: (factor) => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    FactorDetailScreen(factorId: factor.id),
+                              ),
+                            ),
+                          ),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        goal.isOverdue ? Icons.warning_rounded : Icons.flag_rounded,
-                        size: 18,
-                        color: goal.isOverdue ? AppColors.danger : AppColors.primary,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        goal.isOverdue 
-                            ? 'Overdue by ${-goal.daysRemaining} days'
-                            : '${goal.daysRemaining} days remaining',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: goal.isOverdue ? AppColors.danger : AppColors.primary,
+                ),
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.all(20),
+                sliver: SliverList(
+                  delegate: SliverChildListDelegate([
+                    _GoalPulseStrip(goal: goal, progress: goalProgress),
+                    const SizedBox(height: 16),
+                    _ForestHealthCard(
+                      activeFactors: activeFactors,
+                      totalFactors: factors.length,
+                    ),
+                    if (needsAttention.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      _NeedsAttentionCard(
+                        factor: needsAttention.first,
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => FactorDetailScreen(
+                              factorId: needsAttention.first.id,
+                            ),
+                          ),
                         ),
                       ),
                     ],
-                  ),
-                ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.2),
-                
-                const SizedBox(height: 32),
-                
-                // Forest Platform
-                Text(
-                  '🌳 Your Forest',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '${factors.length} trees planted',
-                  style: TextStyle(color: AppColors.textMuted),
-                ),
-                const SizedBox(height: 16),
-                
-                if (factors.isEmpty)
-                  Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceLight,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppColors.glassBorder),
+                    const SizedBox(height: 20),
+                    SectionHeader(
+                      title: 'This goal at a glance',
+                      uppercase: false,
                     ),
-                    child: Column(
+                    Row(
                       children: [
-                        Text('🌱', style: TextStyle(fontSize: 48)),
-                        const SizedBox(height: 12),
-                        Text(
-                          'No trees yet!',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                        Expanded(
+                          child: _StatCard(
+                            icon: Icons.bolt_rounded,
+                            label: 'Effort',
+                            value: '$totalEffort',
+                            subValue: 'units',
+                            color: colors.warning,
+                          ),
                         ),
-                        Text(
-                          'Add Dissected Trees in the Strategy page',
-                          style: TextStyle(color: AppColors.textMuted),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _StatCard(
+                            icon: Icons.task_alt_rounded,
+                            label: 'Tasks',
+                            value: '$completedTasks',
+                            subValue: 'completed',
+                            color: colors.info,
+                          ),
                         ),
                       ],
                     ),
-                  )
-                else
-                  ForestPlatform(
-                    factors: factors,
-                    platformWidth: MediaQuery.of(context).size.width - 40,
-                    platformHeight: 180,
-                    onTreeTap: (factor) => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => FactorDetailScreen(factorId: factor.id)),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _StatCard(
+                            icon: Icons.local_fire_department_rounded,
+                            label: 'Active',
+                            value: '${activeFactors.length}/2',
+                            subValue: 'focus trees',
+                            color: colors.success,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _StatCard(
+                            icon: Icons.park_rounded,
+                            label: 'Dissected',
+                            value: '${factors.length}',
+                            subValue: factors.length == 1 ? 'tree' : 'trees',
+                            color: colors.primary,
+                          ),
+                        ),
+                      ],
                     ),
-                  ).animate().fadeIn(duration: 600.ms).scale(
-                    begin: const Offset(0.9, 0.9),
-                    duration: 500.ms,
-                    curve: Curves.easeOut,
-                  ),
-                
-                const SizedBox(height: 32),
-                
-                // Statistics Dashboard
-                Text(
-                  '📊 Statistics',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                  ),
+                    const SizedBox(height: 100),
+                  ]),
                 ),
-                const SizedBox(height: 16),
-                
-                // Stats Grid
-                Row(
-                  children: [
-                    Expanded(child: _StatCard(
-                      icon: Icons.park_rounded,
-                      label: 'Trees',
-                      value: '${factors.length}',
-                      subValue: '${activeFactors.length} active',
-                      color: AppColors.success,
-                    )),
-                    const SizedBox(width: 12),
-                    Expanded(child: _StatCard(
-                      icon: Icons.bolt_rounded,
-                      label: 'Effort',
-                      value: '$totalEffort',
-                      subValue: 'units',
-                      color: AppColors.warning,
-                    )),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(child: _StatCard(
-                      icon: Icons.favorite_rounded,
-                      label: 'Health',
-                      value: '${avgHealth.toInt()}%',
-                      subValue: 'avg active',
-                      color: AppColors.danger,
-                    )),
-                    const SizedBox(width: 12),
-                    Expanded(child: _StatCard(
-                      icon: Icons.task_alt_rounded,
-                      label: 'Tasks',
-                      value: '$completedTasks',
-                      subValue: 'completed',
-                      color: AppColors.info,
-                    )),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(child: _StatCard(
-                      icon: Icons.repeat_rounded,
-                      label: 'Habits',
-                      value: '$habitsLogged',
-                      subValue: 'today',
-                      color: AppColors.primary,
-                    )),
-                    const SizedBox(width: 12),
-                    Expanded(child: _StatCard(
-                      icon: Icons.psychology_rounded,
-                      label: 'Reflects',
-                      value: '$reflectionCount',
-                      subValue: 'total',
-                      color: AppColors.textMuted,
-                    )),
-                  ],
-                ),
-                
-                const SizedBox(height: 32),
-                
-                // Tree breakdown
-                if (factors.isNotEmpty) ...[
-                  _SectionHeader(title: '🔥 Active Focus', count: activeFactors.length),
-                  if (activeFactors.isEmpty)
-                    _EmptyChip(text: 'No active trees')
-                  else
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: activeFactors.map((f) => _TreeChip(
-                        factor: f,
-                        onTap: () => Navigator.push(context, 
-                          MaterialPageRoute(builder: (_) => FactorDetailScreen(factorId: f.id))),
-                      )).toList(),
-                    ),
-                  
-                  const SizedBox(height: 16),
-                  
-                  _SectionHeader(title: '💤 Dissected', count: dormantFactors.length),
-                  if (dormantFactors.isEmpty)
-                    _EmptyChip(text: 'All trees are active!')
-                  else
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: dormantFactors.map((f) => _TreeChip(
-                        factor: f,
-                        onTap: () => Navigator.push(context, 
-                          MaterialPageRoute(builder: (_) => FactorDetailScreen(factorId: f.id))),
-                      )).toList(),
-                    ),
-                ],
-                
-                const SizedBox(height: 100),
-              ],
-            ),
+              ),
+            ],
           ),
         );
       },
@@ -278,18 +206,25 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
   }
 
   void _showEditGoalDialog(BuildContext context, AppState state, Goal goal) {
+    final colors = context.colors;
     final titleController = TextEditingController(text: goal.title);
-    int selectedMonths = goal.targetDate.difference(goal.createdAt).inDays ~/ 30;
+    int selectedMonths =
+        goal.targetDate.difference(goal.createdAt).inDays ~/ 30;
     if (selectedMonths < 9) selectedMonths = 9;
     if (selectedMonths > 36) selectedMonths = 36;
-    
+
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.surface,
+      backgroundColor: colors.surface,
       isScrollControlled: true,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => Padding(
-          padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+          padding: EdgeInsets.fromLTRB(
+            20,
+            20,
+            20,
+            MediaQuery.of(ctx).viewInsets.bottom + 20,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -298,11 +233,11 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
               const SizedBox(height: 16),
               TextField(
                 controller: titleController,
-                style: TextStyle(color: AppColors.textPrimary),
+                style: TextStyle(color: colors.textPrimary),
                 decoration: const InputDecoration(hintText: 'Goal title'),
               ),
               const SizedBox(height: 16),
-              Text('Timeline', style: TextStyle(color: AppColors.textMuted)),
+              Text('Timeline', style: TextStyle(color: colors.textMuted)),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
@@ -312,19 +247,30 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
                   return GestureDetector(
                     onTap: () => setDialogState(() => selectedMonths = months),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
                       decoration: BoxDecoration(
-                        color: isSelected ? AppColors.primary : AppColors.surfaceLight,
+                        color: isSelected
+                            ? colors.primary
+                            : colors.surfaceLight,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: isSelected ? AppColors.primary : AppColors.glassBorder,
+                          color: isSelected
+                              ? colors.primary
+                              : colors.glassBorder,
                         ),
                       ),
                       child: Text(
-                        months < 12 ? '$months mo' : '${months ~/ 12}${months % 12 > 0 ? '.5' : ''} yr',
+                        months < 12
+                            ? '$months mo'
+                            : '${months ~/ 12}${months % 12 > 0 ? '.5' : ''} yr',
                         style: TextStyle(
-                          color: isSelected ? Colors.white : AppColors.textPrimary,
-                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                          color: isSelected ? Colors.white : colors.textPrimary,
+                          fontWeight: isSelected
+                              ? FontWeight.w600
+                              : FontWeight.normal,
                         ),
                       ),
                     ),
@@ -346,7 +292,9 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
                       onPressed: () {
                         if (titleController.text.isNotEmpty) {
                           goal.title = titleController.text;
-                          goal.targetDate = goal.createdAt.add(Duration(days: selectedMonths * 30));
+                          goal.targetDate = goal.createdAt.add(
+                            Duration(days: selectedMonths * 30),
+                          );
                           state.updateGoal(goal);
                           Navigator.pop(ctx);
                         }
@@ -359,6 +307,161 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _GoalPulseStrip extends StatelessWidget {
+  final Goal goal;
+  final double progress;
+
+  const _GoalPulseStrip({required this.goal, required this.progress});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final value = progress.clamp(0.0, 1.0);
+    final danger = goal.isOverdue || goal.daysRemaining <= 14;
+    final tint = danger
+        ? colors.danger
+        : goal.daysRemaining <= 30
+        ? colors.warning
+        : colors.primary;
+    return GlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.schedule_rounded, size: 18, color: tint),
+              const SizedBox(width: 8),
+              Text(
+                goal.isOverdue
+                    ? 'Overdue by ${-goal.daysRemaining} days'
+                    : '${goal.daysRemaining} days left',
+                style: TextStyle(fontWeight: FontWeight.w700, color: tint),
+              ),
+              const Spacer(),
+              Text(
+                '${(value * 100).round()}% to goal',
+                style: TextStyle(color: colors.textMuted, fontSize: 12),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.full),
+            child: LinearProgressIndicator(
+              value: value,
+              minHeight: 8,
+              backgroundColor: colors.surfaceVariant,
+              valueColor: AlwaysStoppedAnimation(tint),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ForestHealthCard extends StatelessWidget {
+  final List<Factor> activeFactors;
+  final int totalFactors;
+
+  const _ForestHealthCard({
+    required this.activeFactors,
+    required this.totalFactors,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final avg = activeFactors.isEmpty
+        ? null
+        : activeFactors.fold<double>(
+                0,
+                (s, f) => s + f.effectiveHealthPercent,
+              ) /
+              activeFactors.length;
+    final label = avg == null
+        ? 'Resting'
+        : avg >= 75
+        ? 'Thriving'
+        : avg >= 50
+        ? 'Steady'
+        : avg >= 25
+        ? 'Wilting'
+        : 'Untended';
+    final tint = avg == null
+        ? colors.textMuted
+        : avg >= 75
+        ? colors.success
+        : avg >= 50
+        ? colors.info
+        : avg >= 25
+        ? colors.warning
+        : colors.danger;
+    return GlassCard(
+      child: Row(
+        children: [
+          Icon(Icons.eco_rounded, color: tint, size: 28),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Forest health',
+                  style: TextStyle(color: colors.textMuted, fontSize: 12),
+                ),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: tint,
+                  ),
+                ),
+                Text(
+                  '${activeFactors.length} active · $totalFactors total',
+                  style: TextStyle(color: colors.textSecondary, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NeedsAttentionCard extends StatelessWidget {
+  final Factor factor;
+  final VoidCallback onTap;
+
+  const _NeedsAttentionCard({required this.factor, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return GlassCard(
+      onTap: onTap,
+      child: Row(
+        children: [
+          Icon(Icons.warning_rounded, color: colors.warning),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              '${factor.name} needs attention · ${factor.daysSinceWork}d untended',
+              style: TextStyle(
+                color: colors.textPrimary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Icon(Icons.chevron_right_rounded, color: colors.textMuted),
+        ],
       ),
     );
   }
@@ -381,6 +484,7 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -395,91 +499,27 @@ class _StatCard extends StatelessWidget {
             children: [
               Icon(icon, size: 18, color: color),
               const SizedBox(width: 6),
-              Text(label, style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+              Text(
+                label,
+                style: TextStyle(fontSize: 12, color: colors.textMuted),
+              ),
             ],
           ),
           const SizedBox(height: 8),
-          Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: color)),
-          Text(subValue, style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
-        ],
-      ),
-    );
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  final String title;
-  final int count;
-
-  const _SectionHeader({required this.title, required this.count});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: [
-          Text(title, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceLight,
-              borderRadius: BorderRadius.circular(10),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: color,
             ),
-            child: Text('$count', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+          ),
+          Text(
+            subValue,
+            style: TextStyle(fontSize: 11, color: colors.textMuted),
           ),
         ],
       ),
-    );
-  }
-}
-
-class _TreeChip extends StatelessWidget {
-  final Factor factor;
-  final VoidCallback onTap;
-
-  const _TreeChip({required this.factor, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: factor.isActiveFocus ? AppColors.primary.withAlpha(20) : AppColors.surfaceLight,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: factor.isActiveFocus ? AppColors.primary : AppColors.glassBorder),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(factor.treeEmoji, style: const TextStyle(fontSize: 16)),
-            const SizedBox(width: 8),
-            Text(factor.name, style: TextStyle(color: AppColors.textPrimary, fontSize: 13)),
-            const SizedBox(width: 4),
-            Text('Lv${factor.currentLevel}', style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _EmptyChip extends StatelessWidget {
-  final String text;
-  const _EmptyChip({required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceLight.withAlpha(100),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(text, style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
     );
   }
 }

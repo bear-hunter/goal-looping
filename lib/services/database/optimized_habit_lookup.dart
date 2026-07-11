@@ -1,13 +1,6 @@
-/// Optimized habit completion lookups using indexed database queries
-/// 
-/// The original Habit.isCompletedFor() method has O(N) complexity where N = number of logs
-/// This extension provides O(1) lookups via indexed habit_logs table when Drift is enabled
-/// 
-/// Key optimization: Habit logs are stored in a separate indexed table instead of
-/// embedded in the Habit object. The index on (habit_id, date) enables instant lookups.
+// Indexed habit-completion lookups used when the Drift migration is enabled.
 
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 
 import 'app_database.dart';
 import 'migration_service.dart';
@@ -174,9 +167,8 @@ class HabitLogCache {
 /// Optimized habit statistics calculator
 class OptimizedHabitStats {
   final AppDatabase _db;
-  final HabitLogCache _cache;
-  
-  OptimizedHabitStats(this._db, this._cache);
+
+  OptimizedHabitStats(this._db);
   
   /// Calculate habit score using indexed queries - O(log N) vs O(N*days)
   Future<double> calculateHabitScore(Habit habit, {int days = 30}) async {
@@ -256,15 +248,11 @@ class OptimizedHabitStats {
     logs.sort((a, b) => b.date.compareTo(a.date));
     
     int streak = 0;
-    DateTime? lastScheduledDate;
-    
     for (int i = 0; i < 180; i++) {
       final date = DateTime(now.year, now.month, now.day)
           .subtract(Duration(days: i));
       
       if (!habit.isScheduledFor(date)) continue;
-      
-      lastScheduledDate = date;
       
       // Find log for this date
       final log = logs.firstWhere(

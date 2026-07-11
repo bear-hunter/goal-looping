@@ -10,6 +10,9 @@ import '../../models/time_availability.dart';
 import '../../providers/app_state.dart';
 import '../../services/storage_service.dart';
 import '../../widgets/glass_card.dart';
+import '../../widgets/section_header.dart';
+import '../../widgets/xp_bar.dart';
+import '../../widgets/empty_state.dart';
 
 import '../../widgets/factor_health_tree.dart';
 import 'factor_detail_screen.dart';
@@ -26,12 +29,12 @@ class StrategyScreen extends StatelessWidget {
         return SafeArea(
           child: CustomScrollView(
             slivers: [
-              _buildHeader(context),
+              _buildHeader(context, state),
               _buildGoalSection(context, state),
               if (state.activeGoal != null)
                 _buildFactorsSection(context, state),
-              _buildTimeSection(context, state),
               _buildSprintSection(context, state),
+              _buildTimeSection(context, state),
               const SliverToBoxAdapter(child: SizedBox(height: 100)),
             ],
           ),
@@ -40,23 +43,47 @@ class StrategyScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, AppState state) {
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Strategy',
-              style: Theme.of(context).textTheme.displayMedium,
-            ).animate().fadeIn(duration: 400.ms),
-            const SizedBox(height: 8),
-            Text(
-              'Anchor your goal and plan your direction',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: Theme.of(context).textTheme.bodySmall?.color, // Muted
-              ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Strategy',
+                        style: Theme.of(context).textTheme.displayMedium,
+                      ).animate().fadeIn(duration: 400.ms),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Mission control for your goal',
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          color: Theme.of(context).textTheme.bodySmall?.color,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    XPBar(stats: state.userStats, compact: true),
+                    const SizedBox(height: 8),
+                    StreakBadge(
+                      streak: state.userStats.currentStreak,
+                      isAtRisk: state.userStats.isStreakAtRisk,
+                    ),
+                  ],
+                ),
+              ],
             ),
           ],
         ),
@@ -65,92 +92,57 @@ class StrategyScreen extends StatelessWidget {
   }
 
   Widget _buildGoalSection(BuildContext context, AppState state) {
+    final colors = context.colors;
     return SliverToBoxAdapter(
       child: Column(
         children: [
-          _SectionHeader(
-            title: 'Goal Anchor',
-            icon: Icons.flag_rounded,
-            color: AppColors.primary,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: SectionHeader(
+              title: 'Your Goal',
+              uppercase: false,
+              trailing: Icon(
+                Icons.flag_rounded,
+                color: colors.primary,
+                size: 18,
+              ),
+            ),
           ),
           if (state.activeGoal == null)
-            GlassCard(
-              onTap: () => _showAddGoalDialog(context),
-              child: Row(
-                children: [
-                  Icon(Icons.add_circle_rounded, color: AppColors.primary),
-                  const SizedBox(width: 12),
-                  Text(
-                    'Set Your Medium-Term Goal',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ],
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: GlassCard(
+                onTap: () => _showAddGoalDialog(context),
+                child: EmptyState(
+                  icon: Icons.flag_rounded,
+                  title: 'Set your goal',
+                  subtitle:
+                      'Choose the medium-term outcome your forest will grow toward.',
+                  actionLabel: 'Set Goal',
+                  onAction: () => _showAddGoalDialog(context),
+                  animate: false,
+                ),
               ),
             )
           else
-            GlassCard(
-              highlighted: true,
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) =>
-                      GoalDetailScreen(goalId: state.activeGoal!.id),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: GlassCard(
+                highlighted: true,
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        GoalDetailScreen(goalId: state.activeGoal!.id),
+                  ),
                 ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.park_rounded,
-                        color: AppColors.primary,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          state.activeGoal!.title,
-                          style: Theme.of(
-                            context,
-                          ).textTheme.titleLarge?.copyWith(fontSize: 18),
-                        ),
-                      ),
-                      Icon(
-                        Icons.chevron_right_rounded,
-                        color: AppColors.textMuted,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.schedule_rounded,
-                        size: 14,
-                        color: AppColors.textMuted,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${state.activeGoal!.daysRemaining} days remaining',
-                        style: TextStyle(
-                          color: AppColors.primary,
-                          fontSize: 13,
-                        ),
-                      ),
-                      const Spacer(),
-                      Text(
-                        'Tap to view forest →',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textMuted,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                child: _GoalHeroContent(
+                  goal: state.activeGoal!,
+                  progress: state.getGoalProgress(state.activeGoal!.id),
+                  treeCount: state
+                      .getFactorsForGoal(state.activeGoal!.id)
+                      .length,
+                ),
               ),
             ),
         ],
@@ -159,6 +151,7 @@ class StrategyScreen extends StatelessWidget {
   }
 
   Widget _buildFactorsSection(BuildContext context, AppState state) {
+    final colors = context.colors;
     return SliverToBoxAdapter(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -167,7 +160,7 @@ class StrategyScreen extends StatelessWidget {
           _SectionHeader(
             title: 'Active Focus (${state.activeFocusFactors.length}/2)',
             icon: Icons.local_fire_department_rounded,
-            color: AppColors.success,
+            color: colors.success,
             onAdd: state.canAddActiveFocus && state.dormantFactors.isNotEmpty
                 ? () => _showSelectFactorToActivate(context, state)
                 : null,
@@ -181,16 +174,16 @@ class StrategyScreen extends StatelessWidget {
                   children: [
                     Text(
                       '🎯 Select up to 2 Trees to focus on',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.textMuted,
-                      ),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyMedium?.copyWith(color: colors.textMuted),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       'Only active Trees grow or decay',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.textMuted,
-                      ),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: colors.textMuted),
                     ),
                   ],
                 ),
@@ -237,7 +230,7 @@ class StrategyScreen extends StatelessWidget {
                                     vertical: 4,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: AppColors.textMuted.withAlpha(30),
+                                    color: colors.textMuted.withAlpha(30),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: Row(
@@ -246,14 +239,14 @@ class StrategyScreen extends StatelessWidget {
                                       Icon(
                                         Icons.pause_rounded,
                                         size: 14,
-                                        color: AppColors.textMuted,
+                                        color: colors.textMuted,
                                       ),
                                       const SizedBox(width: 4),
                                       Text(
                                         'Pause',
                                         style: TextStyle(
                                           fontSize: 11,
-                                          color: AppColors.textMuted,
+                                          color: colors.textMuted,
                                         ),
                                       ),
                                     ],
@@ -270,13 +263,18 @@ class StrategyScreen extends StatelessWidget {
             ),
 
           // Dissected Trees - ALWAYS show section header
-          _SectionHeader(
-            title: '🌳 Dissected Trees',
-            icon: Icons.nightlight_round,
-            color: AppColors.textMuted,
-            onAdd: state.activeGoal != null
-                ? () => _showAddFactorDialog(context, state.activeGoal!.id)
-                : null,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: SectionHeader(
+              title: 'Dissected trees',
+              uppercase: false,
+              trailing: IconButton(
+                icon: Icon(Icons.add_circle_rounded, color: colors.textMuted),
+                onPressed: state.activeGoal != null
+                    ? () => _showAddFactorDialog(context, state.activeGoal!.id)
+                    : null,
+              ),
+            ),
           ),
 
           if (state.factors.isEmpty)
@@ -288,13 +286,13 @@ class StrategyScreen extends StatelessWidget {
                     : null,
                 child: Row(
                   children: [
-                    Icon(Icons.add_circle_rounded, color: AppColors.textMuted),
+                    Icon(Icons.add_circle_rounded, color: colors.textMuted),
                     const SizedBox(width: 12),
                     Text(
                       'Add Trees from Goal Dissection',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.textMuted,
-                      ),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyMedium?.copyWith(color: colors.textMuted),
                     ),
                   ],
                 ),
@@ -307,25 +305,22 @@ class StrategyScreen extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceLight.withAlpha(100),
+                  color: colors.surfaceLight.withAlpha(100),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.glassBorder),
+                  border: Border.all(color: colors.glassBorder),
                 ),
                 child: Row(
                   children: [
                     Icon(
                       Icons.check_circle_rounded,
-                      color: AppColors.success,
+                      color: colors.success,
                       size: 20,
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         'All trees are in Active Focus! Tap "Pause" above to move one here.',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: AppColors.textMuted,
-                        ),
+                        style: TextStyle(fontSize: 13, color: colors.textMuted),
                       ),
                     ),
                   ],
@@ -335,49 +330,22 @@ class StrategyScreen extends StatelessWidget {
           else
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                children: [
-                  for (var i = 0; i < state.dormantFactors.length; i += 2)
-                    Padding(
-                      padding: EdgeInsets.only(
-                        bottom: i + 2 < state.dormantFactors.length ? 8 : 0,
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: _DormantFactorChip(
-                              factor: state.dormantFactors[i],
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => FactorDetailScreen(
-                                    factorId: state.dormantFactors[i].id,
-                                  ),
-                                ),
-                              ),
-                            ),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: state.dormantFactors
+                    .map(
+                      (f) => FactorTile(
+                        factor: f,
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => FactorDetailScreen(factorId: f.id),
                           ),
-                          const SizedBox(width: 8),
-                          if (i + 1 < state.dormantFactors.length)
-                            Expanded(
-                              child: _DormantFactorChip(
-                                factor: state.dormantFactors[i + 1],
-                                onTap: () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => FactorDetailScreen(
-                                      factorId: state.dormantFactors[i + 1].id,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            )
-                          else
-                            const Expanded(child: SizedBox()),
-                        ],
+                        ),
                       ),
-                    ),
-                ],
+                    )
+                    .toList(),
               ),
             ),
         ],
@@ -386,8 +354,8 @@ class StrategyScreen extends StatelessWidget {
   }
 
   void _showSelectFactorToActivate(BuildContext context, AppState state) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final surfaceColor = isDark ? AppColors.surface : LightColors.surface;
+    final colors = context.colors;
+    final surfaceColor = colors.surface;
 
     showModalBottomSheet(
       context: context,
@@ -405,7 +373,7 @@ class StrategyScreen extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               'You can focus on up to 2 Factors at a time',
-              style: TextStyle(color: AppColors.textMuted),
+              style: TextStyle(color: colors.textMuted),
             ),
             const SizedBox(height: 16),
             ...state.dormantFactors.map(
@@ -416,10 +384,7 @@ class StrategyScreen extends StatelessWidget {
                 ),
                 title: Text(f.name),
                 subtitle: Text(f.typeName),
-                trailing: Icon(
-                  Icons.add_circle_rounded,
-                  color: AppColors.primary,
-                ),
+                trailing: Icon(Icons.add_circle_rounded, color: colors.primary),
                 onTap: () {
                   state.setFactorActive(f.id);
                   Navigator.pop(ctx);
@@ -433,6 +398,7 @@ class StrategyScreen extends StatelessWidget {
   }
 
   Widget _buildTimeSection(BuildContext context, AppState state) {
+    final colors = context.colors;
     final availability = state.timeAvailability ?? TimeAvailability.some;
     final hoursPerWeek = availability.hoursPerWeekMin;
     final tasksCompleted = state.completedTasks.length;
@@ -445,25 +411,25 @@ class StrategyScreen extends StatelessWidget {
           _SectionHeader(
             title: 'Time Defense',
             icon: Icons.schedule_rounded,
-            color: AppColors.warning,
+            color: colors.warning,
           ),
 
           // Weekly Budget Card
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Container(
-              padding: const EdgeInsets.all(AppSpacing.md),
+              padding: const EdgeInsets.all(AppSpacing.sm),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    AppColors.warning.withAlpha(20),
-                    AppColors.primary.withAlpha(15),
+                    colors.warning.withAlpha(20),
+                    colors.primary.withAlpha(15),
                   ], // Subtler
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(AppRadius.lg),
-                border: Border.all(color: AppColors.warning.withAlpha(30)),
+                border: Border.all(color: colors.warning.withAlpha(30)),
                 boxShadow: AppShadows.card,
               ),
               child: Column(
@@ -472,18 +438,18 @@ class StrategyScreen extends StatelessWidget {
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(10),
+                        padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: AppColors.warning.withAlpha(40),
-                          borderRadius: BorderRadius.circular(12),
+                          color: colors.warning.withAlpha(40),
+                          borderRadius: BorderRadius.circular(10),
                         ),
                         child: Icon(
                           Icons.timer_rounded,
-                          color: AppColors.warning,
-                          size: 24,
+                          color: colors.warning,
+                          size: 20,
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -497,9 +463,9 @@ class StrategyScreen extends StatelessWidget {
                                   ? 'No time set'
                                   : '$hoursPerWeek+ hours/week',
                               style: TextStyle(
-                                fontSize: 20,
+                                fontSize: 18,
                                 fontWeight: FontWeight.bold,
-                                color: AppColors.warning,
+                                color: colors.warning,
                               ),
                             ),
                           ],
@@ -512,34 +478,34 @@ class StrategyScreen extends StatelessWidget {
                             'This week',
                             style: TextStyle(
                               fontSize: 11,
-                              color: AppColors.textMuted,
+                              color: colors.textMuted,
                             ),
                           ),
                           Text(
                             '$tasksCompleted tasks',
                             style: TextStyle(
                               fontSize: 13,
-                              color: AppColors.textSecondary,
+                              color: colors.textSecondary,
                             ),
                           ),
                           Text(
                             '$habitsLogged habits',
                             style: TextStyle(
                               fontSize: 13,
-                              color: AppColors.textSecondary,
+                              color: colors.textSecondary,
                             ),
                           ),
                         ],
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
                   Text(
                     availability.description,
-                    style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                    style: TextStyle(fontSize: 11, color: colors.textMuted),
                   ),
                   if (hoursPerWeek > 0) ...[
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                     _TimeRecommendation(hoursPerWeek: hoursPerWeek),
                   ],
                 ],
@@ -547,74 +513,202 @@ class StrategyScreen extends StatelessWidget {
             ),
           ),
 
-          const SizedBox(height: 16),
-
-          // Time availability options
+          const SizedBox(height: 10),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Text(
-              'Set your availability:',
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
-            ),
-          ),
-          const SizedBox(height: 8),
-          ...TimeAvailability.values.map((a) {
-            final isDark = Theme.of(context).brightness == Brightness.dark;
-            final isSelected = state.timeAvailability == a;
-            final surfaceColor = isDark
-                ? AppColors.surface
-                : LightColors.surface;
-            final glassBorder = isDark
-                ? AppColors.glassBorder
-                : LightColors.glassBorder;
-
-            return GestureDetector(
-              onTap: () => state.setTimeAvailability(a),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              onTap: () => _showTimeAvailabilitySheet(context, state),
               child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                padding: const EdgeInsets.all(AppSpacing.md),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.sm,
+                ),
                 decoration: BoxDecoration(
-                  color: isSelected
-                      ? AppColors.primary.withAlpha(20)
-                      : surfaceColor,
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                  border: Border.all(
-                    color: isSelected
-                        ? AppColors.primary.withAlpha(50)
-                        : glassBorder,
-                  ),
+                  color: colors.surface,
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  border: Border.all(color: colors.glassBorder),
                 ),
                 child: Row(
                   children: [
-                    Icon(
-                      isSelected
-                          ? Icons.radio_button_checked
-                          : Icons.radio_button_off,
-                      color: isSelected
-                          ? AppColors.primary
-                          : AppColors.textMuted,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 12),
+                    Icon(Icons.tune_rounded, color: colors.warning, size: 18),
+                    const SizedBox(width: 10),
                     Expanded(
-                      child: Text(
-                        a.label,
-                        style: Theme.of(context).textTheme.bodyMedium,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Capacity setting',
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(color: colors.textMuted),
+                          ),
+                          Text(
+                            availability.label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                        ],
                       ),
+                    ),
+                    Text(
+                      'Change',
+                      style: TextStyle(
+                        color: colors.warning,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(
+                      Icons.keyboard_arrow_up_rounded,
+                      color: colors.warning,
+                      size: 18,
                     ),
                   ],
                 ),
               ),
-            );
-          }),
+            ),
+          ),
         ],
       ),
     );
   }
 
+  void _showTimeAvailabilitySheet(BuildContext context, AppState state) {
+    final colors = context.colors;
+    final selected = state.timeAvailability ?? TimeAvailability.some;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: colors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(ctx).height * 0.86,
+          ),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.shield_moon_rounded, color: colors.warning),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Choose your weekly capacity',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Pick the honest time budget. The app will scale recommendations around it.',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: colors.textMuted),
+                ),
+                const SizedBox(height: 16),
+                ...TimeAvailability.values.map((a) {
+                  final isSelected = a == selected;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                      onTap: () {
+                        state.setTimeAvailability(a);
+                        Navigator.pop(ctx);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(AppSpacing.sm),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? colors.warning.withAlpha(24)
+                              : colors.surfaceLight.withAlpha(120),
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                          border: Border.all(
+                            color: isSelected
+                                ? colors.warning.withAlpha(90)
+                                : colors.glassBorder,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 34,
+                              height: 34,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: colors.warning.withAlpha(20),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Text(
+                                a.hoursPerWeekMin == 0
+                                    ? '0'
+                                    : '${a.hoursPerWeekMin}+',
+                                style: TextStyle(
+                                  color: colors.warning,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    a.label,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(fontWeight: FontWeight.w700),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    a.description,
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(color: colors.textMuted),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (isSelected)
+                              Icon(
+                                Icons.check_circle_rounded,
+                                color: colors.warning,
+                              )
+                            else
+                              Icon(
+                                Icons.circle_outlined,
+                                color: colors.textMuted,
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildSprintSection(BuildContext context, AppState state) {
+    final colors = context.colors;
     final thirtyDayGoals = state.sprintTargets
         .where((t) => t.duration == SprintDuration.thirtyDays)
         .toList();
@@ -629,7 +723,7 @@ class StrategyScreen extends StatelessWidget {
           _SectionHeader(
             title: '30-Day Performance Goals',
             icon: Icons.calendar_month_rounded,
-            color: AppColors.info,
+            color: colors.info,
             onAdd: () =>
                 _showAddSprintDialog(context, state, SprintDuration.thirtyDays),
           ),
@@ -640,7 +734,7 @@ class StrategyScreen extends StatelessWidget {
                 'No 30-day goals set',
                 style: Theme.of(
                   context,
-                ).textTheme.bodyMedium?.copyWith(color: AppColors.textMuted),
+                ).textTheme.bodyMedium?.copyWith(color: colors.textMuted),
               ),
             )
           else
@@ -663,7 +757,7 @@ class StrategyScreen extends StatelessWidget {
           _SectionHeader(
             title: '14-Day Performance Goals',
             icon: Icons.bolt_rounded,
-            color: AppColors.warning,
+            color: colors.warning,
             onAdd: () => _showAddSprintDialog(
               context,
               state,
@@ -677,7 +771,7 @@ class StrategyScreen extends StatelessWidget {
                 'No 14-day goals set',
                 style: Theme.of(
                   context,
-                ).textTheme.bodyMedium?.copyWith(color: AppColors.textMuted),
+                ).textTheme.bodyMedium?.copyWith(color: colors.textMuted),
               ),
             )
           else
@@ -700,8 +794,8 @@ class StrategyScreen extends StatelessWidget {
 
   void _showAddGoalDialog(BuildContext context) {
     final controller = TextEditingController();
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final surfaceColor = isDark ? AppColors.surface : LightColors.surface;
+    final colors = context.colors;
+    final surfaceColor = colors.surface;
     int selectedDays = 270; // Default: 9 months
     DateTime? customDate;
 
@@ -731,9 +825,7 @@ class StrategyScreen extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
-                  color: isDark
-                      ? AppColors.textSecondary
-                      : LightColors.textSecondary,
+                  color: colors.textSecondary,
                 ),
               ),
               const SizedBox(height: 8),
@@ -853,8 +945,8 @@ class StrategyScreen extends StatelessWidget {
 
   void _showAddFactorDialog(BuildContext context, String goalId) {
     final controller = TextEditingController();
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final surfaceColor = isDark ? AppColors.surface : LightColors.surface;
+    final colors = context.colors;
+    final surfaceColor = colors.surface;
 
     showModalBottomSheet(
       context: context,
@@ -903,8 +995,8 @@ class StrategyScreen extends StatelessWidget {
   ) {
     final controller = TextEditingController();
     List<String> selectedFactorIds = [];
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final surfaceColor = isDark ? AppColors.surface : LightColors.surface;
+    final colors = context.colors;
+    final surfaceColor = colors.surface;
 
     showModalBottomSheet(
       context: context,
@@ -936,7 +1028,7 @@ class StrategyScreen extends StatelessWidget {
               const SizedBox(height: 12),
               Text(
                 'Link to Factors',
-                style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+                style: TextStyle(fontSize: 13, color: colors.textMuted),
               ),
               const SizedBox(height: 8),
               Wrap(
@@ -959,21 +1051,21 @@ class StrategyScreen extends StatelessWidget {
                       ),
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? AppColors.primary.withAlpha(30)
-                            : AppColors.surfaceLight,
+                            ? colors.primary.withAlpha(30)
+                            : colors.surfaceLight,
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
                           color: isSelected
-                              ? AppColors.primary
-                              : AppColors.glassBorder,
+                              ? colors.primary
+                              : colors.glassBorder,
                         ),
                       ),
                       child: Text(
                         f.name,
                         style: TextStyle(
                           color: isSelected
-                              ? AppColors.primary
-                              : AppColors.textSecondary,
+                              ? colors.primary
+                              : colors.textSecondary,
                           fontWeight: isSelected
                               ? FontWeight.w600
                               : FontWeight.normal,
@@ -1014,8 +1106,8 @@ class StrategyScreen extends StatelessWidget {
   ) {
     final controller = TextEditingController(text: target.title);
     List<String> selectedFactorIds = List.from(target.linkedFactorIds);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final surfaceColor = isDark ? AppColors.surface : LightColors.surface;
+    final colors = context.colors;
+    final surfaceColor = colors.surface;
 
     showModalBottomSheet(
       context: context,
@@ -1045,7 +1137,7 @@ class StrategyScreen extends StatelessWidget {
               const SizedBox(height: 12),
               Text(
                 'Link to Factors',
-                style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+                style: TextStyle(fontSize: 13, color: colors.textMuted),
               ),
               const SizedBox(height: 8),
               Wrap(
@@ -1068,21 +1160,21 @@ class StrategyScreen extends StatelessWidget {
                       ),
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? AppColors.primary.withAlpha(30)
-                            : AppColors.surfaceLight,
+                            ? colors.primary.withAlpha(30)
+                            : colors.surfaceLight,
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
                           color: isSelected
-                              ? AppColors.primary
-                              : AppColors.glassBorder,
+                              ? colors.primary
+                              : colors.glassBorder,
                         ),
                       ),
                       child: Text(
                         f.name,
                         style: TextStyle(
                           color: isSelected
-                              ? AppColors.primary
-                              : AppColors.textSecondary,
+                              ? colors.primary
+                              : colors.textSecondary,
                           fontWeight: isSelected
                               ? FontWeight.w600
                               : FontWeight.normal,
@@ -1125,8 +1217,8 @@ class StrategyScreen extends StatelessWidget {
     AppState state,
     SprintTarget target,
   ) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final surfaceColor = isDark ? AppColors.surface : LightColors.surface;
+    final colors = context.colors;
+    final surfaceColor = colors.surface;
 
     showDialog(
       context: context,
@@ -1147,10 +1239,128 @@ class StrategyScreen extends StatelessWidget {
                 context,
               ).showSnackBar(const SnackBar(content: Text('Goal deleted')));
             },
-            style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+            style: TextButton.styleFrom(foregroundColor: colors.danger),
             child: const Text('Delete'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _GoalHeroContent extends StatelessWidget {
+  final Goal goal;
+  final double progress;
+  final int treeCount;
+
+  const _GoalHeroContent({
+    required this.goal,
+    required this.progress,
+    required this.treeCount,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final progressValue = progress.clamp(0.0, 1.0);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.park_rounded, color: colors.primary, size: 24),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                goal.title,
+                style: Theme.of(
+                  context,
+                ).textTheme.displaySmall?.copyWith(fontSize: 24),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: colors.textMuted),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            _HeroMetric(
+              icon: Icons.schedule_rounded,
+              label: goal.isOverdue ? 'overdue' : 'days left',
+              value: '${goal.daysRemaining.abs()}',
+            ),
+            const SizedBox(width: 12),
+            _HeroMetric(
+              icon: Icons.forest_rounded,
+              label: treeCount == 1 ? 'tree' : 'trees',
+              value: '$treeCount',
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(AppRadius.full),
+          child: LinearProgressIndicator(
+            value: progressValue,
+            minHeight: 9,
+            backgroundColor: colors.surfaceVariant,
+            valueColor: AlwaysStoppedAnimation(colors.primary),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          '${(progressValue * 100).round()}% to goal · view forest →',
+          style: TextStyle(fontSize: 12, color: colors.textMuted),
+        ),
+      ],
+    );
+  }
+}
+
+class _HeroMetric extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const _HeroMetric({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: colors.surfaceLight.withAlpha(130),
+          borderRadius: BorderRadius.circular(AppRadius.md),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 16, color: colors.primary),
+            const SizedBox(width: 8),
+            Text(
+              value,
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                color: colors.textPrimary,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(fontSize: 11, color: colors.textMuted),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1208,42 +1418,6 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-class _DormantFactorChip extends StatelessWidget {
-  final Factor factor;
-  final VoidCallback onTap;
-
-  const _DormantFactorChip({required this.factor, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceLight,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.glassBorder),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(factor.treeEmoji, style: const TextStyle(fontSize: 16)),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                factor.name,
-                style: Theme.of(context).textTheme.bodyMedium,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _SprintGoalCard extends StatelessWidget {
   final SprintTarget target;
   final List<Factor> factors;
@@ -1265,6 +1439,7 @@ class _SprintGoalCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final linkedFactors = factors
         .where((f) => target.linkedFactorIds.contains(f.id))
         .toList();
@@ -1293,14 +1468,14 @@ class _SprintGoalCard extends StatelessWidget {
                       ? Icons.calendar_month_rounded
                       : Icons.bolt_rounded,
                   color: isCompleted
-                      ? AppColors.success
+                      ? colors.success
                       : isFailed
-                      ? AppColors.danger
+                      ? colors.danger
                       : isOverdue
-                      ? AppColors.danger
+                      ? colors.danger
                       : (target.duration == SprintDuration.thirtyDays
-                            ? AppColors.info
-                            : AppColors.warning),
+                            ? colors.info
+                            : colors.warning),
                   size: 20,
                 ),
                 const SizedBox(width: 12),
@@ -1312,9 +1487,7 @@ class _SprintGoalCard extends StatelessWidget {
                       decoration: isCompleted || isFailed
                           ? TextDecoration.lineThrough
                           : null,
-                      color: isCompleted || isFailed
-                          ? AppColors.textMuted
-                          : null,
+                      color: isCompleted || isFailed ? colors.textMuted : null,
                     ),
                   ),
                 ),
@@ -1326,12 +1499,12 @@ class _SprintGoalCard extends StatelessWidget {
                   ),
                   decoration: BoxDecoration(
                     color: isCompleted
-                        ? AppColors.success.withAlpha(30)
+                        ? colors.success.withAlpha(30)
                         : isFailed
-                        ? AppColors.danger.withAlpha(30)
+                        ? colors.danger.withAlpha(30)
                         : isOverdue
-                        ? AppColors.danger.withAlpha(30)
-                        : AppColors.surfaceLight,
+                        ? colors.danger.withAlpha(30)
+                        : colors.surfaceLight,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -1345,12 +1518,12 @@ class _SprintGoalCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 12,
                       color: isCompleted
-                          ? AppColors.success
+                          ? colors.success
                           : isFailed
-                          ? AppColors.danger
+                          ? colors.danger
                           : isOverdue
-                          ? AppColors.danger
-                          : AppColors.textMuted,
+                          ? colors.danger
+                          : colors.textMuted,
                     ),
                   ),
                 ),
@@ -1369,15 +1542,12 @@ class _SprintGoalCard extends StatelessWidget {
                           vertical: 3,
                         ),
                         decoration: BoxDecoration(
-                          color: AppColors.primary.withAlpha(20),
+                          color: colors.primary.withAlpha(20),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
                           f.name,
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: AppColors.primary,
-                          ),
+                          style: TextStyle(fontSize: 11, color: colors.primary),
                         ),
                       ),
                     )
@@ -1396,10 +1566,10 @@ class _SprintGoalCard extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 8),
                         decoration: BoxDecoration(
-                          color: AppColors.success.withAlpha(30),
+                          color: colors.success.withAlpha(30),
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
-                            color: AppColors.success.withAlpha(50),
+                            color: colors.success.withAlpha(50),
                           ),
                         ),
                         child: Row(
@@ -1407,7 +1577,7 @@ class _SprintGoalCard extends StatelessWidget {
                           children: [
                             Icon(
                               Icons.check_rounded,
-                              color: AppColors.success,
+                              color: colors.success,
                               size: 18,
                             ),
                             const SizedBox(width: 4),
@@ -1415,7 +1585,7 @@ class _SprintGoalCard extends StatelessWidget {
                               'Complete',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: AppColors.success,
+                                color: colors.success,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -1432,10 +1602,10 @@ class _SprintGoalCard extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 8),
                         decoration: BoxDecoration(
-                          color: AppColors.danger.withAlpha(20),
+                          color: colors.danger.withAlpha(20),
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
-                            color: AppColors.danger.withAlpha(40),
+                            color: colors.danger.withAlpha(40),
                           ),
                         ),
                         child: Row(
@@ -1443,7 +1613,7 @@ class _SprintGoalCard extends StatelessWidget {
                           children: [
                             Icon(
                               Icons.close_rounded,
-                              color: AppColors.danger,
+                              color: colors.danger,
                               size: 18,
                             ),
                             const SizedBox(width: 4),
@@ -1451,7 +1621,7 @@ class _SprintGoalCard extends StatelessWidget {
                               'Failed',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: AppColors.danger,
+                                color: colors.danger,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -1468,7 +1638,7 @@ class _SprintGoalCard extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 8),
                         decoration: BoxDecoration(
-                          color: AppColors.textMuted.withAlpha(20),
+                          color: colors.textMuted.withAlpha(20),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Row(
@@ -1476,7 +1646,7 @@ class _SprintGoalCard extends StatelessWidget {
                           children: [
                             Icon(
                               Icons.refresh_rounded,
-                              color: AppColors.textMuted,
+                              color: colors.textMuted,
                               size: 18,
                             ),
                             const SizedBox(width: 4),
@@ -1484,7 +1654,7 @@ class _SprintGoalCard extends StatelessWidget {
                               'Undo',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: AppColors.textMuted,
+                                color: colors.textMuted,
                               ),
                             ),
                           ],
@@ -1500,12 +1670,12 @@ class _SprintGoalCard extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: AppColors.textMuted.withAlpha(20),
+                      color: colors.textMuted.withAlpha(20),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(
                       Icons.delete_outline_rounded,
-                      color: AppColors.textMuted,
+                      color: colors.textMuted,
                       size: 18,
                     ),
                   ),
@@ -1527,10 +1697,10 @@ class _TimeRecommendation extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (icon, text, color) = _getRecommendation();
+    final (icon, text, color) = _getRecommendation(context);
 
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: color.withAlpha(20),
         borderRadius: BorderRadius.circular(10),
@@ -1538,40 +1708,41 @@ class _TimeRecommendation extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(icon, color: color, size: 18),
-          const SizedBox(width: 10),
+          Icon(icon, color: color, size: 16),
+          const SizedBox(width: 8),
           Expanded(
-            child: Text(text, style: TextStyle(fontSize: 12, color: color)),
+            child: Text(text, style: TextStyle(fontSize: 11, color: color)),
           ),
         ],
       ),
     );
   }
 
-  (IconData, String, Color) _getRecommendation() {
+  (IconData, String, Color) _getRecommendation(BuildContext context) {
+    final colors = context.colors;
     if (hoursPerWeek <= 2) {
       return (
         Icons.flash_on_rounded,
         '💡 Focus only on Top 2 tasks. Skip reflections when busy.',
-        AppColors.warning,
+        colors.warning,
       );
     } else if (hoursPerWeek <= 5) {
       return (
         Icons.balance_rounded,
         '⚖️ Balance 2 priority tasks + 2-3 habits daily. One reflection weekly.',
-        AppColors.info,
+        colors.info,
       );
     } else if (hoursPerWeek <= 10) {
       return (
         Icons.trending_up_rounded,
         '📈 Good capacity! Add experiments and more habits to accelerate growth.',
-        AppColors.success,
+        colors.success,
       );
     } else {
       return (
         Icons.rocket_launch_rounded,
         '🚀 Full capacity mode! Maximize all modules for rapid progress.',
-        AppColors.primary,
+        colors.primary,
       );
     }
   }

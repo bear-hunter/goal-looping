@@ -21,6 +21,7 @@ class ReflectionScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Consumer<AppState>(
       builder: (context, state, _) {
         return SafeArea(
@@ -61,16 +62,16 @@ class ReflectionScreen extends StatelessWidget {
                                   ),
                                   padding: const EdgeInsets.all(10),
                                   decoration: BoxDecoration(
-                                    color: AppColors.warning.withAlpha(30),
+                                    color: colors.warning.withAlpha(30),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      const Icon(
+                                      Icon(
                                         Icons.science_rounded,
                                         size: 20,
-                                        color: AppColors.warning,
+                                        color: colors.warning,
                                       ),
                                       if (state
                                           .pendingExperiments
@@ -82,7 +83,7 @@ class ReflectionScreen extends StatelessWidget {
                                             vertical: 2,
                                           ),
                                           decoration: BoxDecoration(
-                                            color: AppColors.warning,
+                                            color: colors.warning,
                                             borderRadius: BorderRadius.circular(
                                               10,
                                             ),
@@ -122,13 +123,13 @@ class ReflectionScreen extends StatelessWidget {
                                   width: 44,
                                   height: 44,
                                   decoration: BoxDecoration(
-                                    color: AppColors.textMuted.withAlpha(30),
+                                    color: colors.textMuted.withAlpha(30),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
-                                  child: const Icon(
+                                  child: Icon(
                                     Icons.archive_outlined,
                                     size: 20,
-                                    color: AppColors.textMuted,
+                                    color: colors.textMuted,
                                   ),
                                 ),
                               ),
@@ -142,7 +143,7 @@ class ReflectionScreen extends StatelessWidget {
                           Expanded(
                             child: Text(
                               'Transform reflections into actions',
-                              style: TextStyle(color: AppColors.textSecondary),
+                              style: TextStyle(color: colors.textSecondary),
                             ),
                           ),
                           if (state.activeReflectionGroups.isNotEmpty)
@@ -157,7 +158,7 @@ class ReflectionScreen extends StatelessWidget {
                                 style: TextStyle(fontSize: 12),
                               ),
                               style: TextButton.styleFrom(
-                                foregroundColor: AppColors.primary,
+                                foregroundColor: colors.primary,
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 12,
                                   vertical: 8,
@@ -189,11 +190,11 @@ class ReflectionScreen extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        gradient: AppColors.primaryGradient,
+                        gradient: colors.primaryGradient,
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
-                            color: AppColors.primary.withAlpha(76),
+                            color: colors.primary.withAlpha(76),
                             blurRadius: 12,
                             offset: const Offset(0, 4),
                           ),
@@ -228,7 +229,7 @@ class ReflectionScreen extends StatelessWidget {
                       children: [
                         Icon(
                           Icons.replay_circle_filled_rounded,
-                          color: AppColors.primary,
+                          color: colors.primary,
                           size: 20,
                         ),
                         const SizedBox(width: 12),
@@ -237,7 +238,7 @@ class ReflectionScreen extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
+                            color: colors.textPrimary,
                           ),
                         ),
                         const Spacer(),
@@ -247,14 +248,14 @@ class ReflectionScreen extends StatelessWidget {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: AppColors.primary.withAlpha(51),
+                            color: colors.primary.withAlpha(51),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
                             '${state.activeReflectionGroups.length}',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              color: AppColors.primary,
+                              color: colors.primary,
                             ),
                           ),
                         ),
@@ -300,7 +301,7 @@ class ReflectionScreen extends StatelessWidget {
                     children: [
                       Icon(
                         Icons.history_rounded,
-                        color: AppColors.info,
+                        color: colors.info,
                         size: 20,
                       ),
                       const SizedBox(width: 12),
@@ -309,7 +310,7 @@ class ReflectionScreen extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
+                          color: colors.textPrimary,
                         ),
                       ),
                     ],
@@ -328,12 +329,12 @@ class ReflectionScreen extends StatelessWidget {
                             Icon(
                               Icons.psychology_rounded,
                               size: 48,
-                              color: AppColors.textMuted.withAlpha(127),
+                              color: colors.textMuted.withAlpha(127),
                             ),
                             const SizedBox(height: 12),
                             Text(
                               'Start your first reflection cycle',
-                              style: TextStyle(color: AppColors.textMuted),
+                              style: TextStyle(color: colors.textMuted),
                             ),
                           ],
                         ),
@@ -377,6 +378,7 @@ class ReflectionScreen extends StatelessWidget {
   }
 
   void _handleExportAll(BuildContext context, AppState state) async {
+    final colors = context.colors;
     final groups = state.activeReflectionGroups;
     if (groups.isEmpty) return;
 
@@ -387,13 +389,13 @@ class ReflectionScreen extends StatelessWidget {
       builder: (ctx) => PopScope(
         canPop: false,
         child: AlertDialog(
-          backgroundColor: AppColors.surface,
+          backgroundColor: colors.surface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
           content: Row(
             children: [
-              const CircularProgressIndicator(color: AppColors.primary),
+              CircularProgressIndicator(color: colors.primary),
               const SizedBox(width: 20),
               Expanded(
                 child: Column(
@@ -403,7 +405,7 @@ class ReflectionScreen extends StatelessWidget {
                     Text(
                       'Exporting PDF...',
                       style: TextStyle(
-                        color: AppColors.textPrimary,
+                        color: colors.textPrimary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -411,7 +413,7 @@ class ReflectionScreen extends StatelessWidget {
                     Text(
                       '${groups.length} reflection chain(s)',
                       style: TextStyle(
-                        color: AppColors.textMuted,
+                        color: colors.textMuted,
                         fontSize: 12,
                       ),
                     ),
@@ -437,7 +439,7 @@ class ReflectionScreen extends StatelessWidget {
                 Text('Export completed successfully!'),
               ],
             ),
-            backgroundColor: AppColors.success,
+            backgroundColor: colors.success,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -448,7 +450,7 @@ class ReflectionScreen extends StatelessWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Export failed: $e'),
-            backgroundColor: AppColors.danger,
+            backgroundColor: colors.danger,
           ),
         );
       }
@@ -487,6 +489,7 @@ class _CycleChainCard extends StatelessWidget {
   });
 
   void _handleExportGroup(BuildContext context) async {
+    final colors = context.colors;
     final state = Provider.of<AppState>(context, listen: false);
     ScaffoldMessenger.of(
       context,
@@ -503,7 +506,7 @@ class _CycleChainCard extends StatelessWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Export failed: $e'),
-            backgroundColor: AppColors.danger,
+            backgroundColor: colors.danger,
           ),
         );
       }
@@ -512,6 +515,7 @@ class _CycleChainCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return GlassCard(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Column(
@@ -522,7 +526,7 @@ class _CycleChainCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withAlpha(30),
+                  color: colors.primary.withAlpha(30),
                   shape: BoxShape.circle,
                 ),
                 child: const Text('🔁', style: TextStyle(fontSize: 16)),
@@ -537,14 +541,14 @@ class _CycleChainCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
+                        color: colors.textPrimary,
                       ),
                     ),
                     Text(
                       '${reflections.length} cycles',
                       style: TextStyle(
                         fontSize: 12,
-                        color: AppColors.textMuted,
+                        color: colors.textMuted,
                       ),
                     ),
                   ],
@@ -554,17 +558,17 @@ class _CycleChainCard extends StatelessWidget {
                 icon: Icon(
                   Icons.picture_as_pdf_outlined,
                   size: 20,
-                  color: AppColors.primary.withAlpha(204),
+                  color: colors.primary.withAlpha(204),
                 ),
                 onPressed: () => _handleExportGroup(context),
                 tooltip: 'Export Chain to PDF',
               ),
               if (onQuickCycle != null)
                 IconButton(
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.add_circle_outline_rounded,
                     size: 22,
-                    color: AppColors.primary,
+                    color: colors.primary,
                   ),
                   onPressed: onQuickCycle,
                   tooltip: 'Quick Cycle',
@@ -592,13 +596,13 @@ class _CycleChainCard extends StatelessWidget {
                         ),
                         decoration: BoxDecoration(
                           color: i == reflections.length - 1
-                              ? AppColors.primary.withAlpha(30)
-                              : AppColors.surfaceLight,
+                              ? colors.primary.withAlpha(30)
+                              : colors.surfaceLight,
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
                             color: i == reflections.length - 1
-                                ? AppColors.primary
-                                : AppColors.glassBorder,
+                                ? colors.primary
+                                : colors.glassBorder,
                           ),
                         ),
                         child: Column(
@@ -610,15 +614,15 @@ class _CycleChainCard extends StatelessWidget {
                                 fontSize: 14,
                                 fontWeight: FontWeight.bold,
                                 color: i == reflections.length - 1
-                                    ? AppColors.primary
-                                    : AppColors.textSecondary,
+                                    ? colors.primary
+                                    : colors.textSecondary,
                               ),
                             ),
                             Text(
                               'cycle',
                               style: TextStyle(
                                 fontSize: 9,
-                                color: AppColors.textMuted,
+                                color: colors.textMuted,
                               ),
                             ),
                           ],
@@ -631,7 +635,7 @@ class _CycleChainCard extends StatelessWidget {
                         child: Icon(
                           Icons.arrow_forward_rounded,
                           size: 14,
-                          color: AppColors.textMuted,
+                          color: colors.textMuted,
                         ),
                       ),
                   ],
@@ -658,6 +662,7 @@ class _ReflectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return GlassCard(
       onTap: onTap,
       child: Column(
@@ -665,7 +670,7 @@ class _ReflectionCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.psychology_rounded, color: AppColors.info, size: 20),
+              Icon(Icons.psychology_rounded, color: colors.info, size: 20),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
@@ -675,7 +680,7 @@ class _ReflectionCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+                    color: colors.textPrimary,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -688,7 +693,7 @@ class _ReflectionCard extends StatelessWidget {
                     vertical: 2,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withAlpha(30),
+                    color: colors.primary.withAlpha(30),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
@@ -696,7 +701,7 @@ class _ReflectionCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
+                      color: colors.primary,
                     ),
                   ),
                 ),
@@ -704,21 +709,21 @@ class _ReflectionCard extends StatelessWidget {
               ],
               Text(
                 _formatDate(reflection.createdAt),
-                style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                style: TextStyle(fontSize: 12, color: colors.textMuted),
               ),
             ],
           ),
           const SizedBox(height: 8),
           LinearProgressIndicator(
             value: reflection.completionPercent,
-            backgroundColor: AppColors.surfaceLight,
-            valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+            backgroundColor: colors.surfaceLight,
+            valueColor: AlwaysStoppedAnimation<Color>(colors.primary),
             minHeight: 4,
           ),
           const SizedBox(height: 8),
           Text(
             '${(reflection.completionPercent * 100).toInt()}% complete • ${reflection.experimentIds.length} experiments',
-            style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+            style: TextStyle(fontSize: 12, color: colors.textMuted),
           ),
         ],
       ),
@@ -747,7 +752,8 @@ class _ReflectionReminderBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = isCritical ? AppColors.danger : AppColors.warning;
+    final colors = context.colors;
+    final color = isCritical ? colors.danger : colors.warning;
     final daysSince = hoursSince ~/ 24;
 
     return Padding(
@@ -806,7 +812,7 @@ class _ReflectionReminderBanner extends StatelessWidget {
                               : 'It\'s been ${daysSince > 0 ? "$daysSince days" : "$hoursSince hours"} since your last reflection',
                           style: TextStyle(
                             fontSize: 12,
-                            color: AppColors.textMuted,
+                            color: colors.textMuted,
                           ),
                         ),
                       ],

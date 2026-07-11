@@ -17,6 +17,7 @@ class AchievementNotification extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final achievement = Achievements.getById(achievementId);
     if (achievement == null) return const SizedBox();
 
@@ -30,16 +31,13 @@ class AchievementNotification extends StatelessWidget {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
-                AppColors.surface,
-                AppColors.surfaceLight,
-              ],
+              colors: [colors.surface, colors.surfaceLight],
             ),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: AppColors.primary, width: 2),
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            border: Border.all(color: colors.primary, width: 2),
             boxShadow: [
               BoxShadow(
-                color: AppColors.primary.withAlpha(80),
+                color: colors.primary.withAlpha(80),
                 blurRadius: 32,
                 spreadRadius: 8,
               ),
@@ -48,109 +46,145 @@ class AchievementNotification extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Trophy animation
               Text(
                 achievement.iconEmoji,
                 style: const TextStyle(fontSize: 64),
-              ).animate(onPlay: (c) => c.repeat(reverse: true))
-                .scale(begin: const Offset(1, 1), end: const Offset(1.1, 1.1), duration: 500.ms)
-                .shimmer(duration: 1.seconds, color: Colors.white.withAlpha(50)),
-              
-              const SizedBox(height: 16),
-              
-              // "Achievement Unlocked!" label
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                decoration: BoxDecoration(
-                  gradient: AppColors.primaryGradient,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Text(
-                  '🏆 ACHIEVEMENT UNLOCKED!',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    letterSpacing: 1.2,
+              )
+                  .animate(onPlay: (c) => c.repeat(reverse: true))
+                  .scale(
+                    begin: const Offset(1, 1),
+                    end: const Offset(1.1, 1.1),
+                    duration: 500.ms,
+                  )
+                  .shimmer(
+                    duration: 1.seconds,
+                    color: colors.onPrimary.withAlpha(50),
                   ),
+
+              const SizedBox(height: 16),
+
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  gradient: colors.primaryGradient,
+                  borderRadius: BorderRadius.circular(AppRadius.full),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.emoji_events_rounded,
+                      size: 14,
+                      color: colors.onPrimary,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'ACHIEVEMENT UNLOCKED',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: colors.onPrimary,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              
+
               const SizedBox(height: 16),
-              
-              // Achievement title
+
               Text(
                 achievement.title,
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
+                  color: colors.textPrimary,
                 ),
                 textAlign: TextAlign.center,
               ),
-              
+
               const SizedBox(height: 8),
-              
-              // Description
+
               Text(
                 achievement.description,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: AppColors.textSecondary,
-                ),
+                style: TextStyle(fontSize: 14, color: colors.textSecondary),
                 textAlign: TextAlign.center,
               ),
-              
+
               const SizedBox(height: 16),
-              
-              // Rewards
+
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _RewardChip(icon: '⭐', value: '+${achievement.xpReward} XP'),
+                  _RewardChip(
+                    icon: Icons.star_rounded,
+                    tint: colors.warning,
+                    value: '+${achievement.xpReward} XP',
+                  ),
                   const SizedBox(width: 12),
-                  _RewardChip(icon: '🪙', value: '+${achievement.coinReward}'),
+                  _RewardChip(
+                    icon: Icons.savings_rounded,
+                    tint: colors.accent,
+                    value: '+${achievement.coinReward}',
+                  ),
                 ],
               ),
-              
+
               const SizedBox(height: 24),
-              
-              // Dismiss button
+
               ElevatedButton(
                 onPressed: onDismiss,
                 child: const Text('Awesome!'),
               ),
             ],
           ),
-        ).animate()
-          .fadeIn(duration: 300.ms)
-          .scale(begin: const Offset(0.8, 0.8), end: const Offset(1, 1), duration: 300.ms, curve: Curves.easeOutBack),
+        ).animate().fadeIn(duration: AppMotion.expressive).scale(
+              begin: const Offset(0.8, 0.8),
+              end: const Offset(1, 1),
+              duration: AppMotion.expressive,
+              curve: Curves.easeOutBack,
+            ),
       ),
     );
   }
 }
 
 class _RewardChip extends StatelessWidget {
-  final String icon;
+  final IconData icon;
+  final Color tint;
   final String value;
 
-  const _RewardChip({required this.icon, required this.value});
+  const _RewardChip({
+    required this.icon,
+    required this.tint,
+    required this.value,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.surfaceLight,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.glassBorder),
+        color: colors.surfaceLight,
+        borderRadius: BorderRadius.circular(AppRadius.full),
+        border: Border.all(color: colors.glassBorder),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(icon, style: const TextStyle(fontSize: 16)),
+          Icon(icon, size: 14, color: tint),
           const SizedBox(width: 6),
-          Text(value, style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+          Text(
+            value,
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              color: colors.textPrimary,
+            ),
+          ),
         ],
       ),
     );
@@ -172,35 +206,43 @@ class AchievementBadgeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isUnlocked ? AppColors.primary.withAlpha(15) : AppColors.surfaceLight,
-          borderRadius: BorderRadius.circular(16),
+          color: isUnlocked
+              ? colors.primary.withAlpha(15)
+              : colors.surfaceLight,
+          borderRadius: BorderRadius.circular(AppRadius.md),
           border: Border.all(
-            color: isUnlocked ? AppColors.primary : AppColors.glassBorder,
+            color: isUnlocked ? colors.primary : colors.glassBorder,
             width: isUnlocked ? 2 : 1,
           ),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(
-              isUnlocked ? achievement.iconEmoji : '🔒',
-              style: TextStyle(
-                fontSize: 32,
-                color: isUnlocked ? null : AppColors.textMuted,
-              ),
-            ),
+            isUnlocked
+                ? Text(
+                    achievement.iconEmoji,
+                    style: const TextStyle(fontSize: 32),
+                  )
+                : Icon(
+                    Icons.lock_rounded,
+                    size: 32,
+                    color: colors.textMuted,
+                  ),
             const SizedBox(height: 8),
             Text(
               achievement.title,
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: isUnlocked ? AppColors.textPrimary : AppColors.textMuted,
+                color: isUnlocked
+                    ? colors.textPrimary
+                    : colors.textMuted,
               ),
               textAlign: TextAlign.center,
               maxLines: 2,
@@ -208,9 +250,20 @@ class AchievementBadgeCard extends StatelessWidget {
             ),
             if (isUnlocked) ...[
               const SizedBox(height: 4),
-              Text(
-                '✓ Unlocked',
-                style: TextStyle(fontSize: 10, color: AppColors.success),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.check_circle_rounded,
+                    size: 12,
+                    color: colors.success,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Unlocked',
+                    style: TextStyle(fontSize: 10, color: colors.success),
+                  ),
+                ],
               ),
             ],
           ],

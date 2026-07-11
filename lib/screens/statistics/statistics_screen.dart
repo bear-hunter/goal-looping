@@ -38,24 +38,21 @@ class _StatisticsScreenState extends State<StatisticsScreen>
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? AppColors.background : LightColors.background;
-    final textPrimary = isDark
-        ? AppColors.textPrimary
-        : LightColors.textPrimary;
+    final colors = context.colors;
+    final textPrimary = colors.textPrimary;
 
     return Scaffold(
-      backgroundColor: bgColor,
+      backgroundColor: colors.background,
       appBar: AppBar(
         title: const Text('Statistics'),
-        backgroundColor: isDark ? AppColors.surface : LightColors.surface,
+        backgroundColor: colors.surface,
         foregroundColor: textPrimary,
         elevation: 0,
         bottom: TabBar(
           controller: _tabController,
-          labelColor: AppColors.primary,
+          labelColor: colors.primary,
           unselectedLabelColor: textPrimary.withAlpha(150),
-          indicatorColor: AppColors.primary,
+          indicatorColor: colors.primary,
           tabs: const [
             Tab(text: 'Overview'),
             Tab(text: 'Habits'),
@@ -68,9 +65,9 @@ class _StatisticsScreenState extends State<StatisticsScreen>
           return TabBarView(
             controller: _tabController,
             children: [
-              _buildOverviewTab(state, isDark, textPrimary),
-              _buildHabitsTab(state, isDark, textPrimary),
-              _buildTasksTab(state, isDark, textPrimary),
+              _buildOverviewTab(state, colors, textPrimary),
+              _buildHabitsTab(state, colors, textPrimary),
+              _buildTasksTab(state, colors, textPrimary),
             ],
           );
         },
@@ -78,7 +75,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     );
   }
 
-  Widget _buildOverviewTab(AppState state, bool isDark, Color textPrimary) {
+  Widget _buildOverviewTab(AppState state, AppColorsTheme colors, Color textPrimary) {
     final stats = state.userStats;
     final activeHabits = state.habits
         .where((h) => h.isActive && !h.isArchived)
@@ -143,7 +140,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: AppColors.primary.withAlpha(30),
+                        color: colors.primary.withAlpha(30),
                         shape: BoxShape.circle,
                       ),
                       child: Text(
@@ -162,10 +159,8 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                         (stats.totalXP - stats.xpForCurrentLevel) /
                         (stats.xpForNextLevel - stats.xpForCurrentLevel),
                     minHeight: 8,
-                    backgroundColor: isDark
-                        ? AppColors.surfaceLight
-                        : LightColors.surfaceLight,
-                    valueColor: const AlwaysStoppedAnimation(AppColors.primary),
+                    backgroundColor: colors.surfaceLight,
+                    valueColor: AlwaysStoppedAnimation(colors.primary),
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -187,7 +182,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
               Expanded(
                 child: _QuickStatCard(
                   icon: Icons.local_fire_department_rounded,
-                  iconColor: Colors.orange,
+                  iconColor: colors.warning,
                   value: '${stats.currentStreak}',
                   label: 'Current Streak',
                 ),
@@ -196,7 +191,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
               Expanded(
                 child: _QuickStatCard(
                   icon: Icons.emoji_events_rounded,
-                  iconColor: Colors.amber,
+                  iconColor: colors.warning,
                   value: '${stats.longestStreak}',
                   label: 'Best Streak',
                 ),
@@ -209,7 +204,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
               Expanded(
                 child: _QuickStatCard(
                   icon: Icons.check_circle_rounded,
-                  iconColor: Colors.green,
+                  iconColor: colors.success,
                   value: '$completedTasks',
                   label: 'Tasks Done',
                 ),
@@ -218,7 +213,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
               Expanded(
                 child: _QuickStatCard(
                   icon: Icons.pending_actions_rounded,
-                  iconColor: Colors.blue,
+                  iconColor: colors.info,
                   value: '$pendingTasks',
                   label: 'Pending Tasks',
                 ),
@@ -240,7 +235,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                       style: TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
-                        color: _getCompletionColor(weeklyCompletionRate),
+                        color: _getCompletionColor(weeklyCompletionRate, colors),
                       ),
                     ),
                     Column(
@@ -267,7 +262,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                 ),
                 const SizedBox(height: 10),
                 // 7-day mini chart
-                _buildWeeklyChart(activeHabits, isDark),
+                _buildWeeklyChart(activeHabits, colors),
               ],
             ),
           ),
@@ -282,21 +277,21 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                   label: 'Total Tasks Completed',
                   value: '${stats.totalTasksCompleted}',
                   icon: Icons.task_alt_rounded,
-                  color: Colors.green,
+                  color: colors.success,
                 ),
                 const SizedBox(height: 12),
                 _StatRow(
                   label: 'Priority Tasks Done',
                   value: '${stats.priorityTasksCompleted}',
                   icon: Icons.priority_high_rounded,
-                  color: Colors.red,
+                  color: colors.danger,
                 ),
                 const SizedBox(height: 12),
                 _StatRow(
                   label: 'Tasks Done Today',
                   value: '${stats.tasksCompletedToday}',
                   icon: Icons.today_rounded,
-                  color: AppColors.primary,
+                  color: colors.primary,
                 ),
               ],
             ),
@@ -306,7 +301,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     );
   }
 
-  Widget _buildWeeklyChart(List<Habit> habits, bool isDark) {
+  Widget _buildWeeklyChart(List<Habit> habits, AppColorsTheme colors) {
     final now = DateTime.now();
     final days = <_DayData>[];
 
@@ -349,9 +344,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
               width: 32,
               height: 60,
               decoration: BoxDecoration(
-                color: isDark
-                    ? AppColors.surfaceLight
-                    : LightColors.surfaceLight,
+                color: colors.surfaceLight,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Stack(
@@ -363,7 +356,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                         ? 60 * (day.completed / maxScheduled).clamp(0.1, 1.0)
                         : 6,
                     decoration: BoxDecoration(
-                      color: _getCompletionColor((rate * 100).round()),
+                      color: _getCompletionColor((rate * 100).round(), colors),
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
@@ -376,7 +369,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
-                color: isToday ? AppColors.primary : null,
+                color: isToday ? colors.primary : null,
               ),
             ),
           ],
@@ -385,7 +378,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     );
   }
 
-  Widget _buildHabitsTab(AppState state, bool isDark, Color textPrimary) {
+  Widget _buildHabitsTab(AppState state, AppColorsTheme colors, Color textPrimary) {
     final habits = state.habits
         .where((h) => h.isActive && !h.isArchived)
         .toList();
@@ -394,7 +387,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
       return _buildEmptyState(
         'No habits yet',
         'Create habits to see statistics',
-        isDark,
+        colors,
       );
     }
 
@@ -411,7 +404,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     );
   }
 
-  Widget _buildTasksTab(AppState state, bool isDark, Color textPrimary) {
+  Widget _buildTasksTab(AppState state, AppColorsTheme colors, Color textPrimary) {
     final completedTasks = state.tasks.where((t) => t.isCompleted).toList();
     final pendingTasks = state.tasks
         .where((t) => !t.isCompleted && !t.isArchived)
@@ -440,7 +433,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
               Expanded(
                 child: _QuickStatCard(
                   icon: Icons.check_circle_rounded,
-                  iconColor: Colors.green,
+                  iconColor: colors.success,
                   value: '${completedTasks.length}',
                   label: 'Completed',
                 ),
@@ -449,7 +442,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
               Expanded(
                 child: _QuickStatCard(
                   icon: Icons.schedule_rounded,
-                  iconColor: Colors.orange,
+                  iconColor: colors.warning,
                   value: '${pendingTasks.length}',
                   label: 'Pending',
                 ),
@@ -477,7 +470,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                           children: [
                             Icon(
                               Icons.check_circle_rounded,
-                              color: Colors.green,
+                              color: colors.success,
                               size: 20,
                             ),
                             const SizedBox(width: 12),
@@ -511,7 +504,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     );
   }
 
-  Widget _buildEmptyState(String title, String subtitle, bool isDark) {
+  Widget _buildEmptyState(String title, String subtitle, AppColorsTheme colors) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -519,8 +512,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
           Icon(
             Icons.bar_chart_rounded,
             size: 64,
-            color: (isDark ? AppColors.textMuted : LightColors.textMuted)
-                .withAlpha(100),
+            color: colors.textMuted.withAlpha(100),
           ),
           const SizedBox(height: 16),
           Text(
@@ -528,9 +520,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
-              color: isDark
-                  ? AppColors.textSecondary
-                  : LightColors.textSecondary,
+              color: colors.textSecondary,
             ),
           ),
           const SizedBox(height: 8),
@@ -538,7 +528,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
             subtitle,
             style: TextStyle(
               fontSize: 14,
-              color: isDark ? AppColors.textMuted : LightColors.textMuted,
+              color: colors.textMuted,
             ),
           ),
         ],
@@ -546,10 +536,10 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     );
   }
 
-  Color _getCompletionColor(int percentage) {
-    if (percentage >= 80) return Colors.green;
-    if (percentage >= 50) return Colors.orange;
-    return Colors.red;
+  Color _getCompletionColor(int percentage, AppColorsTheme colors) {
+    if (percentage >= 80) return colors.success;
+    if (percentage >= 50) return colors.warning;
+    return colors.danger;
   }
 }
 
@@ -573,19 +563,15 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = isDark ? AppColors.surface : LightColors.surface;
-    final textPrimary = isDark
-        ? AppColors.textPrimary
-        : LightColors.textPrimary;
+    final colors = context.colors;
 
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: cardColor,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: isDark ? AppColors.glassBorder : LightColors.glassBorder,
+          color: colors.glassBorder,
         ),
       ),
       child: Column(
@@ -596,7 +582,7 @@ class _StatCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: textPrimary.withAlpha(180),
+              color: colors.textPrimary.withAlpha(180),
             ),
           ),
           const SizedBox(height: 10),
@@ -622,19 +608,15 @@ class _QuickStatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = isDark ? AppColors.surface : LightColors.surface;
-    final textPrimary = isDark
-        ? AppColors.textPrimary
-        : LightColors.textPrimary;
+    final colors = context.colors;
 
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: cardColor,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(6),
         border: Border.all(
-          color: isDark ? AppColors.glassBorder : LightColors.glassBorder,
+          color: colors.glassBorder,
         ),
       ),
       child: Column(
@@ -647,12 +629,12 @@ class _QuickStatCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: textPrimary,
+              color: colors.textPrimary,
             ),
           ),
           Text(
             label,
-            style: TextStyle(fontSize: 10, color: textPrimary.withAlpha(150)),
+            style: TextStyle(fontSize: 10, color: colors.textPrimary.withAlpha(150)),
           ),
         ],
       ),
@@ -675,10 +657,7 @@ class _StatRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textPrimary = isDark
-        ? AppColors.textPrimary
-        : LightColors.textPrimary;
+    final colors = context.colors;
 
     return Row(
       children: [
@@ -694,7 +673,7 @@ class _StatRow extends StatelessWidget {
         Expanded(
           child: Text(
             label,
-            style: TextStyle(color: textPrimary, fontSize: 13),
+            style: TextStyle(color: colors.textPrimary, fontSize: 13),
           ),
         ),
         Text(
@@ -702,7 +681,7 @@ class _StatRow extends StatelessWidget {
           style: TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.bold,
-            color: textPrimary,
+            color: colors.textPrimary,
           ),
         ),
       ],
@@ -717,26 +696,19 @@ class _HabitStatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = isDark ? AppColors.surface : LightColors.surface;
-    final textPrimary = isDark
-        ? AppColors.textPrimary
-        : LightColors.textPrimary;
-    final textSecondary = isDark
-        ? AppColors.textSecondary
-        : LightColors.textSecondary;
+    final colors = context.colors;
 
     final completionRate = habit.completionRate;
-    final color = habit.type == HabitType.build ? Colors.green : Colors.red;
+    final color = habit.type == HabitType.build ? colors.success : colors.danger;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: cardColor,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(6),
         border: Border.all(
-          color: isDark ? AppColors.glassBorder : LightColors.glassBorder,
+          color: colors.glassBorder,
         ),
       ),
       child: Column(
@@ -768,12 +740,12 @@ class _HabitStatCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: textPrimary,
+                        color: colors.textPrimary,
                       ),
                     ),
                     Text(
                       '${habit.type.name} habit',
-                      style: TextStyle(fontSize: 10, color: textSecondary),
+                      style: TextStyle(fontSize: 10, color: colors.textSecondary),
                     ),
                   ],
                 ),
@@ -783,7 +755,7 @@ class _HabitStatCard extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: _getCompletionColor(completionRate),
+                  color: _getCompletionColor(completionRate, colors),
                 ),
               ),
             ],
@@ -795,11 +767,9 @@ class _HabitStatCard extends StatelessWidget {
             child: LinearProgressIndicator(
               value: completionRate / 100,
               minHeight: 6,
-              backgroundColor: isDark
-                  ? AppColors.surfaceLight
-                  : LightColors.surfaceLight,
+              backgroundColor: colors.surfaceLight,
               valueColor: AlwaysStoppedAnimation(
-                _getCompletionColor(completionRate),
+                _getCompletionColor(completionRate, colors),
               ),
             ),
           ),
@@ -812,19 +782,19 @@ class _HabitStatCard extends StatelessWidget {
                 icon: Icons.local_fire_department_rounded,
                 value: '${habit.currentStreak}',
                 label: 'Streak',
-                color: Colors.orange,
+                color: colors.warning,
               ),
               _MiniStat(
                 icon: Icons.emoji_events_rounded,
                 value: '${habit.bestStreak}',
                 label: 'Best',
-                color: Colors.amber,
+                color: colors.warning,
               ),
               _MiniStat(
                 icon: Icons.check_circle_rounded,
                 value: '${habit.completionCount}',
                 label: 'Done',
-                color: Colors.green,
+                color: colors.success,
               ),
             ],
           ),
@@ -833,10 +803,10 @@ class _HabitStatCard extends StatelessWidget {
     );
   }
 
-  Color _getCompletionColor(int percentage) {
-    if (percentage >= 80) return Colors.green;
-    if (percentage >= 50) return Colors.orange;
-    return Colors.red;
+  Color _getCompletionColor(int percentage, AppColorsTheme colors) {
+    if (percentage >= 80) return colors.success;
+    if (percentage >= 50) return colors.warning;
+    return colors.danger;
   }
 }
 
@@ -855,10 +825,7 @@ class _MiniStat extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textPrimary = isDark
-        ? AppColors.textPrimary
-        : LightColors.textPrimary;
+    final colors = context.colors;
 
     return Column(
       children: [
@@ -872,14 +839,14 @@ class _MiniStat extends StatelessWidget {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: textPrimary,
+                color: colors.textPrimary,
               ),
             ),
           ],
         ),
         Text(
           label,
-          style: TextStyle(fontSize: 11, color: textPrimary.withAlpha(150)),
+          style: TextStyle(fontSize: 11, color: colors.textPrimary.withAlpha(150)),
         ),
       ],
     );

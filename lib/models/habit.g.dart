@@ -26,13 +26,14 @@ class HabitLogAdapter extends TypeAdapter<HabitLog> {
       checklistCompleted: (fields[6] as List?)?.cast<bool>(),
       timerSeconds: fields[7] as int?,
       score: fields[8] as int?,
+      rewardGranted: fields[9] as bool?,
     );
   }
 
   @override
   void write(BinaryWriter writer, HabitLog obj) {
     writer
-      ..writeByte(9)
+      ..writeByte(10)
       ..writeByte(0)
       ..write(obj.date)
       ..writeByte(1)
@@ -50,7 +51,9 @@ class HabitLogAdapter extends TypeAdapter<HabitLog> {
       ..writeByte(7)
       ..write(obj.timerSeconds)
       ..writeByte(8)
-      ..write(obj.score);
+      ..write(obj.score)
+      ..writeByte(9)
+      ..write(obj.rewardGranted);
   }
 
   @override
@@ -64,7 +67,7 @@ class HabitLogAdapter extends TypeAdapter<HabitLog> {
           typeId == other.typeId;
 }
 
-class HabitAdapter extends TypeAdapter<Habit> {
+class GeneratedHabitAdapter extends TypeAdapter<Habit> {
   @override
   final int typeId = 5;
 
@@ -88,11 +91,11 @@ class HabitAdapter extends TypeAdapter<Habit> {
       factorId: fields[10] as String?,
       linkedFactorIds: (fields[36] as List?)?.cast<String>(),
       scheduledDays: (fields[11] as List?)?.cast<int>(),
-      targetFrequency: fields[12] as int,
-      motivation: fields[13] as String,
+      targetFrequency: fields[12] == null ? 1 : fields[12] as int,
+      motivation: fields[13] == null ? '' : fields[13] as String,
       timerMinutes: fields[14] as int?,
-      streakFreezes: fields[15] as int,
-      freezesUsed: fields[16] as int,
+      streakFreezes: fields[15] == null ? 0 : fields[15] as int,
+      freezesUsed: fields[16] == null ? 0 : fields[16] as int,
       categoryId: fields[17] as String?,
       evaluationType: fields[18] as HabitEvaluationType?,
       frequencyType: fields[19] as HabitFrequencyType?,
@@ -103,15 +106,15 @@ class HabitAdapter extends TypeAdapter<Habit> {
       startDate: fields[24] as DateTime?,
       endDate: fields[25] as DateTime?,
       reminderTimes: (fields[26] as List?)?.cast<String>(),
-      isArchived: fields[27] as bool,
+      isArchived: fields[27] == null ? false : fields[27] as bool,
       daysPerPeriod: fields[28] as int?,
       repeatInterval: fields[29] as int?,
       specificDates: (fields[30] as List?)?.cast<DateTime>(),
       description: fields[31] as String?,
       extraGoal: fields[32] as int?,
-      sortOrder: fields[33] as int,
-      scoringEnabled: fields[34] as bool,
-      priority: fields[35] as int,
+      sortOrder: fields[33] == null ? 0 : fields[33] as int,
+      scoringEnabled: fields[34] == null ? false : fields[34] as bool,
+      priority: fields[35] == null ? 0 : fields[35] as int,
     );
   }
 
@@ -201,7 +204,7 @@ class HabitAdapter extends TypeAdapter<Habit> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is HabitAdapter &&
+      other is GeneratedHabitAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }
@@ -223,13 +226,18 @@ class BarrierEntryAdapter extends TypeAdapter<BarrierEntry> {
       response: fields[3] as String?,
       wasHandled: fields[4] as bool,
       factorId: fields[5] as String?,
+      tag: fields[6] as String?,
+      note: fields[7] as String?,
+      linkedHabitId: fields[8] as String?,
+      linkedTaskId: fields[9] as String?,
+      moodRating: fields[10] as int?,
     );
   }
 
   @override
   void write(BinaryWriter writer, BarrierEntry obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(11)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -241,7 +249,17 @@ class BarrierEntryAdapter extends TypeAdapter<BarrierEntry> {
       ..writeByte(4)
       ..write(obj.wasHandled)
       ..writeByte(5)
-      ..write(obj.factorId);
+      ..write(obj.factorId)
+      ..writeByte(6)
+      ..write(obj.tag)
+      ..writeByte(7)
+      ..write(obj.note)
+      ..writeByte(8)
+      ..write(obj.linkedHabitId)
+      ..writeByte(9)
+      ..write(obj.linkedTaskId)
+      ..writeByte(10)
+      ..write(obj.moodRating);
   }
 
   @override

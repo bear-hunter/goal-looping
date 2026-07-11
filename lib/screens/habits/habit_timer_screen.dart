@@ -10,8 +10,9 @@ import '../../providers/app_state.dart';
 /// Full-screen countdown timer for timed habits
 class HabitTimerScreen extends StatefulWidget {
   final Habit habit;
+  final DateTime? date;
 
-  const HabitTimerScreen({super.key, required this.habit});
+  const HabitTimerScreen({super.key, required this.habit, this.date});
 
   @override
   State<HabitTimerScreen> createState() => _HabitTimerScreenState();
@@ -26,7 +27,12 @@ class _HabitTimerScreenState extends State<HabitTimerScreen> {
   @override
   void initState() {
     super.initState();
-    _remainingSeconds = (widget.habit.timerMinutes ?? 10) * 60;
+    _remainingSeconds = _targetMinutes * 60;
+  }
+
+  int get _targetMinutes {
+    final configured = widget.habit.timerMinutes ?? widget.habit.targetValue;
+    return configured == null || configured < 1 ? 10 : configured;
   }
 
   @override
@@ -37,11 +43,12 @@ class _HabitTimerScreenState extends State<HabitTimerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final totalSeconds = (widget.habit.timerMinutes ?? 10) * 60;
+    final colors = context.colors;
+    final totalSeconds = _targetMinutes * 60;
     final progress = 1 - (_remainingSeconds / totalSeconds);
-    
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.background,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         title: Text(widget.habit.name),
@@ -59,13 +66,13 @@ class _HabitTimerScreenState extends State<HabitTimerScreen> {
                   style: TextStyle(
                     fontSize: 16,
                     fontStyle: FontStyle.italic,
-                    color: AppColors.textSecondary,
+                    color: colors.textSecondary,
                   ),
                   textAlign: TextAlign.center,
                 ).animate().fadeIn(duration: 400.ms),
-              
+
               const SizedBox(height: 48),
-              
+
               // Timer circle
               Stack(
                 alignment: Alignment.center,
@@ -76,9 +83,9 @@ class _HabitTimerScreenState extends State<HabitTimerScreen> {
                     child: CircularProgressIndicator(
                       value: progress,
                       strokeWidth: 12,
-                      backgroundColor: AppColors.surfaceLight,
+                      backgroundColor: colors.surfaceLight,
                       valueColor: AlwaysStoppedAnimation<Color>(
-                        _isComplete ? AppColors.success : AppColors.primary,
+                        _isComplete ? colors.success : colors.primary,
                       ),
                     ),
                   ),
@@ -90,23 +97,27 @@ class _HabitTimerScreenState extends State<HabitTimerScreen> {
                         style: TextStyle(
                           fontSize: 56,
                           fontWeight: FontWeight.bold,
-                          color: _isComplete ? AppColors.success : AppColors.textPrimary,
+                          color: _isComplete
+                              ? colors.success
+                              : colors.textPrimary,
                         ),
                       ),
                       Text(
-                        _isComplete ? 'Complete!' : (_isRunning ? 'Focus...' : 'Ready'),
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: AppColors.textMuted,
-                        ),
+                        _isComplete
+                            ? 'Complete!'
+                            : (_isRunning ? 'Focus...' : 'Ready'),
+                        style: TextStyle(fontSize: 16, color: colors.textMuted),
                       ),
                     ],
                   ),
                 ],
-              ).animate().scale(begin: const Offset(0.9, 0.9), duration: 400.ms),
-              
+              ).animate().scale(
+                begin: const Offset(0.9, 0.9),
+                duration: 400.ms,
+              ),
+
               const SizedBox(height: 48),
-              
+
               // Controls
               if (!_isComplete)
                 Row(
@@ -115,52 +126,63 @@ class _HabitTimerScreenState extends State<HabitTimerScreen> {
                     // Reset button
                     _ControlButton(
                       icon: Icons.refresh_rounded,
-                      color: AppColors.textMuted,
+                      color: colors.textMuted,
                       onTap: _reset,
                     ),
                     const SizedBox(width: 24),
-                    
+
                     // Play/Pause button
                     _ControlButton(
-                      icon: _isRunning ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                      color: AppColors.primary,
+                      icon: _isRunning
+                          ? Icons.pause_rounded
+                          : Icons.play_arrow_rounded,
+                      color: colors.primary,
                       size: 80,
                       iconSize: 40,
                       onTap: _isRunning ? _pause : _start,
                     ),
                     const SizedBox(width: 24),
-                    
+
                     // Skip button
                     _ControlButton(
                       icon: Icons.skip_next_rounded,
-                      color: AppColors.textMuted,
+                      color: colors.textMuted,
                       onTap: _skip,
                     ),
                   ],
                 )
               else
                 ElevatedButton.icon(
-                  onPressed: _finishAndLog,
-                  icon: Icon(Icons.check_circle_rounded),
-                  label: Text('Complete Habit'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.success,
-                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                  ),
-                ).animate().fadeIn(duration: 300.ms).scale(begin: const Offset(0.9, 0.9)),
-              
+                      onPressed: _finishAndLog,
+                      icon: Icon(Icons.check_circle_rounded),
+                      label: Text('Complete Habit'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: colors.success,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 32,
+                          vertical: 16,
+                        ),
+                      ),
+                    )
+                    .animate()
+                    .fadeIn(duration: 300.ms)
+                    .scale(begin: const Offset(0.9, 0.9)),
+
               const SizedBox(height: 48),
-              
+
               // Duration info
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceLight,
+                  color: colors.surfaceLight,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  '${widget.habit.timerMinutes ?? 10} minute session',
-                  style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+                  '$_targetMinutes minute session',
+                  style: TextStyle(fontSize: 13, color: colors.textMuted),
                 ),
               ),
             ],
@@ -199,7 +221,7 @@ class _HabitTimerScreenState extends State<HabitTimerScreen> {
   void _reset() {
     _timer?.cancel();
     setState(() {
-      _remainingSeconds = (widget.habit.timerMinutes ?? 10) * 60;
+      _remainingSeconds = _targetMinutes * 60;
       _isRunning = false;
       _isComplete = false;
     });
@@ -215,12 +237,18 @@ class _HabitTimerScreenState extends State<HabitTimerScreen> {
   }
 
   void _finishAndLog() {
-    context.read<AppState>().logHabit(widget.habit.id, completed: true);
+    final colors = context.colors;
+    context.read<AppState>().logHabit(
+      widget.habit.id,
+      date: widget.date,
+      completed: true,
+      timerSeconds: _targetMinutes * 60,
+    );
     Navigator.pop(context);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('${widget.habit.name} completed!'),
-        backgroundColor: AppColors.success,
+        backgroundColor: colors.success,
       ),
     );
   }

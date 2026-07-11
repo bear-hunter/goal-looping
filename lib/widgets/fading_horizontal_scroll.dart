@@ -54,6 +54,7 @@ class _FadingHorizontalScrollState extends State<FadingHorizontalScroll> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Stack(
       children: [
         SingleChildScrollView(
@@ -75,8 +76,8 @@ class _FadingHorizontalScrollState extends State<FadingHorizontalScroll> {
                     begin: Alignment.centerLeft,
                     end: Alignment.centerRight,
                     colors: [
-                      AppColors.background,
-                      AppColors.background.withAlpha(0),
+                      colors.surface,
+                      colors.surface.withAlpha(0),
                     ],
                   ),
                 ),
@@ -97,8 +98,8 @@ class _FadingHorizontalScrollState extends State<FadingHorizontalScroll> {
                     begin: Alignment.centerRight,
                     end: Alignment.centerLeft,
                     colors: [
-                      AppColors.background,
-                      AppColors.background.withAlpha(0),
+                      colors.surface,
+                      colors.surface.withAlpha(0),
                     ],
                   ),
                 ),

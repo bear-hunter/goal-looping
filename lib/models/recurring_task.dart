@@ -21,12 +21,17 @@ class RecurringTaskLog extends HiveObject {
   @HiveField(4)
   int? numericValue; // For tracking numeric progress
 
+  /// Whether this occurrence's completion reward has already been granted.
+  @HiveField(5)
+  bool? rewardGranted;
+
   RecurringTaskLog({
     required this.date,
     this.completed = false,
     this.note,
     this.checklistCompleted,
     this.numericValue,
+    this.rewardGranted,
   });
 }
 
@@ -94,7 +99,7 @@ class RecurringTask extends HiveObject {
   @HiveField(19)
   int sortOrder;
 
-  @HiveField(20)
+  @HiveField(20, defaultValue: 0)
   int priority; // Numeric priority (-20 to 20, higher = more important)
 
   RecurringTask({
@@ -153,12 +158,24 @@ class RecurringTask extends HiveObject {
         );
 
       case HabitFrequencyType.someDaysPerPeriod:
-        // For simplicity, use scheduledDays to track which days of the week
-        return scheduledDays.contains(date.weekday);
+        final quota = daysPerPeriod ?? 0;
+        if (quota <= 0) return false;
+        if (getLogFor(date) != null) return true;
+        final day = DateTime(date.year, date.month, date.day);
+        final weekStart = day.subtract(Duration(days: day.weekday - 1));
+        final completedBefore = logs.where((log) {
+          final logDay = DateTime(log.date.year, log.date.month, log.date.day);
+          return log.completed &&
+              !logDay.isBefore(weekStart) &&
+              logDay.isBefore(day);
+        }).length;
+        return completedBefore < quota;
 
       case HabitFrequencyType.repeatEvery:
         if (repeatInterval == null || repeatInterval! <= 0) return false;
-        final daysDiff = date.difference(startDate).inDays;
+        final day = DateTime(date.year, date.month, date.day);
+        final start = DateTime(startDate.year, startDate.month, startDate.day);
+        final daysDiff = day.difference(start).inDays;
         return daysDiff % repeatInterval! == 0;
     }
   }
@@ -192,7 +209,10 @@ class RecurringTask extends HiveObject {
     required bool completed,
     String? note,
     List<bool>? checklistCompleted,
+    bool? rewardGranted,
   }) {
+    final previousLog = getLogFor(date);
+
     // Remove existing log for this date
     logs.removeWhere(
       (log) =>
@@ -207,6 +227,7 @@ class RecurringTask extends HiveObject {
         completed: completed,
         note: note,
         checklistCompleted: checklistCompleted,
+        rewardGranted: rewardGranted ?? previousLog?.rewardGranted,
       ),
     );
   }

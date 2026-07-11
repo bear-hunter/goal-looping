@@ -1,8 +1,5 @@
-/// High-performance SQLite database using Drift
-/// Designed for scalability to 100M+ records with proper indexing
-/// 
-/// Migration strategy: Runs in parallel with Hive during transition period
-/// All queries are paginated and use indexes for O(log N) lookups
+// High-performance SQLite database using Drift. It runs in parallel with Hive
+// during the transition period and uses indexed, paginated queries.
 
 import 'dart:io';
 import 'package:drift/drift.dart';

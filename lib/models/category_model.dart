@@ -3,6 +3,10 @@ import 'package:hive/hive.dart';
 
 part 'category_model.g.dart';
 
+/// Id of the seeded default category used as a fallback for uncategorized items
+/// (legacy tasks with no category, or items whose category was deleted).
+const String kFallbackCategoryId = 'personal';
+
 /// Category model for organizing habits, tasks, and recurring tasks
 /// Supports custom icon and color for visual identification
 @HiveType(typeId: 30)
@@ -42,16 +46,16 @@ class CategoryModel extends HiveObject {
     this.sortOrder = 0,
   }) : createdAt = createdAt ?? DateTime.now();
 
-  /// Get the IconData for this category
-  /// Uses a lookup to return const IconData for tree shaking support
-  IconData get icon {
-    for (final iconData in DefaultCategories.availableIcons) {
-      if (iconData.codePoint == iconCodePoint) {
-        return iconData;
-      }
-    }
-    return Icons.category_rounded; // fallback
-  }
+  /// Get the IconData for this category.
+  /// Resolves the stored codePoint to a const IconData (kept const for web icon
+  /// tree-shaking). Falls back to a generic icon for unknown codePoints.
+  IconData get icon =>
+      _iconByCodePoint[iconCodePoint] ?? Icons.category_rounded;
+
+  /// Lookup map built once from the canonical icon list.
+  static final Map<int, IconData> _iconByCodePoint = {
+    for (final i in DefaultCategories.availableIcons) i.codePoint: i,
+  };
 
   /// Get the Color for this category
   Color get color => Color(colorValue);
@@ -197,6 +201,19 @@ class DefaultCategories {
     Icons.lightbulb_rounded,
     Icons.star_rounded,
     Icons.timer_rounded,
+    // Merged from the legacy category editor list:
+    Icons.bed_rounded,
+    Icons.monetization_on_rounded,
+    Icons.brush_rounded,
+    Icons.local_cafe_rounded,
+    Icons.language_rounded,
+    Icons.psychology_rounded,
+    Icons.travel_explore_rounded,
+    Icons.task_alt_rounded,
+    Icons.celebration_rounded,
+    Icons.wb_sunny_rounded,
+    // Generic fallback icon, also pickable:
+    Icons.category_rounded,
   ];
 
   /// Available colors for category creation
@@ -217,5 +234,6 @@ class DefaultCategories {
     Color(0xFF673AB7), // Deep Purple
     Color(0xFF9C27B0), // Purple
     Color(0xFF607D8B), // Blue Grey
+    Color(0xFF795548), // Brown
   ];
 }

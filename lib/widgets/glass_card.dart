@@ -26,13 +26,8 @@ class GlassCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    // Theme-aware colors
-    final glassBorder = isDark
-        ? AppColors.glassBorder
-        : LightColors.glassBorder;
-    final surfaceColor = isDark ? AppColors.surface : LightColors.surface;
+    final colors = context.colors;
+    final isDark = context.isDarkMode;
 
     return Container(
       margin: margin ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -44,19 +39,14 @@ class GlassCard extends StatelessWidget {
           child: Container(
             padding: padding ?? const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              // Use semi-transparent surface color for glass effect (much faster than BackdropFilter)
-              color: isDark
-                  ? (highlighted
-                        ? AppColors.primary.withAlpha(25)
-                        : surfaceColor.withAlpha(230))
-                  : surfaceColor,
+              color: highlighted
+                  ? colors.primary.withAlpha(isDark ? 25 : 20)
+                  : (isDark ? colors.surface.withAlpha(230) : colors.surface),
               borderRadius: BorderRadius.circular(borderRadius),
               border: Border.all(
                 color: highlighted
-                    ? AppColors.primary.withAlpha(128)
-                    : glassBorder.withAlpha(
-                        15,
-                      ), // Reduced from default opacity for subtler glass look
+                    ? colors.primary.withAlpha(128)
+                    : colors.glassBorder.withAlpha(15),
                 width: 1,
               ),
               boxShadow: highlighted ? AppShadows.primaryGlow : AppShadows.card,

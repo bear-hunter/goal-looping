@@ -22,13 +22,14 @@ class RecurringTaskLogAdapter extends TypeAdapter<RecurringTaskLog> {
       note: fields[2] as String?,
       checklistCompleted: (fields[3] as List?)?.cast<bool>(),
       numericValue: fields[4] as int?,
+      rewardGranted: fields[5] as bool?,
     );
   }
 
   @override
   void write(BinaryWriter writer, RecurringTaskLog obj) {
     writer
-      ..writeByte(5)
+      ..writeByte(6)
       ..writeByte(0)
       ..write(obj.date)
       ..writeByte(1)
@@ -38,7 +39,9 @@ class RecurringTaskLogAdapter extends TypeAdapter<RecurringTaskLog> {
       ..writeByte(3)
       ..write(obj.checklistCompleted)
       ..writeByte(4)
-      ..write(obj.numericValue);
+      ..write(obj.numericValue)
+      ..writeByte(5)
+      ..write(obj.rewardGranted);
   }
 
   @override
@@ -83,7 +86,7 @@ class RecurringTaskAdapter extends TypeAdapter<RecurringTask> {
       createdAt: fields[17] as DateTime?,
       isArchived: fields[18] as bool,
       sortOrder: fields[19] as int,
-      priority: fields[20] as int,
+      priority: fields[20] == null ? 0 : fields[20] as int,
     );
   }
 

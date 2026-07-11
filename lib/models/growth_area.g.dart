@@ -25,15 +25,15 @@ class GrowthAreaAdapter extends TypeAdapter<GrowthArea> {
       description: fields[5] as String,
       goalId: fields[6] as String,
       lastUpdated: fields[7] as DateTime?,
-      targetDescription: fields[8] as String,
-      currentDescription: fields[9] as String,
+      targetDescription: fields[8] == null ? '' : fields[8] as String,
+      currentDescription: fields[9] == null ? '' : fields[9] as String,
       linkedHabitIds: (fields[10] as List?)?.cast<String>(),
-      isActiveFocus: fields[11] as bool,
+      isActiveFocus: fields[11] == null ? false : fields[11] as bool,
       lastWorkedOn: fields[12] as DateTime?,
-      healthPercent: fields[13] as double,
-      treeDesignId: fields[14] as String,
-      confidenceLevel: fields[15] as int,
-      needsResearch: fields[16] as bool,
+      healthPercent: fields[13] == null ? 100.0 : fields[13] as double,
+      treeDesignId: fields[14] == null ? 'oak' : fields[14] as String,
+      confidenceLevel: fields[15] == null ? 3 : fields[15] as int,
+      needsResearch: fields[16] == null ? false : fields[16] as bool,
     );
   }
 

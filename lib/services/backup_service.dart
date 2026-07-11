@@ -1,249 +1,324 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:path_provider/path_provider.dart';
-import 'package:intl/intl.dart';
 
+import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
+
+import '../models/achievement.dart';
 import '../models/backup_models.dart';
+import '../models/category_model.dart';
+import '../models/experiment.dart';
+import '../models/focus_log.dart';
 import '../models/goal.dart';
 import '../models/growth_area.dart';
-import '../models/sprint_target.dart';
-import '../models/task.dart';
-import '../models/subtask.dart';
 import '../models/habit.dart';
+import '../models/habit_enums.dart';
+import '../models/recurring_task.dart';
 import '../models/reflection.dart';
 import '../models/reflection_group.dart';
 import '../models/reflection_reminder.dart';
-import '../models/experiment.dart';
+import '../models/spaced_repetition_subject.dart';
+import '../models/spaced_repetition_topic.dart';
+import '../models/sprint_target.dart';
+import '../models/subtask.dart';
+import '../models/task.dart';
 import '../models/time_availability.dart';
 import '../models/user_stats.dart';
-import '../models/achievement.dart';
-import '../models/focus_log.dart';
 import 'storage_service.dart';
 
-/// Service for backing up and restoring all user data
+/// Service for backing up and restoring all user data.
 class BackupService {
-  static const String _backupVersion = '1.0.0';
-  
-  /// Get the app version from pubspec (hardcoded for now)
+  static const String _backupVersion = '1.1.0';
   static const String _appVersion = '1.0.0+1';
 
-  /// Generate a backup filename with timestamp
   static String generateBackupFilename() {
     final timestamp = DateFormat('yyyy-MM-dd_HHmmss').format(DateTime.now());
     return 'centile_backup_$timestamp.json';
   }
 
-  /// Export all user data to a JSON file
-  static Future<File> exportAllData() async {
+  /// Export all user data to an app-private temporary file.
+  static Future<File> exportAllData() => writeBackupToTemporaryFile();
+
+  static Future<File> writeBackupToTemporaryFile() async {
     try {
-      // Generate JSON string
-      final jsonString = await generateBackupJson();
-      
-      // Get downloads directory
-      Directory? downloadsDir;
-      if (Platform.isAndroid) {
-        downloadsDir = Directory('/storage/emulated/0/Download');
-        if (!await downloadsDir.exists()) {
-          downloadsDir = await getExternalStorageDirectory();
-        }
-      } else {
-        downloadsDir = await getApplicationDocumentsDirectory();
-      }
-
-      if (downloadsDir == null) {
-        throw BackupException('Could not access storage directory');
-      }
-
-      // Create file
-      final filename = generateBackupFilename();
-      final file = File('${downloadsDir.path}/$filename');
-      
-      // Write data
-      await file.writeAsString(jsonString);
-      
+      final directory = await getTemporaryDirectory();
+      final file = File('${directory.path}/$generateBackupFilename()');
+      await file.writeAsString(await generateBackupJson());
       return file;
     } catch (e) {
       throw BackupException('Failed to export data', e);
     }
   }
 
-  /// Generate backup JSON string
   static Future<String> generateBackupJson() async {
     try {
-      // Collect all data from Hive boxes
       final goals = StorageService.getAllGoals();
       final factors = StorageService.getAllFactors();
       final sprintTargets = StorageService.getAllSprintTargets();
       final tasks = StorageService.getAllTasks();
-      final subtasks = <Subtask>[];
+      final subtasks = <Subtask>[
+        for (final task in tasks) ...StorageService.getSubtasksForTask(task.id),
+      ];
       final habits = StorageService.getAllHabits();
+      final recurringTasks = StorageService.getAllRecurringTasks();
       final reflections = StorageService.getAllReflections();
       final reflectionGroups = StorageService.getAllReflectionGroups();
       final experiments = StorageService.getAllExperiments();
       final barriers = StorageService.getAllBarriers();
-      final userStats = StorageService.getUserStats();
       final achievements = StorageService.getAllAchievements();
       final focusLogs = StorageService.getAllFocusLogs();
+      final categories = StorageService.getAllCategories();
+      final srSubjects = StorageService.getAllSubjects();
+      final srTopics = StorageService.getAllTopics();
 
-      // Collect all subtasks for all tasks
-      for (final task in tasks) {
-        subtasks.addAll(StorageService.getSubtasksForTask(task.id));
-      }
+      final dataCounts = <String, int>{
+        'goals': goals.length,
+        'growthAreas': factors.length,
+        'sprintTargets': sprintTargets.length,
+        'categories': categories.length,
+        'tasks': tasks.length,
+        'subtasks': subtasks.length,
+        'habits': habits.length,
+        'recurringTasks': recurringTasks.length,
+        'reflections': reflections.length,
+        'reflectionGroups': reflectionGroups.length,
+        'experiments': experiments.length,
+        'barriers': barriers.length,
+        'spacedRepetitionSubjects': srSubjects.length,
+        'spacedRepetitionTopics': srTopics.length,
+        'achievements': achievements.length,
+        'focusLogs': focusLogs.length,
+      };
 
-      // Get settings data
-      final timeAvailability = StorageService.getTimeAvailability();
-      final onboardingComplete = StorageService.hasCompletedOnboarding;
-      final taskCategories = StorageService.getTaskCategories();
-
-      // Build metadata
       final metadata = BackupMetadata(
         version: _backupVersion,
         exportedAt: DateTime.now(),
         appVersion: _appVersion,
-        dataCounts: {
-          'goals': goals.length,
-          'growthAreas': factors.length,
-          'sprintTargets': sprintTargets.length,
-          'tasks': tasks.length,
-          'subtasks': subtasks.length,
-          'habits': habits.length,
-          'reflections': reflections.length,
-          'reflectionGroups': reflectionGroups.length,
-          'experiments': experiments.length,
-          'barriers': barriers.length,
-          'achievements': achievements.length,
-          'focusLogs': focusLogs.length,
-        },
+        dataCounts: dataCounts,
       );
 
-      // Build complete backup structure
       final backup = {
         'metadata': metadata.toJson(),
         'data': {
-          'goals': goals.map((g) => _goalToJson(g)).toList(),
-          'growthAreas': factors.map((f) => _growthAreaToJson(f)).toList(),
-          'sprintTargets': sprintTargets.map((st) => _sprintTargetToJson(st)).toList(),
-          'tasks': tasks.map((t) => _taskToJson(t)).toList(),
-          'subtasks': subtasks.map((st) => _subtaskToJson(st)).toList(),
-          'habits': habits.map((h) => _habitToJson(h)).toList(),
-          'reflections': reflections.map((r) => _reflectionToJson(r)).toList(),
-          'reflectionGroups': reflectionGroups.map((rg) => _reflectionGroupToJson(rg)).toList(),
-          'experiments': experiments.map((e) => _experimentToJson(e)).toList(),
-          'barriers': barriers.map((b) => _barrierToJson(b)).toList(),
-          'userStats': _userStatsToJson(userStats),
-          'achievements': achievements.map((a) => _achievementToJson(a)).toList(),
-          'focusLogs': focusLogs.map((fl) => _focusLogToJson(fl)).toList(),
+          'goals': goals.map(_goalToJson).toList(),
+          'growthAreas': factors.map(_growthAreaToJson).toList(),
+          'sprintTargets': sprintTargets.map(_sprintTargetToJson).toList(),
+          'categories': categories.map(_categoryToJson).toList(),
+          'tasks': tasks.map(_taskToJson).toList(),
+          'subtasks': subtasks.map(_subtaskToJson).toList(),
+          'habits': habits.map(_habitToJson).toList(),
+          'recurringTasks': recurringTasks.map(_recurringTaskToJson).toList(),
+          'reflections': reflections.map(_reflectionToJson).toList(),
+          'reflectionGroups': reflectionGroups
+              .map(_reflectionGroupToJson)
+              .toList(),
+          'experiments': experiments.map(_experimentToJson).toList(),
+          'barriers': barriers.map(_barrierToJson).toList(),
+          'spacedRepetitionSubjects': srSubjects.map(_srSubjectToJson).toList(),
+          'spacedRepetitionTopics': srTopics.map(_srTopicToJson).toList(),
+          'userStats': _userStatsToJson(StorageService.getUserStats()),
+          'achievements': achievements.map(_achievementToJson).toList(),
+          'focusLogs': focusLogs.map(_focusLogToJson).toList(),
           'settings': {
-            'timeAvailability': timeAvailability?.index,
-            'onboardingComplete': onboardingComplete,
-            'taskCategories': taskCategories,
+            'timeAvailability': StorageService.getTimeAvailability()?.index,
+            'onboardingComplete': StorageService.hasCompletedOnboarding,
+            'categoriesMigrationV1Done': StorageService.categoriesMigrationDone,
           },
         },
       };
 
-      // Convert to JSON string with pretty formatting
       return const JsonEncoder.withIndent('  ').convert(backup);
     } catch (e) {
       throw BackupException('Failed to generate backup JSON', e);
     }
   }
 
-  /// Preview backup data before importing
   static Future<BackupPreview> previewBackup(String jsonString) async {
     try {
-      final json = jsonDecode(jsonString) as Map<String, dynamic>;
-      
-      // Parse metadata
-      final metadata = BackupMetadata.fromJson(json['metadata'] as Map<String, dynamic>);
-      
-      // Validate structure
-      final validationErrors = <String>[];
-      if (!json.containsKey('data')) {
-        validationErrors.add('Missing data section');
-      }
-      
-      final data = json['data'] as Map<String, dynamic>?;
-      if (data == null) {
-        validationErrors.add('Invalid data structure');
-      }
-
-      // Count data items
-      final dataCounts = <String, int>{};
+      final parsed = _parseBackupData(jsonString);
       final conflicts = <String>[];
-      
-      if (data != null) {
-        dataCounts['goals'] = (data['goals'] as List?)?.length ?? 0;
-        dataCounts['growthAreas'] = (data['growthAreas'] as List?)?.length ?? 0;
-        dataCounts['sprintTargets'] = (data['sprintTargets'] as List?)?.length ?? 0;
-        dataCounts['tasks'] = (data['tasks'] as List?)?.length ?? 0;
-        dataCounts['subtasks'] = (data['subtasks'] as List?)?.length ?? 0;
-        dataCounts['habits'] = (data['habits'] as List?)?.length ?? 0;
-        dataCounts['reflections'] = (data['reflections'] as List?)?.length ?? 0;
-        dataCounts['reflectionGroups'] = (data['reflectionGroups'] as List?)?.length ?? 0;
-        dataCounts['experiments'] = (data['experiments'] as List?)?.length ?? 0;
-        dataCounts['barriers'] = (data['barriers'] as List?)?.length ?? 0;
-        dataCounts['achievements'] = (data['achievements'] as List?)?.length ?? 0;
-        dataCounts['focusLogs'] = (data['focusLogs'] as List?)?.length ?? 0;
-
-        // Check for ID conflicts (optional - for informational purposes)
-        final existingGoals = StorageService.getAllGoals();
-        if (existingGoals.isNotEmpty && dataCounts['goals']! > 0) {
-          conflicts.add('${existingGoals.length} existing goals will be affected');
-        }
+      if (parsed.goals.isNotEmpty && StorageService.getAllGoals().isNotEmpty) {
+        conflicts.add(
+          '${StorageService.getAllGoals().length} existing goals will be affected',
+        );
       }
 
       return BackupPreview(
-        metadata: metadata,
-        dataCounts: dataCounts,
+        metadata: parsed.metadata,
+        dataCounts: parsed.dataCounts,
         conflicts: conflicts,
-        validationErrors: validationErrors,
+        validationErrors: const [],
       );
-    } catch (e) {
-      throw BackupException('Failed to preview backup', e);
+    } on BackupException catch (e) {
+      final metadata = BackupMetadata(
+        version: 'unknown',
+        exportedAt: DateTime.now(),
+        appVersion: 'unknown',
+        dataCounts: const {},
+      );
+      return BackupPreview(
+        metadata: metadata,
+        dataCounts: const {},
+        conflicts: const [],
+        validationErrors: [e.toString()],
+      );
     }
   }
 
-  /// Import data from backup JSON
-  static Future<ImportResult> importData(String jsonString, ImportMode mode) async {
+  static Future<ImportResult> importData(
+    String jsonString,
+    ImportMode mode,
+  ) async {
     final imported = <String, int>{};
     final skipped = <String, int>{};
     final failed = <String, int>{};
     final errors = <String>[];
 
     try {
-      final json = jsonDecode(jsonString) as Map<String, dynamic>;
-      final data = json['data'] as Map<String, dynamic>;
+      final parsed = _parseBackupData(jsonString);
 
-      // If replace mode, clear all existing data first
       if (mode == ImportMode.replace) {
         await _clearAllData();
       }
 
-      // Import each data type
-      imported['goals'] = await _importGoals(data['goals'] as List, mode);
-      imported['growthAreas'] = await _importGrowthAreas(data['growthAreas'] as List, mode);
-      imported['sprintTargets'] = await _importSprintTargets(data['sprintTargets'] as List, mode);
-      imported['tasks'] = await _importTasks(data['tasks'] as List, mode);
-      imported['subtasks'] = await _importSubtasks(data['subtasks'] as List, mode);
-      imported['habits'] = await _importHabits(data['habits'] as List, mode);
-      imported['reflections'] = await _importReflections(data['reflections'] as List, mode);
-      imported['reflectionGroups'] = await _importReflectionGroups(data['reflectionGroups'] as List, mode);
-      imported['experiments'] = await _importExperiments(data['experiments'] as List, mode);
-      imported['barriers'] = await _importBarriers(data['barriers'] as List, mode);
-      imported['achievements'] = await _importAchievements(data['achievements'] as List, mode);
-      imported['focusLogs'] = await _importFocusLogs(data['focusLogs'] as List, mode);
-
-      // Import user stats
-      if (data.containsKey('userStats')) {
-        final stats = _userStatsFromJson(data['userStats'] as Map<String, dynamic>);
-        await StorageService.saveUserStats(stats);
-        imported['userStats'] = 1;
+      Future<void> saveMany<T>(
+        String key,
+        List<T> values,
+        Future<void> Function(T value) save,
+        bool Function(T value) exists,
+      ) async {
+        var count = 0;
+        var skippedCount = 0;
+        for (final value in values) {
+          if (mode == ImportMode.merge && exists(value)) {
+            skippedCount++;
+            continue;
+          }
+          await save(value);
+          count++;
+        }
+        imported[key] = count;
+        if (skippedCount > 0) skipped[key] = skippedCount;
       }
 
-      // Import settings
-      if (data.containsKey('settings')) {
-        await _importSettings(data['settings'] as Map<String, dynamic>);
-        imported['settings'] = 1;
+      await saveMany(
+        'goals',
+        parsed.goals,
+        StorageService.saveGoal,
+        (g) => StorageService.getGoal(g.id) != null,
+      );
+      await saveMany(
+        'growthAreas',
+        parsed.growthAreas,
+        StorageService.saveFactor,
+        (f) => StorageService.getFactor(f.id) != null,
+      );
+      await saveMany(
+        'sprintTargets',
+        parsed.sprintTargets,
+        StorageService.saveSprintTarget,
+        (target) => StorageService.getAllSprintTargets().any(
+          (existing) => existing.id == target.id,
+        ),
+      );
+      await saveMany(
+        'categories',
+        parsed.categories,
+        StorageService.saveCategory,
+        (c) => StorageService.getCategory(c.id) != null,
+      );
+      await _importSettings(
+        parsed.settings,
+        preserveExisting: mode == ImportMode.merge,
+      );
+      await saveMany(
+        'tasks',
+        parsed.tasks,
+        StorageService.saveTask,
+        (t) => StorageService.getTask(t.id) != null,
+      );
+      await saveMany(
+        'subtasks',
+        parsed.subtasks,
+        StorageService.saveSubtask,
+        (subtask) => StorageService.getSubtask(subtask.id) != null,
+      );
+      await saveMany(
+        'habits',
+        parsed.habits,
+        StorageService.saveHabit,
+        (h) => StorageService.getAllHabits().any(
+          (existing) => existing.id == h.id,
+        ),
+      );
+      await saveMany(
+        'recurringTasks',
+        parsed.recurringTasks,
+        StorageService.saveRecurringTask,
+        (t) => StorageService.getRecurringTask(t.id) != null,
+      );
+      await saveMany(
+        'reflections',
+        parsed.reflections,
+        StorageService.saveReflection,
+        (r) => StorageService.getReflection(r.id) != null,
+      );
+      await saveMany(
+        'reflectionGroups',
+        parsed.reflectionGroups,
+        StorageService.saveReflectionGroup,
+        (group) => StorageService.getReflectionGroup(group.id) != null,
+      );
+      await saveMany(
+        'experiments',
+        parsed.experiments,
+        StorageService.saveExperiment,
+        (experiment) => StorageService.getAllExperiments().any(
+          (existing) => existing.id == experiment.id,
+        ),
+      );
+      await saveMany(
+        'barriers',
+        parsed.barriers,
+        StorageService.saveBarrier,
+        (barrier) => StorageService.getAllBarriers().any(
+          (existing) => existing.id == barrier.id,
+        ),
+      );
+      await saveMany(
+        'spacedRepetitionSubjects',
+        parsed.srSubjects,
+        StorageService.saveSubject,
+        (s) => StorageService.getSubject(s.id) != null,
+      );
+      await saveMany(
+        'spacedRepetitionTopics',
+        parsed.srTopics,
+        StorageService.saveTopic,
+        (t) => StorageService.getTopic(t.id) != null,
+      );
+      await saveMany(
+        'achievements',
+        parsed.achievements,
+        StorageService.saveAchievement,
+        (achievement) => StorageService.getAchievement(achievement.id) != null,
+      );
+      await saveMany(
+        'focusLogs',
+        parsed.focusLogs,
+        StorageService.saveFocusLog,
+        (log) => StorageService.getAllFocusLogs().any(
+          (existing) => existing.id == log.id,
+        ),
+      );
+
+      if (parsed.userStats != null) {
+        if (mode == ImportMode.replace) {
+          await StorageService.saveUserStats(parsed.userStats!);
+          imported['userStats'] = 1;
+        } else {
+          skipped['userStats'] = 1;
+        }
       }
 
       return ImportResult(
@@ -265,70 +340,184 @@ class BackupService {
     }
   }
 
-  // ========== PRIVATE HELPER METHODS ==========
-
-  /// Clear all data (for replace mode)
   static Future<void> _clearAllData() async {
-    // Delete all items from all boxes
-    final goals = StorageService.getAllGoals();
-    for (final goal in goals) {
+    for (final goal in StorageService.getAllGoals()) {
       await StorageService.deleteGoal(goal.id);
     }
-
-    final factors = StorageService.getAllFactors();
-    for (final factor in factors) {
+    for (final factor in StorageService.getAllFactors()) {
       await StorageService.deleteFactor(factor.id);
     }
-
-    final sprintTargets = StorageService.getAllSprintTargets();
-    for (final target in sprintTargets) {
+    for (final target in StorageService.getAllSprintTargets()) {
       await StorageService.deleteSprintTarget(target.id);
     }
-
-    final tasks = StorageService.getAllTasks();
-    for (final task in tasks) {
+    for (final category in StorageService.getAllCategories()) {
+      await StorageService.deleteCategory(category.id);
+    }
+    for (final task in StorageService.getAllTasks()) {
       await StorageService.deleteTask(task.id);
     }
-
-    final habits = StorageService.getAllHabits();
-    for (final habit in habits) {
+    for (final habit in StorageService.getAllHabits()) {
       await StorageService.deleteHabit(habit.id);
     }
-
-    final reflections = StorageService.getAllReflections();
-    for (final reflection in reflections) {
+    for (final recurringTask in StorageService.getAllRecurringTasks()) {
+      await StorageService.deleteRecurringTask(recurringTask.id);
+    }
+    for (final reflection in StorageService.getAllReflections()) {
       await StorageService.deleteReflection(reflection.id);
     }
-
-    final reflectionGroups = StorageService.getAllReflectionGroups();
-    for (final group in reflectionGroups) {
+    for (final group in StorageService.getAllReflectionGroups()) {
       await StorageService.deleteReflectionGroup(group.id);
     }
-
-    final experiments = StorageService.getAllExperiments();
-    for (final experiment in experiments) {
+    for (final experiment in StorageService.getAllExperiments()) {
       await StorageService.deleteExperiment(experiment.id);
     }
-
-    final barriers = StorageService.getAllBarriers();
-    for (final barrier in barriers) {
+    for (final barrier in StorageService.getAllBarriers()) {
       await StorageService.deleteBarrier(barrier.id);
     }
-
-    // Reset user stats to default
+    for (final subject in StorageService.getAllSubjects()) {
+      await StorageService.deleteSubject(subject.id);
+    }
+    for (final topic in StorageService.getAllTopics()) {
+      await StorageService.deleteTopic(topic.id);
+    }
+    for (final achievement in StorageService.getAllAchievements()) {
+      await StorageService.deleteAchievement(achievement.id);
+    }
+    for (final focusLog in StorageService.getAllFocusLogs()) {
+      await StorageService.deleteFocusLog(focusLog.id);
+    }
+    await StorageService.resetBackupSettings();
     await StorageService.saveUserStats(UserStats());
   }
 
-  // ========== CONVERSION METHODS (TO JSON) ==========
+  static _ParsedBackup _parseBackupData(String jsonString) {
+    try {
+      final root = jsonDecode(jsonString);
+      if (root is! Map<String, dynamic>) {
+        throw BackupException('Backup root must be a JSON object');
+      }
+      final metadataJson = _map(root['metadata'], 'metadata');
+      final data = _map(root['data'], 'data');
+      final metadata = BackupMetadata.fromJson(metadataJson);
+
+      T parseItem<T>(
+        String key,
+        Object? item,
+        int index,
+        T Function(Map<String, dynamic>) parse,
+      ) {
+        try {
+          return parse(_map(item, '$key[$index]'));
+        } catch (e) {
+          throw BackupException('Invalid $key[$index]', e);
+        }
+      }
+
+      List<T> parseList<T>(String key, T Function(Map<String, dynamic>) parse) {
+        final raw = data[key];
+        if (raw == null) return <T>[];
+        if (raw is! List) throw BackupException('$key must be a list');
+        return [
+          for (var i = 0; i < raw.length; i++) parseItem(key, raw[i], i, parse),
+        ];
+      }
+
+      final parsed = _ParsedBackup(
+        metadata: metadata,
+        goals: parseList('goals', _goalFromJson),
+        growthAreas: parseList('growthAreas', _growthAreaFromJson),
+        sprintTargets: parseList('sprintTargets', _sprintTargetFromJson),
+        categories: parseList('categories', _categoryFromJson),
+        tasks: parseList('tasks', _taskFromJson),
+        subtasks: parseList('subtasks', _subtaskFromJson),
+        habits: parseList('habits', _habitFromJson),
+        recurringTasks: parseList('recurringTasks', _recurringTaskFromJson),
+        reflections: parseList('reflections', _reflectionFromJson),
+        reflectionGroups: parseList(
+          'reflectionGroups',
+          _reflectionGroupFromJson,
+        ),
+        experiments: parseList('experiments', _experimentFromJson),
+        barriers: parseList('barriers', _barrierFromJson),
+        srSubjects: parseList('spacedRepetitionSubjects', _srSubjectFromJson),
+        srTopics: parseList('spacedRepetitionTopics', _srTopicFromJson),
+        achievements: parseList('achievements', _achievementFromJson),
+        focusLogs: parseList('focusLogs', _focusLogFromJson),
+        userStats: data['userStats'] == null
+            ? null
+            : _userStatsFromJson(_map(data['userStats'], 'userStats')),
+        settings: data['settings'] == null
+            ? const {}
+            : _map(data['settings'], 'settings'),
+      );
+      return parsed;
+    } on BackupException {
+      rethrow;
+    } catch (e) {
+      throw BackupException('Failed to parse backup', e);
+    }
+  }
+
+  static Map<String, dynamic> _map(Object? value, String label) {
+    if (value is Map<String, dynamic>) return value;
+    if (value is Map) return Map<String, dynamic>.from(value);
+    throw BackupException('$label must be an object');
+  }
+
+  static String _requiredString(Map<String, dynamic> json, String key) {
+    final value = json[key];
+    if (value is String && value.isNotEmpty) return value;
+    throw BackupException('Missing required string "$key"');
+  }
+
+  static DateTime _date(Object? value, DateTime fallback) {
+    if (value is String && value.isNotEmpty) return DateTime.parse(value);
+    return fallback;
+  }
+
+  static DateTime? _nullableDate(Object? value) {
+    if (value is String && value.isNotEmpty) return DateTime.parse(value);
+    return null;
+  }
+
+  static List<String> _strings(Object? value) =>
+      value is List ? value.map((e) => e.toString()).toList() : <String>[];
+  static List<int> _ints(Object? value) => value is List
+      ? value.whereType<num>().map((e) => e.toInt()).toList()
+      : <int>[];
+  static List<bool>? _boolsOrNull(Object? value) =>
+      value is List ? value.map((e) => e == true).toList() : null;
+  static List<DateTime>? _datesOrNull(Object? value) => value is List
+      ? value.whereType<String>().map(DateTime.parse).toList()
+      : null;
+
+  static T _enumOrDefault<T>(List<T> values, Object? raw, T defaultValue) {
+    if (raw is int && raw >= 0 && raw < values.length) return values[raw];
+    return defaultValue;
+  }
 
   static Map<String, dynamic> _goalToJson(Goal goal) => {
     'id': goal.id,
-   'title': goal.title,
+    'title': goal.title,
     'description': goal.description,
     'targetDate': goal.targetDate.toIso8601String(),
     'createdAt': goal.createdAt.toIso8601String(),
     'factorIds': goal.factorIds,
   };
+
+  static Goal _goalFromJson(Map<String, dynamic> json) => Goal(
+    id: _requiredString(json, 'id'),
+    title:
+        (json['title'] as String?) ??
+        (json['description'] as String? ?? 'Untitled Goal'),
+    description: json['description'] as String? ?? '',
+    targetDate: _date(
+      json['targetDate'],
+      _date(json['createdAt'], DateTime.now()).add(const Duration(days: 90)),
+    ),
+    createdAt: _date(json['createdAt'], DateTime.now()),
+    factorIds: _strings(json['factorIds']),
+  );
 
   static Map<String, dynamic> _growthAreaToJson(GrowthArea area) => {
     'id': area.id,
@@ -346,7 +535,34 @@ class BackupService {
     'lastWorkedOn': area.lastWorkedOn?.toIso8601String(),
     'healthPercent': area.healthPercent,
     'treeDesignId': area.treeDesignId,
+    'confidenceLevel': area.confidenceLevel,
+    'needsResearch': area.needsResearch,
   };
+
+  static GrowthArea _growthAreaFromJson(Map<String, dynamic> json) =>
+      GrowthArea(
+        id: _requiredString(json, 'id'),
+        name: _requiredString(json, 'name'),
+        type: _enumOrDefault(
+          GrowthAreaType.values,
+          json['type'],
+          GrowthAreaType.knowledge,
+        ),
+        targetLevel: (json['targetLevel'] as num?)?.toInt() ?? 7,
+        currentLevel: (json['currentLevel'] as num?)?.toInt() ?? 3,
+        description: json['description'] as String? ?? '',
+        goalId: json['goalId'] as String? ?? '',
+        lastUpdated: _date(json['lastUpdated'], DateTime.now()),
+        targetDescription: json['targetDescription'] as String? ?? '',
+        currentDescription: json['currentDescription'] as String? ?? '',
+        linkedHabitIds: _strings(json['linkedHabitIds']),
+        isActiveFocus: json['isActiveFocus'] as bool? ?? false,
+        lastWorkedOn: _nullableDate(json['lastWorkedOn']),
+        healthPercent: (json['healthPercent'] as num?)?.toDouble() ?? 100.0,
+        treeDesignId: json['treeDesignId'] as String? ?? 'oak',
+        confidenceLevel: (json['confidenceLevel'] as num?)?.toInt() ?? 3,
+        needsResearch: json['needsResearch'] as bool? ?? false,
+      );
 
   static Map<String, dynamic> _sprintTargetToJson(SprintTarget target) => {
     'id': target.id,
@@ -354,10 +570,53 @@ class BackupService {
     'description': target.description,
     'duration': target.duration.index,
     'isCompleted': target.isCompleted,
+    'isFailed': target.isFailed,
+    'completedAt': target.completedAt?.toIso8601String(),
     'createdAt': target.createdAt.toIso8601String(),
     'targetDate': target.targetDate.toIso8601String(),
     'linkedFactorIds': target.linkedFactorIds,
   };
+
+  static SprintTarget _sprintTargetFromJson(Map<String, dynamic> json) =>
+      SprintTarget(
+        id: _requiredString(json, 'id'),
+        title: _requiredString(json, 'title'),
+        description: json['description'] as String? ?? '',
+        duration: _enumOrDefault(
+          SprintDuration.values,
+          json['duration'],
+          SprintDuration.thirtyDays,
+        ),
+        isCompleted: json['isCompleted'] as bool? ?? false,
+        isFailed: json['isFailed'] as bool? ?? false,
+        completedAt: _nullableDate(json['completedAt']),
+        createdAt: _date(json['createdAt'], DateTime.now()),
+        targetDate: _nullableDate(json['targetDate']),
+        linkedFactorIds: _strings(json['linkedFactorIds']),
+      );
+
+  static Map<String, dynamic> _categoryToJson(CategoryModel category) => {
+    'id': category.id,
+    'name': category.name,
+    'iconCodePoint': category.iconCodePoint,
+    'iconFontFamily': category.iconFontFamily,
+    'colorValue': category.colorValue,
+    'isDefault': category.isDefault,
+    'createdAt': category.createdAt.toIso8601String(),
+    'sortOrder': category.sortOrder,
+  };
+
+  static CategoryModel _categoryFromJson(Map<String, dynamic> json) =>
+      CategoryModel(
+        id: _requiredString(json, 'id'),
+        name: _requiredString(json, 'name'),
+        iconCodePoint: (json['iconCodePoint'] as num?)?.toInt() ?? 0xe574,
+        iconFontFamily: json['iconFontFamily'] as String? ?? 'MaterialIcons',
+        colorValue: (json['colorValue'] as num?)?.toInt() ?? 0xff607d8b,
+        isDefault: json['isDefault'] as bool? ?? false,
+        createdAt: _date(json['createdAt'], DateTime.now()),
+        sortOrder: (json['sortOrder'] as num?)?.toInt() ?? 0,
+      );
 
   static Map<String, dynamic> _taskToJson(Task task) => {
     'id': task.id,
@@ -379,7 +638,79 @@ class BackupService {
     'category': task.category,
     'deadline': task.deadline?.toIso8601String(),
     'customTag': task.customTag,
+    'marginalGainDescription': task.marginalGainDescription,
+    'isResearchTask': task.isResearchTask,
+    'categoryId': task.categoryId,
+    'checklistItems': task.checklistItems,
+    'checklistCompleted': task.checklistCompleted,
+    'priorityLevel': task.priorityLevel.index,
+    'note': task.note,
+    'isPending': task.isPending,
+    'reminderTimes': task.reminderTimes,
+    'scheduledDate': task.scheduledDate.toIso8601String(),
+    'scheduledTime': task.scheduledTime,
+    'isArchived': task.isArchived,
+    'priority': task.priority,
+    'quadrant': task.quadrant.index,
+    'completionRewardGranted': task.completionRewardGranted,
   };
+
+  static Task _taskFromJson(Map<String, dynamic> json) => Task(
+    id: _requiredString(json, 'id'),
+    title: _requiredString(json, 'title'),
+    description: json['description'] as String? ?? '',
+    isPriority: json['isPriority'] as bool? ?? false,
+    isCompleted: json['isCompleted'] as bool? ?? false,
+    source: _enumOrDefault(
+      TaskSource.values,
+      json['source'],
+      TaskSource.newEntry,
+    ),
+    createdAt: _date(json['createdAt'], DateTime.now()),
+    completedAt: _nullableDate(json['completedAt']),
+    linkedFactorIds: _strings(json['linkedFactorIds']),
+    experimentId: json['experimentId'] as String?,
+    sortOrder: (json['sortOrder'] as num?)?.toInt() ?? 0,
+    effort: _enumOrDefault(TaskEffort.values, json['effort'], TaskEffort.quick),
+    impact: _enumOrDefault(TaskImpact.values, json['impact'], TaskImpact.high),
+    addedToPriorityAt: _nullableDate(json['addedToPriorityAt']),
+    abandonReason: json['abandonReason'] == null
+        ? null
+        : _enumOrDefault(
+            TaskAbandonReason.values,
+            json['abandonReason'],
+            TaskAbandonReason.noTime,
+          ),
+    blockedByTaskId: json['blockedByTaskId'] as String?,
+    category: json['category'] as String? ?? 'General',
+    deadline: _nullableDate(json['deadline']),
+    customTag: json['customTag'] as String?,
+    marginalGainDescription: json['marginalGainDescription'] as String?,
+    isResearchTask: json['isResearchTask'] as bool? ?? false,
+    categoryId: json['categoryId'] as String?,
+    checklistItems: json['checklistItems'] == null
+        ? null
+        : _strings(json['checklistItems']),
+    checklistCompleted: _boolsOrNull(json['checklistCompleted']),
+    priorityLevel: _enumOrDefault(
+      PriorityLevel.values,
+      json['priorityLevel'],
+      PriorityLevel.none,
+    ),
+    note: json['note'] as String?,
+    isPending: json['isPending'] as bool? ?? false,
+    reminderTimes: _strings(json['reminderTimes']),
+    scheduledDate: _date(json['scheduledDate'], DateTime.now()),
+    scheduledTime: json['scheduledTime'] as String?,
+    isArchived: json['isArchived'] as bool? ?? false,
+    priority: (json['priority'] as num?)?.toInt() ?? 0,
+    quadrant: _enumOrDefault(
+      EisenhowerQuadrant.values,
+      json['quadrant'],
+      EisenhowerQuadrant.inbox,
+    ),
+    completionRewardGranted: json['completionRewardGranted'] as bool?,
+  );
 
   static Map<String, dynamic> _subtaskToJson(Subtask subtask) => {
     'id': subtask.id,
@@ -387,7 +718,43 @@ class BackupService {
     'isCompleted': subtask.isCompleted,
     'parentTaskId': subtask.parentTaskId,
     'sortOrder': subtask.sortOrder,
+    'createdAt': subtask.createdAt.toIso8601String(),
   };
+
+  static Subtask _subtaskFromJson(Map<String, dynamic> json) => Subtask(
+    id: _requiredString(json, 'id'),
+    title: _requiredString(json, 'title'),
+    isCompleted: json['isCompleted'] as bool? ?? false,
+    parentTaskId: _requiredString(json, 'parentTaskId'),
+    sortOrder: (json['sortOrder'] as num?)?.toInt() ?? 0,
+    createdAt: _date(json['createdAt'], DateTime.now()),
+  );
+
+  static Map<String, dynamic> _habitLogToJson(HabitLog log) => {
+    'date': log.date.toIso8601String(),
+    'completed': log.completed,
+    'note': log.note,
+    'moodRating': log.moodRating,
+    'barrierTag': log.barrierTag,
+    'numericValue': log.numericValue,
+    'checklistCompleted': log.checklistCompleted,
+    'timerSeconds': log.timerSeconds,
+    'score': log.score,
+    'rewardGranted': log.rewardGranted,
+  };
+
+  static HabitLog _habitLogFromJson(Map<String, dynamic> json) => HabitLog(
+    date: _date(json['date'], DateTime.now()),
+    completed: json['completed'] as bool? ?? false,
+    note: json['note'] as String?,
+    moodRating: (json['moodRating'] as num?)?.toInt(),
+    barrierTag: json['barrierTag'] as String?,
+    numericValue: (json['numericValue'] as num?)?.toInt(),
+    checklistCompleted: _boolsOrNull(json['checklistCompleted']),
+    timerSeconds: (json['timerSeconds'] as num?)?.toInt(),
+    score: (json['score'] as num?)?.toInt(),
+    rewardGranted: json['rewardGranted'] as bool?,
+  );
 
   static Map<String, dynamic> _habitToJson(Habit habit) => {
     'id': habit.id,
@@ -397,23 +764,201 @@ class BackupService {
     'currentStreak': habit.currentStreak,
     'bestStreak': habit.bestStreak,
     'completionCount': habit.completionCount,
-    'logs': habit.logs.map((log) => {
-      'date': log.date.toIso8601String(),
-      'completed': log.completed,
-      'note': log.note,
-      'moodRating': log.moodRating,
-      'barrierTag': log.barrierTag,
-    }).toList(),
+    'logs': habit.logs.map(_habitLogToJson).toList(),
     'createdAt': habit.createdAt.toIso8601String(),
     'isActive': habit.isActive,
     'factorId': habit.factorId,
+    'linkedFactorIds': habit.linkedFactorIds,
     'scheduledDays': habit.scheduledDays,
     'targetFrequency': habit.targetFrequency,
     'motivation': habit.motivation,
     'timerMinutes': habit.timerMinutes,
     'streakFreezes': habit.streakFreezes,
     'freezesUsed': habit.freezesUsed,
+    'categoryId': habit.categoryId,
+    'evaluationType': habit.evaluationType?.index,
+    'frequencyType': habit.frequencyType?.index,
+    'targetValue': habit.targetValue,
+    'unit': habit.unit,
+    'checklistItems': habit.checklistItems,
+    'priorityLevel': habit.priorityLevel?.index,
+    'startDate': habit.startDate?.toIso8601String(),
+    'endDate': habit.endDate?.toIso8601String(),
+    'reminderTimes': habit.reminderTimes,
+    'isArchived': habit.isArchived,
+    'daysPerPeriod': habit.daysPerPeriod,
+    'repeatInterval': habit.repeatInterval,
+    'specificDates': habit.specificDates
+        ?.map((d) => d.toIso8601String())
+        .toList(),
+    'description': habit.description,
+    'extraGoal': habit.extraGoal,
+    'sortOrder': habit.sortOrder,
+    'scoringEnabled': habit.scoringEnabled,
+    'priority': habit.priority,
   };
+
+  static Habit _habitFromJson(Map<String, dynamic> json) => Habit(
+    id: _requiredString(json, 'id'),
+    name: _requiredString(json, 'name'),
+    type: _enumOrDefault(HabitType.values, json['type'], HabitType.build),
+    triggerResponse: json['triggerResponse'] as String?,
+    currentStreak: (json['currentStreak'] as num?)?.toInt() ?? 0,
+    bestStreak: (json['bestStreak'] as num?)?.toInt() ?? 0,
+    completionCount: (json['completionCount'] as num?)?.toInt() ?? 0,
+    logs: [
+      for (final log in (json['logs'] as List? ?? const []))
+        _habitLogFromJson(_map(log, 'habit.log')),
+    ],
+    createdAt: _date(json['createdAt'], DateTime.now()),
+    isActive: json['isActive'] as bool? ?? true,
+    factorId: json['factorId'] as String?,
+    linkedFactorIds: json['linkedFactorIds'] == null
+        ? null
+        : _strings(json['linkedFactorIds']),
+    scheduledDays: _ints(json['scheduledDays']).isEmpty
+        ? null
+        : _ints(json['scheduledDays']),
+    targetFrequency: (json['targetFrequency'] as num?)?.toInt() ?? 1,
+    motivation: json['motivation'] as String? ?? '',
+    timerMinutes: (json['timerMinutes'] as num?)?.toInt(),
+    streakFreezes: (json['streakFreezes'] as num?)?.toInt() ?? 0,
+    freezesUsed: (json['freezesUsed'] as num?)?.toInt() ?? 0,
+    categoryId: json['categoryId'] as String?,
+    evaluationType: json['evaluationType'] == null
+        ? null
+        : _enumOrDefault(
+            HabitEvaluationType.values,
+            json['evaluationType'],
+            HabitEvaluationType.yesNo,
+          ),
+    frequencyType: json['frequencyType'] == null
+        ? null
+        : _enumOrDefault(
+            HabitFrequencyType.values,
+            json['frequencyType'],
+            HabitFrequencyType.specificDays,
+          ),
+    targetValue: (json['targetValue'] as num?)?.toInt(),
+    unit: json['unit'] as String?,
+    checklistItems: json['checklistItems'] == null
+        ? null
+        : _strings(json['checklistItems']),
+    priorityLevel: json['priorityLevel'] == null
+        ? null
+        : _enumOrDefault(
+            PriorityLevel.values,
+            json['priorityLevel'],
+            PriorityLevel.none,
+          ),
+    startDate: _nullableDate(json['startDate']),
+    endDate: _nullableDate(json['endDate']),
+    reminderTimes: json['reminderTimes'] == null
+        ? null
+        : _strings(json['reminderTimes']),
+    isArchived: json['isArchived'] as bool? ?? false,
+    daysPerPeriod: (json['daysPerPeriod'] as num?)?.toInt(),
+    repeatInterval: (json['repeatInterval'] as num?)?.toInt(),
+    specificDates: _datesOrNull(json['specificDates']),
+    description: json['description'] as String?,
+    extraGoal: (json['extraGoal'] as num?)?.toInt(),
+    sortOrder: (json['sortOrder'] as num?)?.toInt() ?? 0,
+    scoringEnabled: json['scoringEnabled'] as bool? ?? false,
+    priority: (json['priority'] as num?)?.toInt() ?? 0,
+  );
+
+  static Map<String, dynamic> _recurringTaskLogToJson(RecurringTaskLog log) => {
+    'date': log.date.toIso8601String(),
+    'completed': log.completed,
+    'note': log.note,
+    'checklistCompleted': log.checklistCompleted,
+    'numericValue': log.numericValue,
+    'rewardGranted': log.rewardGranted,
+  };
+
+  static RecurringTaskLog _recurringTaskLogFromJson(
+    Map<String, dynamic> json,
+  ) => RecurringTaskLog(
+    date: _date(json['date'], DateTime.now()),
+    completed: json['completed'] as bool? ?? false,
+    note: json['note'] as String?,
+    checklistCompleted: _boolsOrNull(json['checklistCompleted']),
+    numericValue: (json['numericValue'] as num?)?.toInt(),
+    rewardGranted: json['rewardGranted'] as bool?,
+  );
+
+  static Map<String, dynamic> _recurringTaskToJson(RecurringTask task) => {
+    'id': task.id,
+    'name': task.name,
+    'title': task.name,
+    'description': task.description,
+    'categoryId': task.categoryId,
+    'evaluationType': task.evaluationType.index,
+    'checklistItems': task.checklistItems,
+    'frequencyType': task.frequencyType.index,
+    'scheduledDays': task.scheduledDays,
+    'repeatInterval': task.repeatInterval,
+    'daysPerPeriod': task.daysPerPeriod,
+    'specificDates': task.specificDates
+        ?.map((d) => d.toIso8601String())
+        .toList(),
+    'startDate': task.startDate.toIso8601String(),
+    'endDate': task.endDate?.toIso8601String(),
+    'reminderTimes': task.reminderTimes,
+    'priorityLevel': task.priorityLevel.index,
+    'linkedFactorIds': task.linkedFactorIds,
+    'logs': task.logs.map(_recurringTaskLogToJson).toList(),
+    'createdAt': task.createdAt.toIso8601String(),
+    'sortOrder': task.sortOrder,
+    'isArchived': task.isArchived,
+    'priority': task.priority,
+  };
+
+  static RecurringTask _recurringTaskFromJson(Map<String, dynamic> json) =>
+      RecurringTask(
+        id: _requiredString(json, 'id'),
+        name:
+            (json['name'] as String?) ??
+            (json['title'] as String? ?? 'Untitled Recurring Task'),
+        categoryId: json['categoryId'] as String? ?? 'general',
+        evaluationType: _enumOrDefault(
+          HabitEvaluationType.values,
+          json['evaluationType'],
+          HabitEvaluationType.yesNo,
+        ),
+        checklistItems: json['checklistItems'] == null
+            ? null
+            : _strings(json['checklistItems']),
+        frequencyType: _enumOrDefault(
+          HabitFrequencyType.values,
+          json['frequencyType'],
+          HabitFrequencyType.everyday,
+        ),
+        scheduledDays: _ints(json['scheduledDays']).isEmpty
+            ? null
+            : _ints(json['scheduledDays']),
+        daysPerPeriod: (json['daysPerPeriod'] as num?)?.toInt(),
+        repeatInterval: (json['repeatInterval'] as num?)?.toInt(),
+        specificDates: _datesOrNull(json['specificDates']),
+        startDate: _nullableDate(json['startDate']),
+        endDate: _nullableDate(json['endDate']),
+        reminderTimes: _strings(json['reminderTimes']),
+        priorityLevel: _enumOrDefault(
+          PriorityLevel.values,
+          json['priorityLevel'],
+          PriorityLevel.none,
+        ),
+        linkedFactorIds: _strings(json['linkedFactorIds']),
+        logs: [
+          for (final log in (json['logs'] as List? ?? const []))
+            _recurringTaskLogFromJson(_map(log, 'recurringTask.log')),
+        ],
+        description: json['description'] as String?,
+        createdAt: _date(json['createdAt'], DateTime.now()),
+        isArchived: json['isArchived'] as bool? ?? false,
+        sortOrder: (json['sortOrder'] as num?)?.toInt() ?? 0,
+        priority: (json['priority'] as num?)?.toInt() ?? 0,
+      );
 
   static Map<String, dynamic> _reflectionToJson(Reflection reflection) => {
     'id': reflection.id,
@@ -440,6 +985,32 @@ class BackupService {
     'isManualEntry': reflection.isManualEntry,
   };
 
+  static Reflection _reflectionFromJson(Map<String, dynamic> json) =>
+      Reflection(
+        id: _requiredString(json, 'id'),
+        experience: json['experience'] as String? ?? '',
+        reflection: json['reflection'] as String? ?? '',
+        abstraction: json['abstraction'] as String? ?? '',
+        experimentIds: _strings(json['experimentIds']),
+        linkedFactorIds: _strings(json['linkedFactorIds']),
+        isFollowUp: json['isFollowUp'] as bool? ?? false,
+        previousReflectionId: json['previousReflectionId'] as String?,
+        createdAt: _date(json['createdAt'], DateTime.now()),
+        rawMarkdown: json['rawMarkdown'] as String?,
+        targetFactorId: json['targetFactorId'] as String?,
+        previousExperimentId: json['previousExperimentId'] as String?,
+        groupId: json['groupId'] as String?,
+        marginalGainDescription: json['marginalGainDescription'] as String?,
+        eventSequence: json['eventSequence'] as String?,
+        feelings: json['feelings'] as String?,
+        difficulties: json['difficulties'] as String?,
+        challengeResponse: json['challengeResponse'] as String?,
+        triggers: json['triggers'] as String?,
+        whyBehavior: json['whyBehavior'] as String?,
+        crossLifePatterns: json['crossLifePatterns'] as String?,
+        isManualEntry: json['isManualEntry'] as bool? ?? false,
+      );
+
   static Map<String, dynamic> _reflectionGroupToJson(ReflectionGroup group) => {
     'id': group.id,
     'title': group.title,
@@ -448,6 +1019,16 @@ class BackupService {
     'archivedAt': group.archivedAt?.toIso8601String(),
     'targetFactorId': group.targetFactorId,
   };
+
+  static ReflectionGroup _reflectionGroupFromJson(Map<String, dynamic> json) =>
+      ReflectionGroup(
+        id: _requiredString(json, 'id'),
+        title: _requiredString(json, 'title'),
+        reflectionIds: _strings(json['reflectionIds']),
+        createdAt: _date(json['createdAt'], DateTime.now()),
+        archivedAt: _nullableDate(json['archivedAt']),
+        targetFactorId: json['targetFactorId'] as String?,
+      );
 
   static Map<String, dynamic> _experimentToJson(Experiment experiment) => {
     'id': experiment.id,
@@ -462,6 +1043,24 @@ class BackupService {
     'notes': experiment.notes,
   };
 
+  static Experiment _experimentFromJson(Map<String, dynamic> json) =>
+      Experiment(
+        id: _requiredString(json, 'id'),
+        description: json['description'] as String? ?? '',
+        status: _enumOrDefault(
+          ExperimentStatus.values,
+          json['status'],
+          ExperimentStatus.pending,
+        ),
+        reflectionId: json['reflectionId'] as String? ?? '',
+        createdAt: _date(json['createdAt'], DateTime.now()),
+        groupId: json['groupId'] as String?,
+        cycleCount: (json['cycleCount'] as num?)?.toInt() ?? 0,
+        startedAt: _nullableDate(json['startedAt']),
+        completedAt: _nullableDate(json['completedAt']),
+        notes: json['notes'] as String?,
+      );
+
   static Map<String, dynamic> _barrierToJson(BarrierEntry barrier) => {
     'id': barrier.id,
     'description': barrier.description,
@@ -469,7 +1068,126 @@ class BackupService {
     'response': barrier.response,
     'wasHandled': barrier.wasHandled,
     'factorId': barrier.factorId,
+    'tag': barrier.tag,
+    'note': barrier.note,
+    'linkedHabitId': barrier.linkedHabitId,
+    'linkedTaskId': barrier.linkedTaskId,
+    'moodRating': barrier.moodRating,
   };
+
+  static BarrierEntry _barrierFromJson(Map<String, dynamic> json) =>
+      BarrierEntry(
+        id: _requiredString(json, 'id'),
+        description: json['description'] as String? ?? '',
+        occurredAt: _date(json['occurredAt'], DateTime.now()),
+        response: json['response'] as String?,
+        wasHandled: json['wasHandled'] as bool? ?? false,
+        factorId: json['factorId'] as String?,
+        tag: json['tag'] as String?,
+        note: json['note'] as String?,
+        linkedHabitId: json['linkedHabitId'] as String?,
+        linkedTaskId: json['linkedTaskId'] as String?,
+        moodRating: (json['moodRating'] as num?)?.toInt(),
+      );
+
+  static Map<String, dynamic> _srSubjectToJson(
+    SpacedRepetitionSubject subject,
+  ) => {
+    'id': subject.id,
+    'name': subject.name,
+    'iconCodePoint': subject.iconCodePoint,
+    'iconFontFamily': subject.iconFontFamily,
+    'colorValue': subject.colorValue,
+    'sortOrder': subject.sortOrder,
+    'createdAt': subject.createdAt.toIso8601String(),
+    'isExpanded': subject.isExpanded,
+  };
+
+  static SpacedRepetitionSubject _srSubjectFromJson(
+    Map<String, dynamic> json,
+  ) => SpacedRepetitionSubject(
+    id: _requiredString(json, 'id'),
+    name: _requiredString(json, 'name'),
+    iconCodePoint: (json['iconCodePoint'] as num?)?.toInt() ?? 0xe574,
+    iconFontFamily: json['iconFontFamily'] as String? ?? 'MaterialIcons',
+    colorValue: (json['colorValue'] as num?)?.toInt() ?? 0xff607d8b,
+    sortOrder: (json['sortOrder'] as num?)?.toInt() ?? 0,
+    createdAt: _date(json['createdAt'], DateTime.now()),
+    isExpanded: json['isExpanded'] as bool? ?? true,
+  );
+
+  static Map<String, dynamic> _srTopicToJson(SpacedRepetitionTopic topic) => {
+    'id': topic.id,
+    'subjectId': topic.subjectId,
+    'name': topic.name,
+    'lastReviewedAt': topic.lastReviewedAt?.toIso8601String(),
+    'nextReviewAt': topic.nextReviewAt?.toIso8601String(),
+    'currentIntervalDays': topic.currentIntervalDays,
+    'reviewCount': topic.reviewCount,
+    'sortOrder': topic.sortOrder,
+    'createdAt': topic.createdAt.toIso8601String(),
+    'notes': topic.notes,
+  };
+
+  static SpacedRepetitionTopic _srTopicFromJson(Map<String, dynamic> json) =>
+      SpacedRepetitionTopic(
+        id: _requiredString(json, 'id'),
+        subjectId: _requiredString(json, 'subjectId'),
+        name: _requiredString(json, 'name'),
+        lastReviewedAt: _nullableDate(json['lastReviewedAt']),
+        nextReviewAt: _nullableDate(json['nextReviewAt']),
+        currentIntervalDays: (json['currentIntervalDays'] as num?)?.toInt(),
+        reviewCount: (json['reviewCount'] as num?)?.toInt() ?? 0,
+        sortOrder: (json['sortOrder'] as num?)?.toInt() ?? 0,
+        createdAt: _date(json['createdAt'], DateTime.now()),
+        notes: json['notes'] as String?,
+      );
+
+  static Map<String, dynamic> _achievementToJson(Achievement achievement) => {
+    'id': achievement.id,
+    'title': achievement.title,
+    'description': achievement.description,
+    'iconEmoji': achievement.iconEmoji,
+    'xpReward': achievement.xpReward,
+    'coinReward': achievement.coinReward,
+    'category': achievement.category,
+    'unlockedAt': achievement.unlockedAt?.toIso8601String(),
+  };
+
+  static Achievement _achievementFromJson(Map<String, dynamic> json) =>
+      Achievement(
+        id: _requiredString(json, 'id'),
+        title: json['title'] as String? ?? '',
+        description: json['description'] as String? ?? '',
+        iconEmoji: json['iconEmoji'] as String? ?? '',
+        xpReward: (json['xpReward'] as num?)?.toInt() ?? 0,
+        coinReward: (json['coinReward'] as num?)?.toInt() ?? 0,
+        category: json['category'] as String? ?? 'general',
+        unlockedAt: _nullableDate(json['unlockedAt']),
+      );
+
+  static Map<String, dynamic> _focusLogToJson(FocusLog log) => {
+    'id': log.id,
+    'taskId': log.taskId,
+    'taskTitle': log.taskTitle,
+    'startTime': log.startTime.toIso8601String(),
+    'duration': log.duration.inMinutes,
+    'durationSeconds': log.duration.inSeconds,
+    'completedPomodoros': log.completedPomodoros,
+    'distractions': log.distractions,
+  };
+
+  static FocusLog _focusLogFromJson(Map<String, dynamic> json) => FocusLog(
+    id: _requiredString(json, 'id'),
+    taskId: json['taskId'] as String? ?? '',
+    taskTitle: json['taskTitle'] as String? ?? '',
+    startTime: _date(json['startTime'], DateTime.now()),
+    duration: json['durationSeconds'] is num
+        ? Duration(seconds: (json['durationSeconds'] as num).toInt())
+        : Duration(minutes: (json['duration'] as num?)?.toInt() ?? 0),
+    completedPomodoros: (json['completedPomodoros'] as num?)?.toInt() ?? 0,
+    distractions: _strings(json['distractions']),
+  );
 
   static Map<String, dynamic> _userStatsToJson(UserStats stats) => {
     'totalXP': stats.totalXP,
@@ -486,378 +1204,153 @@ class BackupService {
     'lastResetDate': stats.lastResetDate?.toIso8601String(),
     'lastReflectionAt': stats.lastReflectionAt?.toIso8601String(),
     'reminderFrequency': stats.reminderFrequency.index,
+    'totalTasksCompleted': stats.totalTasksCompleted,
+    'priorityTasksCompleted': stats.priorityTasksCompleted,
+    'backlogTasksCompleted': stats.backlogTasksCompleted,
+    'tasksCompletedToday': stats.tasksCompletedToday,
+    'lastTaskCompletionReset': stats.lastTaskCompletionReset?.toIso8601String(),
   };
 
-  static Map<String, dynamic> _focusLogToJson(FocusLog log) => {
-    'id': log.id,
-    'taskId': log.taskId,
-    'taskTitle': log.taskTitle,
-    'startTime': log.startTime.toIso8601String(),
-    'duration': log.duration.inMinutes,
-    'completedPomodoros': log.completedPomodoros,
-    'distractions': log.distractions,
+  static UserStats _userStatsFromJson(Map<String, dynamic> json) => UserStats(
+    totalXP: (json['totalXP'] as num?)?.toInt() ?? 0,
+    coins: (json['coins'] as num?)?.toInt() ?? 0,
+    currentStreak: (json['currentStreak'] as num?)?.toInt() ?? 0,
+    longestStreak: (json['longestStreak'] as num?)?.toInt() ?? 0,
+    lastActiveDate: _nullableDate(json['lastActiveDate']),
+    freezeTokens: (json['freezeTokens'] as num?)?.toInt() ?? 0,
+    unlockedBadgeIds: _strings(json['unlockedBadgeIds']),
+    createdAt: _date(json['createdAt'], DateTime.now()),
+    xpEarnedToday: (json['xpEarnedToday'] as num?)?.toInt() ?? 0,
+    coinsEarnedToday: (json['coinsEarnedToday'] as num?)?.toInt() ?? 0,
+    actionsToday: (json['actionsToday'] as num?)?.toInt() ?? 0,
+    lastResetDate: _nullableDate(json['lastResetDate']),
+    lastReflectionAt: _nullableDate(json['lastReflectionAt']),
+    reminderFrequency: _enumOrDefault(
+      ReflectionReminderFrequency.values,
+      json['reminderFrequency'],
+      ReflectionReminderFrequency.daily,
+    ),
+    totalTasksCompleted: (json['totalTasksCompleted'] as num?)?.toInt() ?? 0,
+    priorityTasksCompleted:
+        (json['priorityTasksCompleted'] as num?)?.toInt() ?? 0,
+    backlogTasksCompleted:
+        (json['backlogTasksCompleted'] as num?)?.toInt() ?? 0,
+    tasksCompletedToday: (json['tasksCompletedToday'] as num?)?.toInt() ?? 0,
+    lastTaskCompletionReset: _nullableDate(json['lastTaskCompletionReset']),
+  );
+
+  static Future<void> _importSettings(
+    Map<String, dynamic> settings, {
+    required bool preserveExisting,
+  }) async {
+    final availability = settings['timeAvailability'];
+    if (!preserveExisting &&
+        availability is int &&
+        availability >= 0 &&
+        availability < TimeAvailability.values.length) {
+      await StorageService.setTimeAvailability(
+        TimeAvailability.values[availability],
+      );
+    }
+    final onboardingComplete = settings['onboardingComplete'];
+    if (!preserveExisting && onboardingComplete is bool) {
+      await StorageService.setOnboardingComplete(onboardingComplete);
+    }
+
+    // Categories migration flag. New backups carry the completed flag; older
+    // pre-overhaul backups carry a legacy `taskCategories` string list instead.
+    if (settings['taskCategories'] is List) {
+      // Pre-overhaul backup: materialize any legacy string category that has
+      // no matching CategoryModel, then clear the flag so loadData's migration
+      // re-links imported tasks on the next launch.
+      final existingNames = {
+        for (final c in StorageService.getAllCategories()) c.name.toLowerCase(),
+      };
+      for (final raw in _strings(settings['taskCategories'])) {
+        final name = raw.trim();
+        final key = name.toLowerCase();
+        if (name.isEmpty || key == 'general' || existingNames.contains(key)) {
+          continue;
+        }
+        await StorageService.saveCategory(
+          CategoryModel(
+            id: 'imported-${key.replaceAll(RegExp(r'\s+'), '-')}',
+            name: name,
+            iconCodePoint: 0xe574,
+            colorValue: 0xff607d8b,
+            sortOrder: StorageService.getAllCategories().length,
+          ),
+        );
+        existingNames.add(key);
+      }
+      await StorageService.setCategoriesMigrationDone(false);
+    } else if (settings['categoriesMigrationV1Done'] == true) {
+      await StorageService.setCategoriesMigrationDone(true);
+    }
+  }
+}
+
+class _ParsedBackup {
+  final BackupMetadata metadata;
+  final List<Goal> goals;
+  final List<GrowthArea> growthAreas;
+  final List<SprintTarget> sprintTargets;
+  final List<CategoryModel> categories;
+  final List<Task> tasks;
+  final List<Subtask> subtasks;
+  final List<Habit> habits;
+  final List<RecurringTask> recurringTasks;
+  final List<Reflection> reflections;
+  final List<ReflectionGroup> reflectionGroups;
+  final List<Experiment> experiments;
+  final List<BarrierEntry> barriers;
+  final List<SpacedRepetitionSubject> srSubjects;
+  final List<SpacedRepetitionTopic> srTopics;
+  final List<Achievement> achievements;
+  final List<FocusLog> focusLogs;
+  final UserStats? userStats;
+  final Map<String, dynamic> settings;
+
+  _ParsedBackup({
+    required this.metadata,
+    required this.goals,
+    required this.growthAreas,
+    required this.sprintTargets,
+    required this.categories,
+    required this.tasks,
+    required this.subtasks,
+    required this.habits,
+    required this.recurringTasks,
+    required this.reflections,
+    required this.reflectionGroups,
+    required this.experiments,
+    required this.barriers,
+    required this.srSubjects,
+    required this.srTopics,
+    required this.achievements,
+    required this.focusLogs,
+    required this.userStats,
+    required this.settings,
+  });
+
+  Map<String, int> get dataCounts => {
+    'goals': goals.length,
+    'growthAreas': growthAreas.length,
+    'sprintTargets': sprintTargets.length,
+    'categories': categories.length,
+    'tasks': tasks.length,
+    'subtasks': subtasks.length,
+    'habits': habits.length,
+    'recurringTasks': recurringTasks.length,
+    'reflections': reflections.length,
+    'reflectionGroups': reflectionGroups.length,
+    'experiments': experiments.length,
+    'barriers': barriers.length,
+    'spacedRepetitionSubjects': srSubjects.length,
+    'spacedRepetitionTopics': srTopics.length,
+    'achievements': achievements.length,
+    'focusLogs': focusLogs.length,
+    if (userStats != null) 'userStats': 1,
+    if (settings.isNotEmpty) 'settings': 1,
   };
-
-  static Map<String, dynamic> _achievementToJson(Achievement achievement) => {
-    'id': achievement.id,
-    'title': achievement.title,
-    'description': achievement.description,
-    'iconEmoji': achievement.iconEmoji,
-    'xpReward': achievement.xpReward,
-    'coinReward': achievement.coinReward,
-    'category': achievement.category,
-    'unlockedAt': achievement.unlockedAt?.toIso8601String(),
-  };
-
-  static Future<int> _importGoals(List data, ImportMode mode) async {
-    int count = 0;
-    for (final item in data) {
-      try {
-        final goal = Goal(
-          id: item['id'] as String,
-          title: item['title'] as String? ?? item['description'] as String, // Fallback to description for old backups
-          targetDate: item['targetDate'] != null 
-              ? DateTime.parse(item['targetDate'] as String)
-              : DateTime.parse(item['createdAt'] as String).add(const Duration(days: 90)),
-          description: item['description'] as String? ?? '',
-          createdAt: DateTime.parse(item['createdAt'] as String),
-          factorIds: List<String>.from(item['factorIds'] as List? ?? []),
-        );
-        await StorageService.saveGoal(goal);
-        count++;
-      } catch (e) {
-        // Skip invalid items
-      }
-    }
-    return count;
-  }
-
-  static Future<int> _importGrowthAreas(List data, ImportMode mode) async {
-    int count = 0;
-    for (final item in data) {
-      try {
-        final area = GrowthArea(
-          id: item['id'] as String,
-          name: item['name'] as String,
-          type: GrowthAreaType.values[item['type'] as int],
-          targetLevel: item['targetLevel'] as int,
-          currentLevel: item['currentLevel'] as int,
-          description: item['description'] as String,
-          goalId: item['goalId'] as String,
-          lastUpdated: DateTime.parse(item['lastUpdated'] as String),
-          targetDescription: item['targetDescription'] as String? ?? '',
-          currentDescription: item['currentDescription'] as String? ?? '',
-          linkedHabitIds: List<String>.from(item['linkedHabitIds'] as List? ?? []),
-          isActiveFocus: item['isActiveFocus'] as bool? ?? false,
-          lastWorkedOn: item['lastWorkedOn'] != null ? DateTime.parse(item['lastWorkedOn'] as String) : null,
-          healthPercent: (item['healthPercent'] as num?)?.toDouble() ?? 100.0,
-          treeDesignId: item['treeDesignId'] as String? ?? 'oak',
-        );
-        await StorageService.saveFactor(area);
-        count++;
-      } catch (e) {
-        // Skip invalid items
-      }
-    }
-    return count;
-  }
-
-  static Future<int> _importSprintTargets(List data, ImportMode mode) async {
-    int count = 0;
-    for (final item in data) {
-      try {
-        final target = SprintTarget(
-          id: item['id'] as String,
-          title: item['title'] as String,
-          description: item['description'] as String? ?? '',
-          duration: SprintDuration.values[item['duration'] as int],
-          isCompleted: item['isCompleted'] as bool? ?? false,
-          createdAt: DateTime.parse(item['createdAt'] as String),
-          targetDate: DateTime.parse(item['targetDate'] as String),
-          linkedFactorIds: List<String>.from(item['linkedFactorIds'] as List? ?? []),
-        );
-        await StorageService.saveSprintTarget(target);
-        count++;
-      } catch (e) {
-        // Skip invalid items
-      }
-    }
-    return count;
-  }
-
-  static Future<int> _importTasks(List data, ImportMode mode) async {
-    int count = 0;
-    for (final item in data) {
-      try {
-        final task = Task(
-          id: item['id'] as String,
-          title: item['title'] as String,
-          description: item['description'] as String? ?? '',
-          isPriority: item['isPriority'] as bool,
-          isCompleted: item['isCompleted'] as bool,
-          source: TaskSource.values[item['source'] as int],
-          createdAt: DateTime.parse(item['createdAt'] as String),
-          completedAt: item['completedAt'] != null ? DateTime.parse(item['completedAt'] as String) : null,
-          linkedFactorIds: List<String>.from(item['linkedFactorIds'] as List? ?? []),
-          experimentId: item['experimentId'] as String?,
-          sortOrder: item['sortOrder'] as int? ?? 0,
-          effort: TaskEffort.values[item['effort'] as int? ?? 0],
-          impact: TaskImpact.values[item['impact'] as int? ?? 0],
-          addedToPriorityAt: item['addedToPriorityAt'] != null ? DateTime.parse(item['addedToPriorityAt'] as String) : null,
-          abandonReason: item['abandonReason'] != null ? TaskAbandonReason.values[item['abandonReason'] as int] : null,
-          blockedByTaskId: item['blockedByTaskId'] as String?,
-          category: item['category'] as String? ?? 'General',
-          deadline: item['deadline'] != null ? DateTime.parse(item['deadline'] as String) : null,
-          customTag: item['customTag'] as String?,
-        );
-        await StorageService.saveTask(task);
-        count++;
-      } catch (e) {
-        // Skip invalid items
-      }
-    }
-    return count;
-  }
-
-  static Future<int> _importSubtasks(List data, ImportMode mode) async {
-    int count = 0;
-    for (final item in data) {
-      try {
-        final subtask = Subtask(
-          id: item['id'] as String,
-          title: item['title'] as String,
-          isCompleted: item['isCompleted'] as bool,
-          parentTaskId: item['parentTaskId'] as String,
-          sortOrder: item['sortOrder'] as int? ?? 0,
-        );
-        await StorageService.saveSubtask(subtask);
-        count++;
-      } catch (e) {
-        // Skip invalid items
-      }
-    }
-    return count;
-  }
-
-  static Future<int> _importHabits(List data, ImportMode mode) async {
-    int count = 0;
-    for (final item in data) {
-      try {
-        final logs = (item['logs'] as List? ?? []).map((logData) {
-          return HabitLog(
-            date: DateTime.parse(logData['date'] as String),
-            completed: logData['completed'] as bool,
-            note: logData['note'] as String?,
-            moodRating: logData['moodRating'] as int?,
-            barrierTag: logData['barrierTag'] as String?,
-          );
-        }).toList();
-
-        final habit = Habit(
-          id: item['id'] as String,
-          name: item['name'] as String,
-          type: HabitType.values[item['type'] as int],
-          triggerResponse: item['triggerResponse'] as String?,
-          currentStreak: item['currentStreak'] as int? ?? 0,
-          bestStreak: item['bestStreak'] as int? ?? 0,
-          completionCount: item['completionCount'] as int? ?? 0,
-          logs: logs,
-          createdAt: DateTime.parse(item['createdAt'] as String),
-          isActive: item['isActive'] as bool? ?? true,
-          factorId: item['factorId'] as String?,
-          scheduledDays: List<int>.from(item['scheduledDays'] as List? ?? [1, 2, 3, 4, 5, 6, 7]),
-          targetFrequency: item['targetFrequency'] as int? ?? 1,
-          motivation: item['motivation'] as String? ?? '',
-          timerMinutes: item['timerMinutes'] as int?,
-          streakFreezes: item['streakFreezes'] as int? ?? 0,
-          freezesUsed: item['freezesUsed'] as int? ?? 0,
-        );
-        await StorageService.saveHabit(habit);
-        count++;
-      } catch (e) {
-        // Skip invalid items
-      }
-    }
-    return count;
-  }
-
-  static Future<int> _importReflections(List data, ImportMode mode) async {
-    int count = 0;
-    for (final item in data) {
-      try {
-        final reflection = Reflection(
-          id: item['id'] as String,
-          experience: item['experience'] as String? ?? '',
-          reflection: item['reflection'] as String? ?? '',
-          abstraction: item['abstraction'] as String? ?? '',
-          experimentIds: List<String>.from(item['experimentIds'] as List? ?? []),
-          linkedFactorIds: List<String>.from(item['linkedFactorIds'] as List? ?? []),
-          isFollowUp: item['isFollowUp'] as bool? ?? false,
-          previousReflectionId: item['previousReflectionId'] as String?,
-          createdAt: DateTime.parse(item['createdAt'] as String),
-          rawMarkdown: item['rawMarkdown'] as String?,
-          targetFactorId: item['targetFactorId'] as String?,
-          previousExperimentId: item['previousExperimentId'] as String?,
-          groupId: item['groupId'] as String?,
-          marginalGainDescription: item['marginalGainDescription'] as String?,
-          eventSequence: item['eventSequence'] as String?,
-          feelings: item['feelings'] as String?,
-          difficulties: item['difficulties'] as String?,
-          challengeResponse: item['challengeResponse'] as String?,
-          triggers: item['triggers'] as String?,
-          whyBehavior: item['whyBehavior'] as String?,
-          crossLifePatterns: item['crossLifePatterns'] as String?,
-          isManualEntry: item['isManualEntry'] as bool? ?? false,
-        );
-        await StorageService.saveReflection(reflection);
-        count++;
-      } catch (e) {
-        // Skip invalid items
-      }
-    }
-    return count;
-  }
-
-  static Future<int> _importReflectionGroups(List data, ImportMode mode) async {
-    int count = 0;
-    for (final item in data) {
-      try {
-        final group = ReflectionGroup(
-          id: item['id'] as String,
-          title: item['title'] as String,
-          reflectionIds: List<String>.from(item['reflectionIds'] as List? ?? []),
-          createdAt: DateTime.parse(item['createdAt'] as String),
-          archivedAt: item['archivedAt'] != null ? DateTime.parse(item['archivedAt'] as String) : null,
-          targetFactorId: item['targetFactorId'] as String?,
-        );
-        await StorageService.saveReflectionGroup(group);
-        count++;
-      } catch (e) {
-        // Skip invalid items
-      }
-    }
-    return count;
-  }
-
-  static Future<int> _importExperiments(List data, ImportMode mode) async {
-    int count = 0;
-    for (final item in data) {
-      try {
-        final experiment = Experiment(
-          id: item['id'] as String,
-          description: item['description'] as String,
-          status: ExperimentStatus.values[item['status'] as int],
-          reflectionId: item['reflectionId'] as String,
-          createdAt: DateTime.parse(item['createdAt'] as String),
-          groupId: item['groupId'] as String?,
-          cycleCount: item['cycleCount'] as int? ?? 0,
-          startedAt: item['startedAt'] != null ? DateTime.parse(item['startedAt'] as String) : null,
-          completedAt: item['completedAt'] != null ? DateTime.parse(item['completedAt'] as String) : null,
-          notes: item['notes'] as String?,
-        );
-        await StorageService.saveExperiment(experiment);
-        count++;
-      } catch (e) {
-        // Skip invalid items
-      }
-    }
-    return count;
-  }
-
-  static Future<int> _importBarriers(List data, ImportMode mode) async {
-    int count = 0;
-    for (final item in data) {
-      try {
-        final barrier = BarrierEntry(
-          id: item['id'] as String,
-          description: item['description'] as String,
-          occurredAt: DateTime.parse(item['occurredAt'] as String),
-          response: item['response'] as String?,
-          wasHandled: item['wasHandled'] as bool? ?? false,
-          factorId: item['factorId'] as String?,
-        );
-        await StorageService.saveBarrier(barrier);
-        count++;
-      } catch (e) {
-        // Skip invalid items
-      }
-    }
-    return count;
-  }
-
-  static Future<int> _importAchievements(List data, ImportMode mode) async {
-    int count = 0;
-    for (final item in data) {
-      try {
-        final achievement = Achievement(
-          id: item['id'] as String,
-          title: item['title'] as String,
-          description: item['description'] as String,
-          iconEmoji: item['iconEmoji'] as String,
-          xpReward: item['xpReward'] as int? ?? 0,
-          coinReward: item['coinReward'] as int? ?? 0,
-          category: item['category'] as String,
-          unlockedAt: item['unlockedAt'] != null ? DateTime.parse(item['unlockedAt'] as String) : null,
-        );
-        await StorageService.saveAchievement(achievement);
-        count++;
-      } catch (e) {
-        // Skip invalid items
-      }
-    }
-    return count;
-  }
-
-  static Future<int> _importFocusLogs(List data, ImportMode mode) async {
-    int count = 0;
-    for (final item in data) {
-      try {
-        final log = FocusLog(
-          id: item['id'] as String,
-          taskId: item['taskId'] as String,
-          taskTitle: item['taskTitle'] as String,
-          startTime: DateTime.parse(item['startTime'] as String),
-          duration: Duration(minutes: item['duration'] as int),
-          completedPomodoros: item['completedPomodoros'] as int? ?? 0,
-          distractions: List<String>.from(item['distractions'] as List? ?? []),
-        );
-        await StorageService.saveFocusLog(log);
-        count++;
-      } catch (e) {
-        // Skip invalid items
-      }
-    }
-    return count;
-  }
-
-  static UserStats _userStatsFromJson(Map<String, dynamic> json) {
-    return UserStats(
-      totalXP: json['totalXP'] as int? ?? 0,
-      coins: json['coins'] as int? ?? 0,
-      currentStreak: json['currentStreak'] as int? ?? 0,
-      longestStreak: json['longestStreak'] as int? ?? 0,
-      lastActiveDate: json['lastActiveDate'] != null ? DateTime.parse(json['lastActiveDate'] as String) : null,
-      freezeTokens: json['freezeTokens'] as int? ?? 0,
-      unlockedBadgeIds: List<String>.from(json['unlockedBadgeIds'] as List? ?? []),
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      xpEarnedToday: json['xpEarnedToday'] as int? ?? 0,
-      coinsEarnedToday: json['coinsEarnedToday'] as int? ?? 0,
-      actionsToday: json['actionsToday'] as int? ?? 0,
-      lastResetDate: json['lastResetDate'] != null ? DateTime.parse(json['lastResetDate'] as String) : null,
-      lastReflectionAt: json['lastReflectionAt'] != null ? DateTime.parse(json['lastReflectionAt'] as String) : null,
-      reminderFrequency: ReflectionReminderFrequency.values[json['reminderFrequency'] as int? ?? 0],
-    );
-  }
-
-  static Future<void> _importSettings(Map<String, dynamic> settings) async {
-    if (settings.containsKey('timeAvailability') && settings['timeAvailability'] != null) {
-      await StorageService.setTimeAvailability(TimeAvailability.values[settings['timeAvailability'] as int]);
-    }
-    if (settings.containsKey('onboardingComplete')) {
-      await StorageService.setOnboardingComplete(settings['onboardingComplete'] as bool);
-    }
-    if (settings.containsKey('taskCategories')) {
-      await StorageService.saveTaskCategories(List<String>.from(settings['taskCategories'] as List));
-    }
-  }
 }

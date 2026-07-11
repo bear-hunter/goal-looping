@@ -22,7 +22,7 @@ class SprintTargetAdapter extends TypeAdapter<SprintTarget> {
       description: fields[2] as String,
       duration: fields[3] as SprintDuration,
       isCompleted: fields[4] as bool,
-      isFailed: fields[8] as bool,
+      isFailed: fields[8] == null ? false : fields[8] as bool,
       completedAt: fields[9] as DateTime?,
       createdAt: fields[5] as DateTime?,
       targetDate: fields[6] as DateTime?,

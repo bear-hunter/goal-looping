@@ -1,13 +1,10 @@
-/// Asset optimization utilities for efficient image loading
-/// 
-/// Key optimizations:
-/// 1. Lazy loading - only load assets when needed
-/// 2. WebP support - smaller files with same quality
-/// 3. Resolution-aware loading - use device pixel ratio
-/// 4. Caching - prevent redundant asset loads
+// Asset optimization utilities for efficient image loading.
+//
+// Key optimizations: lazy loading, WebP support, resolution-aware loading,
+// and caching to prevent redundant asset loads.
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'theme/theme.dart';
 
 /// Optimized asset loader with lazy loading and caching
 class AssetOptimizer {
@@ -146,7 +143,7 @@ class OptimizedAssetImage extends StatelessWidget {
         return SizedBox(
           width: width,
           height: height,
-          child: const Icon(Icons.broken_image, color: Colors.grey),
+          child: Icon(Icons.broken_image, color: context.colors.textMuted),
         );
       },
     );

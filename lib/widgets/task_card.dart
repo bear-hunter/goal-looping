@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../core/theme/theme.dart';
 import '../models/task.dart';
+import '../providers/app_state.dart';
 
 /// Premium task card with smart features:
 /// - Effort/Impact tags
@@ -33,14 +35,14 @@ class TaskCard extends StatelessWidget {
   });
 
   Color getSourceColor(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.colors;
     switch (task.source) {
       case TaskSource.newEntry:
-        return AppColors.primary;
+        return colors.primary;
       case TaskSource.experiment:
-        return AppColors.warning;
+        return colors.warning;
       case TaskSource.backlog:
-        return isDark ? AppColors.textMuted : LightColors.textMuted;
+        return colors.textMuted;
     }
   }
 
@@ -58,22 +60,21 @@ class TaskCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isStale = task.isStale;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final surfaceColor = isDark ? AppColors.surface : LightColors.surface;
-    final surfaceLight = isDark
-        ? AppColors.surfaceLight
-        : LightColors.surfaceLight;
-    final glassBorder = isDark
-        ? AppColors.glassBorder
-        : LightColors.glassBorder;
-    final textPrimary = isDark
-        ? AppColors.textPrimary
-        : LightColors.textPrimary;
-    final textMuted = isDark ? AppColors.textMuted : LightColors.textMuted;
+    final colors = context.colors;
+    final isDark = context.isDarkMode;
+    final surfaceColor = colors.surface;
+    final surfaceLight = colors.surfaceLight;
+    final glassBorder = colors.glassBorder;
+    final textPrimary = colors.textPrimary;
+    final textMuted = colors.textMuted;
     final sourceColor = getSourceColor(context);
 
     // Build semantic label for screen readers
-    final semanticLabel = _buildSemanticLabel();
+    final categoryId = task.categoryId;
+    final categoryName = categoryId == null
+        ? null
+        : context.read<AppState>().getCategoryById(categoryId)?.name;
+    final semanticLabel = _buildSemanticLabel(categoryName);
 
     return Semantics(
       label: semanticLabel,
@@ -99,33 +100,25 @@ class TaskCard extends StatelessWidget {
                     colors: task.isPriority
                         ? [
                             isStale
-                                ? AppColors.warning.withAlpha(
-                                    25,
-                                  ) // Reduced from 30
-                                : AppColors.primary.withAlpha(25),
+                                ? colors.warning.withAlpha(25)
+                                : colors.primary.withAlpha(25),
                             isStale
-                                ? AppColors.warning.withAlpha(
-                                    5,
-                                  ) // Reduced from 12
-                                : AppColors.primary.withAlpha(5),
+                                ? colors.warning.withAlpha(5)
+                                : colors.primary.withAlpha(5),
                           ]
                         : [
                             surfaceColor,
-                            surfaceColor.withAlpha(
-                              isDark ? 230 : 255,
-                            ), // More solid
+                            surfaceColor.withAlpha(isDark ? 230 : 255),
                           ],
                   ),
                   borderRadius: BorderRadius.circular(AppRadius.lg),
                   border: Border.all(
                     color: isStale
-                        ? AppColors.warning.withAlpha(80)
+                        ? colors.warning.withAlpha(80)
                         : task.isPriority
-                        ? AppColors.primary.withAlpha(80)
-                        : glassBorder.withAlpha(15), // Subtler border
-                    width: task.isPriority
-                        ? 1
-                        : 1, // Thinner border (was 1.5/1)
+                        ? colors.primary.withAlpha(80)
+                        : glassBorder.withAlpha(15),
+                    width: 1,
                   ),
                   boxShadow: task.isPriority
                       ? AppShadows.primaryGlow
@@ -158,22 +151,20 @@ class TaskCard extends StatelessWidget {
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 color: task.isCompleted
-                                    ? AppColors.success
+                                    ? colors.success
                                     : Colors.transparent,
                                 border: Border.all(
                                   color: task.isCompleted
-                                      ? AppColors.success
-                                      : textMuted.withAlpha(
-                                          100,
-                                        ), // More subtle border
+                                      ? colors.success
+                                      : textMuted.withAlpha(100),
                                   width: 2,
                                 ),
                               ),
                               child: task.isCompleted
-                                  ? const Icon(
+                                  ? Icon(
                                       Icons.check_rounded,
                                       size: 16,
-                                      color: Colors.white,
+                                      color: colors.onPrimary,
                                     )
                                   : null,
                             ),
@@ -258,22 +249,20 @@ class TaskCard extends StatelessWidget {
                                         vertical: 3,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: AppColors.primary.withAlpha(15),
+                                        color: colors.primary.withAlpha(15),
                                         borderRadius: BorderRadius.circular(
                                           AppRadius.sm,
                                         ),
                                         border: Border.all(
-                                          color: AppColors.primary.withAlpha(
-                                            30,
-                                          ),
+                                          color: colors.primary.withAlpha(30),
                                         ),
                                       ),
                                       child: Text(
                                         task.customTag!,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 11,
                                           fontWeight: FontWeight.w600,
-                                          color: AppColors.primary,
+                                          color: colors.primary,
                                         ),
                                       ),
                                     ),
@@ -295,26 +284,26 @@ class TaskCard extends StatelessWidget {
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color: AppColors.warning.withAlpha(20),
+                          color: colors.warning.withAlpha(20),
                           borderRadius: BorderRadius.circular(AppRadius.sm),
                           border: Border.all(
-                            color: AppColors.warning.withAlpha(40),
+                            color: colors.warning.withAlpha(40),
                           ),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.hourglass_bottom_rounded,
                               size: 14,
-                              color: AppColors.warning,
+                              color: colors.warning,
                             ),
                             const SizedBox(width: 6),
                             Text(
-                              'Stuck for ${task.hoursInPriority}h', // Shortened text
-                              style: const TextStyle(
+                              'Stuck for ${task.hoursInPriority}h',
+                              style: TextStyle(
                                 fontSize: 11,
-                                color: AppColors.warning,
+                                color: colors.warning,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -338,8 +327,8 @@ class TaskCard extends StatelessWidget {
                                 backgroundColor: surfaceLight,
                                 valueColor: AlwaysStoppedAnimation<Color>(
                                   task.isPriority
-                                      ? AppColors.primary
-                                      : AppColors.success,
+                                      ? colors.primary
+                                      : colors.success,
                                 ),
                                 minHeight: 4,
                               ),
@@ -376,11 +365,11 @@ class TaskCard extends StatelessWidget {
 
                           Color deadlineColor;
                           if (daysRemaining < 0) {
-                            deadlineColor = AppColors.danger;
+                            deadlineColor = colors.danger;
                           } else if (daysRemaining <= 2) {
-                            deadlineColor = AppColors.warning;
+                            deadlineColor = colors.warning;
                           } else {
-                            deadlineColor = AppColors.info;
+                            deadlineColor = colors.info;
                           }
 
                           return Container(
@@ -433,7 +422,7 @@ class TaskCard extends StatelessWidget {
                             _ActionButton(
                               icon: Icons.center_focus_strong_rounded,
                               label: 'Focus',
-                              color: AppColors.success,
+                              color: colors.success,
                               onTap: onFocusMode,
                             ),
                           if (task.isPriority && onFocusMode != null)
@@ -443,7 +432,7 @@ class TaskCard extends StatelessWidget {
                             _ActionButton(
                               icon: Icons.arrow_upward_rounded,
                               label: 'Promote',
-                              color: AppColors.primary,
+                              color: colors.primary,
                               onTap: onPromote,
                             ),
                           if (task.isPriority)
@@ -457,7 +446,7 @@ class TaskCard extends StatelessWidget {
                           _ActionButton(
                             icon: Icons.delete_outline_rounded,
                             label: 'Delete',
-                            color: AppColors.danger,
+                            color: colors.danger,
                             onTap: onDelete,
                           ),
                         ],
@@ -474,7 +463,7 @@ class TaskCard extends StatelessWidget {
   }
 
   /// Build a comprehensive semantic label for screen readers
-  String _buildSemanticLabel() {
+  String _buildSemanticLabel(String? categoryName) {
     final buffer = StringBuffer();
 
     // Task status
@@ -494,7 +483,9 @@ class TaskCard extends StatelessWidget {
     buffer.write('Impact: ${task.impact.name}. ');
 
     // Category
-    buffer.write('Category: ${task.category}. ');
+    if (categoryName != null) {
+      buffer.write('Category: $categoryName. ');
+    }
 
     // Deadline
     if (task.deadline != null) {

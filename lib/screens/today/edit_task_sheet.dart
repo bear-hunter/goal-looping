@@ -5,8 +5,8 @@ import 'package:provider/provider.dart';
 import '../../core/theme/theme.dart';
 import '../../providers/app_state.dart';
 import '../../models/task.dart';
-import '../../models/category_model.dart';
 import '../../models/habit_enums.dart';
+import '../../widgets/category_picker.dart';
 import '../../widgets/growth_area_selector.dart';
 
 /// Bottom sheet for editing an existing task
@@ -102,6 +102,20 @@ class _EditTaskSheetState extends State<EditTaskSheet> {
       return;
     }
 
+    final appState = context.read<AppState>();
+    final isNewHighPriority =
+        _priority == PriorityLevel.high && !widget.task.isPriority;
+    if (isNewHighPriority && !appState.canAddPriorityTask) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'You already have two active High-priority tasks. Complete or lower one first.',
+          ),
+        ),
+      );
+      return;
+    }
+
     // Update task fields
     widget.task.title = title;
     widget.task.note = _noteController.text.trim().isNotEmpty
@@ -115,6 +129,9 @@ class _EditTaskSheetState extends State<EditTaskSheet> {
     widget.task.scheduledTime = _scheduledTime != null
         ? '${_scheduledTime!.hour.toString().padLeft(2, '0')}:${_scheduledTime!.minute.toString().padLeft(2, '0')}'
         : null;
+    widget.task.reminderTimes = widget.task.scheduledTime == null
+        ? []
+        : [widget.task.scheduledTime!];
     widget.task.checklistItems = _hasChecklist && _checklistItems.isNotEmpty
         ? _checklistItems
         : null;
@@ -124,7 +141,6 @@ class _EditTaskSheetState extends State<EditTaskSheet> {
         : null;
     widget.task.linkedFactorIds = _linkedFactorIds;
 
-    final appState = context.read<AppState>();
     await appState.updateTask(widget.task);
 
     if (mounted) {
@@ -161,16 +177,10 @@ class _EditTaskSheetState extends State<EditTaskSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textPrimary = isDark
-        ? AppColors.textPrimary
-        : LightColors.textPrimary;
-    final textSecondary = isDark
-        ? AppColors.textSecondary
-        : LightColors.textSecondary;
-    final bgColor = isDark ? AppColors.surface : LightColors.surface;
-
-    final categories = context.watch<AppState>().categories;
+    final colors = context.colors;
+    final textPrimary = colors.textPrimary;
+    final textSecondary = colors.textSecondary;
+    final bgColor = colors.surface;
 
     return Container(
       padding: EdgeInsets.only(
@@ -205,7 +215,7 @@ class _EditTaskSheetState extends State<EditTaskSheet> {
             // Title
             Row(
               children: [
-                Icon(Icons.edit_rounded, color: AppColors.primary),
+                Icon(Icons.edit_rounded, color: colors.primary),
                 const SizedBox(width: 8),
                 Text(
                   'Edit Task',
@@ -231,12 +241,12 @@ class _EditTaskSheetState extends State<EditTaskSheet> {
                   widget.task.isCompleted
                       ? Icons.check_circle_rounded
                       : Icons.check_circle_outline_rounded,
-                  color: widget.task.isCompleted ? Colors.green : textSecondary,
+                  color: widget.task.isCompleted
+                      ? colors.success
+                      : textSecondary,
                 ),
                 filled: true,
-                fillColor: isDark
-                    ? AppColors.surfaceLight
-                    : LightColors.surfaceLight,
+                fillColor: colors.surfaceLight,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
@@ -255,28 +265,9 @@ class _EditTaskSheetState extends State<EditTaskSheet> {
               ),
             ),
             const SizedBox(height: 8),
-            SizedBox(
-              height: 40,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: categories.length,
-                itemBuilder: (context, index) {
-                  final category = categories[index];
-                  final isSelected = _selectedCategoryId == category.id;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: _CategoryChip(
-                      category: category,
-                      isSelected: isSelected,
-                      onTap: () {
-                        setState(() {
-                          _selectedCategoryId = isSelected ? null : category.id;
-                        });
-                      },
-                    ),
-                  );
-                },
-              ),
+            CategoryPicker(
+              selectedCategoryId: _selectedCategoryId,
+              onChanged: (id) => setState(() => _selectedCategoryId = id),
             ),
             const SizedBox(height: 16),
 
@@ -314,7 +305,7 @@ class _EditTaskSheetState extends State<EditTaskSheet> {
                   child: _OptionTile(
                     icon: Icons.flag_rounded,
                     label: _priority.label,
-                    iconColor: _getPriorityColor(_priority),
+                    iconColor: _getPriorityColor(context, _priority),
                     onTap: _showPriorityPicker,
                     isActive: _priority != PriorityLevel.none,
                   ),
@@ -344,9 +335,7 @@ class _EditTaskSheetState extends State<EditTaskSheet> {
                 hintStyle: TextStyle(color: textSecondary),
                 prefixIcon: Icon(Icons.notes_rounded, color: textSecondary),
                 filled: true,
-                fillColor: isDark
-                    ? AppColors.surfaceLight
-                    : LightColors.surfaceLight,
+                fillColor: colors.surfaceLight,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
@@ -359,9 +348,7 @@ class _EditTaskSheetState extends State<EditTaskSheet> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: isDark
-                    ? AppColors.surfaceLight
-                    : LightColors.surfaceLight,
+                color: colors.surfaceLight,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
@@ -383,7 +370,7 @@ class _EditTaskSheetState extends State<EditTaskSheet> {
                   Switch(
                     value: _hasChecklist,
                     onChanged: (v) => setState(() => _hasChecklist = v),
-                    activeTrackColor: AppColors.primary,
+                    activeTrackColor: colors.primary,
                   ),
                 ],
               ),
@@ -409,7 +396,7 @@ class _EditTaskSheetState extends State<EditTaskSheet> {
                             _checklistCompleted[entry.key] = v ?? false;
                           });
                         },
-                        activeColor: AppColors.primary,
+                        activeColor: colors.primary,
                       ),
                       Expanded(
                         child: Container(
@@ -418,9 +405,7 @@ class _EditTaskSheetState extends State<EditTaskSheet> {
                             vertical: 8,
                           ),
                           decoration: BoxDecoration(
-                            color: isDark
-                                ? AppColors.surfaceLight
-                                : LightColors.surfaceLight,
+                            color: colors.surfaceLight,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
@@ -466,9 +451,7 @@ class _EditTaskSheetState extends State<EditTaskSheet> {
                   hintText: 'Add item...',
                   hintStyle: TextStyle(color: textSecondary),
                   filled: true,
-                  fillColor: isDark
-                      ? AppColors.surfaceLight
-                      : LightColors.surfaceLight,
+                  fillColor: colors.surfaceLight,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
                     borderSide: BorderSide.none,
@@ -478,7 +461,7 @@ class _EditTaskSheetState extends State<EditTaskSheet> {
                     vertical: 10,
                   ),
                   suffixIcon: IconButton(
-                    icon: Icon(Icons.add_rounded, color: AppColors.primary),
+                    icon: Icon(Icons.add_rounded, color: colors.primary),
                     onPressed: () {
                       final value = _checklistInputController.text.trim();
                       if (value.isNotEmpty) {
@@ -521,8 +504,8 @@ class _EditTaskSheetState extends State<EditTaskSheet> {
                   child: OutlinedButton.icon(
                     onPressed: () => _confirmDelete(context),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.red,
-                      side: const BorderSide(color: Colors.red),
+                      foregroundColor: colors.danger,
+                      side: BorderSide(color: colors.danger),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -539,7 +522,7 @@ class _EditTaskSheetState extends State<EditTaskSheet> {
                   child: ElevatedButton.icon(
                     onPressed: _saveTask,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
+                      backgroundColor: colors.primary,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
@@ -566,6 +549,7 @@ class _EditTaskSheetState extends State<EditTaskSheet> {
   }
 
   Future<void> _confirmDelete(BuildContext context) async {
+    final colors = context.colors;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -580,7 +564,7 @@ class _EditTaskSheetState extends State<EditTaskSheet> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(foregroundColor: colors.danger),
             child: const Text('Delete'),
           ),
         ],
@@ -628,25 +612,25 @@ class _EditTaskSheetState extends State<EditTaskSheet> {
     return '${months[date.month - 1]} ${date.day}';
   }
 
-  Color _getPriorityColor(PriorityLevel priority) {
+  Color _getPriorityColor(BuildContext context, PriorityLevel priority) {
+    final colors = context.colors;
     switch (priority) {
       case PriorityLevel.high:
-        return Colors.red;
+        return colors.danger;
       case PriorityLevel.medium:
-        return Colors.orange;
+        return colors.warning;
       case PriorityLevel.low:
-        return Colors.blue;
+        return colors.info;
       case PriorityLevel.none:
-        return Colors.grey;
+        return colors.textMuted;
     }
   }
 
   void _showPriorityPicker() {
+    final colors = context.colors;
     showModalBottomSheet(
       context: context,
-      backgroundColor: Theme.of(context).brightness == Brightness.dark
-          ? AppColors.surface
-          : LightColors.surface,
+      backgroundColor: colors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -665,67 +649,16 @@ class _EditTaskSheetState extends State<EditTaskSheet> {
               (priority) => ListTile(
                 leading: Icon(
                   Icons.flag_rounded,
-                  color: _getPriorityColor(priority),
+                  color: _getPriorityColor(context, priority),
                 ),
                 title: Text(priority.label),
                 trailing: _priority == priority
-                    ? const Icon(Icons.check_rounded, color: AppColors.primary)
+                    ? Icon(Icons.check_rounded, color: colors.primary)
                     : null,
                 onTap: () {
                   setState(() => _priority = priority);
                   Navigator.pop(context);
                 },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Category selection chip
-class _CategoryChip extends StatelessWidget {
-  final CategoryModel category;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _CategoryChip({
-    required this.category,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final color = Color(category.colorValue);
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? color.withAlpha(50) : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected ? color : Colors.grey.withAlpha(100),
-            width: isSelected ? 2 : 1,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              category.icon,
-              size: 16,
-              color: isSelected ? color : Colors.grey,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              category.name,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                color: isSelected ? color : Colors.grey,
               ),
             ),
           ],
@@ -755,13 +688,9 @@ class _OptionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textPrimary = isDark
-        ? AppColors.textPrimary
-        : LightColors.textPrimary;
-    final textSecondary = isDark
-        ? AppColors.textSecondary
-        : LightColors.textSecondary;
+    final colors = context.colors;
+    final textPrimary = colors.textPrimary;
+    final textSecondary = colors.textSecondary;
 
     return GestureDetector(
       onTap: onTap,
@@ -769,12 +698,10 @@ class _OptionTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         decoration: BoxDecoration(
-          color: isActive
-              ? AppColors.primary.withAlpha(20)
-              : (isDark ? AppColors.surfaceLight : LightColors.surfaceLight),
+          color: isActive ? colors.primary.withAlpha(20) : colors.surfaceLight,
           borderRadius: BorderRadius.circular(10),
           border: isActive
-              ? Border.all(color: AppColors.primary.withAlpha(100), width: 1)
+              ? Border.all(color: colors.primary.withAlpha(100), width: 1)
               : null,
         ),
         child: Row(
@@ -782,8 +709,7 @@ class _OptionTile extends StatelessWidget {
             Icon(
               icon,
               size: 20,
-              color:
-                  iconColor ?? (isActive ? AppColors.primary : textSecondary),
+              color: iconColor ?? (isActive ? colors.primary : textSecondary),
             ),
             const SizedBox(width: 8),
             Expanded(

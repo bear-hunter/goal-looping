@@ -23,7 +23,7 @@ enum ExperimentStatus {
 
 /// Experiment - Actionable items extracted from Kolb's reflections
 /// Now a first-class citizen, NOT converted to tasks
-@HiveType(typeId: 7)
+@HiveType(typeId: 7, adapterName: 'GeneratedExperimentAdapter')
 class Experiment extends HiveObject {
   @HiveField(0)
   String id;
@@ -135,3 +135,39 @@ class Experiment extends HiveObject {
   }
 }
 
+/// Reads both the current experiment layout and the original layout where
+/// field ids 3-6 represented different values. New writes continue to use the
+/// generated current layout.
+class ExperimentAdapter extends GeneratedExperimentAdapter {
+  @override
+  Experiment read(BinaryReader reader) {
+    final numOfFields = reader.readByte();
+    final fields = <int, dynamic>{
+      for (var i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
+    };
+
+    final isLegacyLayout = fields[3] is bool;
+    if (isLegacyLayout) {
+      return Experiment(
+        id: fields[0] as String,
+        description: fields[1] as String,
+        status: fields[2] as ExperimentStatus,
+        reflectionId: fields[4] as String,
+        createdAt: fields[6] as DateTime?,
+      );
+    }
+
+    return Experiment(
+      id: fields[0] as String,
+      description: fields[1] as String,
+      status: fields[2] as ExperimentStatus,
+      reflectionId: fields[3] as String,
+      createdAt: fields[4] as DateTime?,
+      groupId: fields[5] as String?,
+      cycleCount: fields[6] as int? ?? 0,
+      startedAt: fields[7] as DateTime?,
+      completedAt: fields[8] as DateTime?,
+      notes: fields[9] as String?,
+    );
+  }
+}

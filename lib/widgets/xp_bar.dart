@@ -16,67 +16,51 @@ class XPBar extends StatelessWidget {
     if (compact) {
       return _buildCompact(context);
     }
-    return _buildFull();
+    return _buildFull(context);
   }
 
   Widget _buildCompact(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final surfaceLight = isDark
-        ? AppColors.surfaceLight
-        : LightColors.surfaceLight;
-    final glassBorder = isDark
-        ? AppColors.glassBorder
-        : LightColors.glassBorder;
+    final colors = context.colors;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: surfaceLight.withAlpha(180), // Use glassmorphism effect
+        color: colors.surfaceLight.withAlpha(180),
         borderRadius: BorderRadius.circular(AppRadius.full),
-        border: Border.all(color: glassBorder),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(10),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(color: colors.glassBorder),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Level
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             decoration: BoxDecoration(
-              color: AppColors.primary.withAlpha(40),
+              color: colors.primary.withAlpha(40),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Text(
               '${stats.level}',
               style: TextStyle(
                 fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: AppColors.primary,
+                fontWeight: FontWeight.w700,
+                color: colors.primary,
               ),
             ),
           ),
           const SizedBox(width: 10),
-          // XP Progress
           SizedBox(
             width: 45,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(2),
               child: LinearProgressIndicator(
                 value: stats.levelProgress,
-                backgroundColor: isDark ? Colors.white10 : Colors.black12,
-                valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                backgroundColor: colors.surfaceVariant,
+                valueColor: AlwaysStoppedAnimation<Color>(colors.primary),
                 minHeight: 4,
               ),
             ),
           ),
           const SizedBox(width: 12),
-          // Coins
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -84,15 +68,15 @@ class XPBar extends StatelessWidget {
                 '${stats.coins}',
                 style: TextStyle(
                   fontSize: 13,
-                  color: AppColors.warning,
-                  fontWeight: FontWeight.bold,
+                  color: colors.accent,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
               const SizedBox(width: 4),
               Icon(
                 Icons.monetization_on_rounded,
                 size: 14,
-                color: AppColors.warning,
+                color: colors.accent,
               ),
             ],
           ),
@@ -101,37 +85,38 @@ class XPBar extends StatelessWidget {
     );
   }
 
-  Widget _buildFull() {
+  Widget _buildFull(BuildContext context) {
+    final colors = context.colors;
+    final onPrimary = colors.onPrimary;
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        gradient: AppColors.primaryGradient,
+        gradient: colors.primaryGradient,
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        boxShadow: AppShadows.primaryGlow, // Add glow
+        boxShadow: AppShadows.primaryGlow,
       ),
       child: Column(
         children: [
           Row(
             children: [
-              // Level badge
               Container(
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: Colors.white.withAlpha(30),
+                  color: onPrimary.withAlpha(30),
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: Colors.white.withAlpha(100),
+                    color: onPrimary.withAlpha(100),
                     width: 2,
                   ),
                 ),
                 child: Center(
                   child: Text(
                     '${stats.level}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      color: onPrimary,
                     ),
                   ),
                 ),
@@ -143,10 +128,10 @@ class XPBar extends StatelessWidget {
                   children: [
                     Text(
                       'Level ${stats.level}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
-                        color: Colors.white,
+                        color: onPrimary,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -157,9 +142,9 @@ class XPBar extends StatelessWidget {
                             borderRadius: BorderRadius.circular(4),
                             child: LinearProgressIndicator(
                               value: stats.levelProgress,
-                              backgroundColor: Colors.white.withAlpha(50),
-                              valueColor: const AlwaysStoppedAnimation<Color>(
-                                Colors.white,
+                              backgroundColor: onPrimary.withAlpha(50),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                onPrimary,
                               ),
                               minHeight: 8,
                             ),
@@ -170,7 +155,7 @@ class XPBar extends StatelessWidget {
                           '${stats.totalXP}/${stats.xpForNextLevel}',
                           style: TextStyle(
                             fontSize: 12,
-                            color: Colors.white.withAlpha(200),
+                            color: onPrimary.withAlpha(200),
                           ),
                         ),
                       ],
@@ -184,14 +169,18 @@ class XPBar extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _StatItem(icon: '🪙', value: '${stats.coins}', label: 'Coins'),
               _StatItem(
-                icon: '🔥',
+                icon: Icons.monetization_on_rounded,
+                value: '${stats.coins}',
+                label: 'Coins',
+              ),
+              _StatItem(
+                icon: Icons.local_fire_department_rounded,
                 value: '${stats.currentStreak}',
                 label: 'Streak',
               ),
               _StatItem(
-                icon: '🧊',
+                icon: Icons.ac_unit_rounded,
                 value: '${stats.freezeTokens}',
                 label: 'Freezes',
               ),
@@ -199,12 +188,12 @@ class XPBar extends StatelessWidget {
           ),
         ],
       ),
-    ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.1, duration: 400.ms);
+    ).animate().fadeIn(duration: 320.ms).slideY(begin: -0.05, duration: 320.ms);
   }
 }
 
 class _StatItem extends StatelessWidget {
-  final String icon;
+  final IconData icon;
   final String value;
   final String label;
 
@@ -216,26 +205,27 @@ class _StatItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final onPrimary = context.colors.onPrimary;
     return Column(
       children: [
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(icon, style: const TextStyle(fontSize: 16)),
+            Icon(icon, size: 16, color: onPrimary),
             const SizedBox(width: 4),
             Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                color: onPrimary,
               ),
             ),
           ],
         ),
         Text(
           label,
-          style: TextStyle(fontSize: 11, color: Colors.white.withAlpha(180)),
+          style: TextStyle(fontSize: 11, color: onPrimary.withAlpha(180)),
         ),
       ],
     );
@@ -251,37 +241,31 @@ class StreakBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
+    final colors = context.colors;
+    final tint = isAtRisk ? colors.danger : colors.accent;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: isAtRisk
-            ? AppColors.danger.withAlpha(30)
-            : (isDark
-                  ? AppColors.warning.withAlpha(30)
-                  : AppColors.warning.withAlpha(20)),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isAtRisk ? AppColors.danger : AppColors.warning,
-        ),
+        color: tint.withAlpha(30),
+        borderRadius: BorderRadius.circular(AppRadius.full),
+        border: Border.all(color: tint),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('🔥', style: TextStyle(fontSize: 14)),
+          Icon(Icons.local_fire_department_rounded, size: 14, color: tint),
           const SizedBox(width: 4),
           Text(
             '$streak',
             style: TextStyle(
               fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: isAtRisk ? AppColors.danger : AppColors.warning,
+              fontWeight: FontWeight.w700,
+              color: tint,
             ),
           ),
           if (isAtRisk) ...[
             const SizedBox(width: 4),
-            Icon(Icons.warning_rounded, size: 12, color: AppColors.danger),
+            Icon(Icons.warning_rounded, size: 12, color: colors.danger),
           ],
         ],
       ),

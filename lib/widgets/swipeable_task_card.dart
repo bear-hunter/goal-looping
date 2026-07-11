@@ -148,26 +148,22 @@ class _SwipeableTaskCardState extends State<SwipeableTaskCard>
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.colors;
     final cardWidth = MediaQuery.of(context).size.width;
     final threshold = cardWidth * _actionThreshold;
     final rightProgress = (_dragExtent / threshold).clamp(0.0, 1.0);
     final leftProgress = (-_dragExtent / threshold).clamp(0.0, 1.0);
+    final onSwipeFg = colors.onPrimary;
 
     return Stack(
       children: [
-        // Right swipe background (green - Focus/Complete)
+        // Right swipe background — Focus / Complete (success token)
         if (_dragExtent > 0)
           Positioned.fill(
             child: Container(
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    AppColors.success.withAlpha((rightProgress * 200).toInt()),
-                    AppColors.success.withAlpha((rightProgress * 100).toInt()),
-                  ],
-                ),
+                color: colors.success.withAlpha((rightProgress * 220).toInt()),
                 borderRadius: BorderRadius.circular(AppRadius.lg),
               ),
               child: Align(
@@ -183,7 +179,7 @@ class _SwipeableTaskCardState extends State<SwipeableTaskCard>
                             : (widget.task.isCompleted
                                   ? Icons.undo_rounded
                                   : Icons.check_rounded),
-                        color: Colors.white,
+                        color: onSwipeFg,
                         size: 28 * rightProgress,
                       ),
                       if (rightProgress > 0.5) ...[
@@ -195,10 +191,10 @@ class _SwipeableTaskCardState extends State<SwipeableTaskCard>
                                     ? 'Uncomplete'
                                     : 'Complete'),
                           style: TextStyle(
-                            color: Colors.white.withAlpha(
+                            color: onSwipeFg.withAlpha(
                               (rightProgress * 255).toInt(),
                             ),
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ],
@@ -209,29 +205,17 @@ class _SwipeableTaskCardState extends State<SwipeableTaskCard>
             ),
           ),
 
-        // Left swipe background (red/gray - Delete/Demote)
+        // Left swipe background — Demote (surfaceVariant) or Delete (error)
         if (_dragExtent < 0)
           Positioned.fill(
             child: Container(
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: widget.task.isPriority
-                      ? [
-                          (isDark ? AppColors.textMuted : LightColors.textMuted)
-                              .withAlpha((leftProgress * 150).toInt()),
-                          (isDark ? AppColors.textMuted : LightColors.textMuted)
-                              .withAlpha((leftProgress * 80).toInt()),
-                        ]
-                      : [
-                          AppColors.danger.withAlpha(
-                            (leftProgress * 200).toInt(),
-                          ),
-                          AppColors.danger.withAlpha(
-                            (leftProgress * 100).toInt(),
-                          ),
-                        ],
-                ),
+                color: widget.task.isPriority
+                    ? colors.surfaceVariant.withAlpha(
+                        (leftProgress * 220).toInt(),
+                      )
+                    : colors.danger.withAlpha((leftProgress * 200).toInt()),
                 borderRadius: BorderRadius.circular(AppRadius.lg),
               ),
               child: Align(
@@ -252,10 +236,11 @@ class _SwipeableTaskCardState extends State<SwipeableTaskCard>
                               ? 'Promote'
                               : 'Delete',
                           style: TextStyle(
-                            color: Colors.white.withAlpha(
-                              (leftProgress * 255).toInt(),
-                            ),
-                            fontWeight: FontWeight.bold,
+                            color: (widget.task.isPriority
+                                    ? colors.textPrimary
+                                    : onSwipeFg)
+                                .withAlpha((leftProgress * 255).toInt()),
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -269,7 +254,9 @@ class _SwipeableTaskCardState extends State<SwipeableTaskCard>
                                   leftProgress > 0.75)
                             ? Icons.arrow_upward_rounded
                             : Icons.delete_outline_rounded,
-                        color: Colors.white,
+                        color: widget.task.isPriority
+                            ? colors.textPrimary
+                            : onSwipeFg,
                         size: 28 * leftProgress,
                       ),
                     ],

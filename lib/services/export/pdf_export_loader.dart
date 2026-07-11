@@ -1,17 +1,4 @@
-/// Deferred loading wrapper for PDF export functionality
-/// 
-/// The pdf and printing packages add ~3-5MB to the APK size.
-/// By using deferred loading, this code is only downloaded/loaded
-/// when the user actually tries to export a PDF.
-/// 
-/// Usage:
-/// ```dart
-/// // Instead of: import 'package:pdf/pdf.dart';
-/// // Use:
-/// await PdfExportLoader.ensureLoaded();
-/// final pdfService = PdfExportLoader.getPdfExportService();
-/// await pdfService.exportReflection(reflection);
-/// ```
+// Deferred loading wrapper for the optional PDF implementation.
 
 import 'dart:async';
 

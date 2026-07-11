@@ -5,9 +5,10 @@ import 'package:uuid/uuid.dart';
 
 import '../../core/theme/theme.dart';
 import '../../providers/app_state.dart';
+import '../../services/notification_service.dart';
 import '../../models/recurring_task.dart';
 import '../../models/habit_enums.dart';
-import '../../models/category_model.dart';
+import '../../widgets/category_picker.dart';
 import '../../widgets/growth_area_selector.dart';
 
 /// Multi-page wizard for creating a recurring task
@@ -54,10 +55,16 @@ class _RecurringTaskWizardState extends State<RecurringTaskWizard> {
   PriorityLevel _priority = PriorityLevel.none;
   DateTime _startDate = DateTime.now();
   DateTime? _endDate;
+  final List<TimeOfDay> _reminderTimes = [];
   String _description = '';
   List<String> _linkedFactorIds = [];
 
   static const int _totalPages = 4; // Simpler than habit wizard
+
+  bool get _supportsDeviceReminderSchedule =>
+      (_frequencyType == HabitFrequencyType.everyday ||
+          _frequencyType == HabitFrequencyType.specificDays) &&
+      _endDate == null;
 
   bool get _isEditMode => widget.existingTask != null;
 
@@ -71,12 +78,20 @@ class _RecurringTaskWizardState extends State<RecurringTaskWizard> {
       _evaluationType = existing.evaluationType;
       _frequencyType = existing.frequencyType;
       _scheduledDays = List<int>.from(existing.scheduledDays);
+      _repeatInterval = existing.repeatInterval ?? _repeatInterval;
+      _daysPerPeriod = existing.daysPerPeriod ?? _daysPerPeriod;
+      _specificDates = List<DateTime>.from(
+        existing.specificDates ?? const <DateTime>[],
+      );
       _checklistItems
         ..clear()
         ..addAll(existing.checklistItems ?? const <String>[]);
       _priority = existing.priorityLevel;
       _startDate = existing.startDate;
       _endDate = existing.endDate;
+      _reminderTimes.addAll(
+        existing.reminderTimes.map(_parseTimeOfDay).whereType<TimeOfDay>(),
+      );
       _description = existing.description ?? '';
       _linkedFactorIds = List<String>.from(existing.linkedFactorIds);
     }
@@ -108,6 +123,44 @@ class _RecurringTaskWizardState extends State<RecurringTaskWizard> {
     }
   }
 
+  TimeOfDay? _parseTimeOfDay(String value) {
+    final parts = value.split(':');
+    if (parts.length != 2) return null;
+    final hour = int.tryParse(parts[0]);
+    final minute = int.tryParse(parts[1]);
+    if (hour == null ||
+        minute == null ||
+        hour < 0 ||
+        hour > 23 ||
+        minute < 0 ||
+        minute > 59) {
+      return null;
+    }
+    return TimeOfDay(hour: hour, minute: minute);
+  }
+
+  Future<void> _addReminderTime() async {
+    if (!NotificationService.isSupported) return;
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _reminderTimes.isEmpty
+          ? TimeOfDay.now()
+          : _reminderTimes.last,
+    );
+    if (picked == null ||
+        _reminderTimes.any(
+          (time) => time.hour == picked.hour && time.minute == picked.minute,
+        )) {
+      return;
+    }
+    setState(() {
+      _reminderTimes.add(picked);
+      _reminderTimes.sort(
+        (a, b) => (a.hour * 60 + a.minute).compareTo(b.hour * 60 + b.minute),
+      );
+    });
+  }
+
   Future<void> _saveTask() async {
     if (_taskName.isEmpty) {
       ScaffoldMessenger.of(
@@ -119,6 +172,36 @@ class _RecurringTaskWizardState extends State<RecurringTaskWizard> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Please select a category')));
+      return;
+    }
+    if (_evaluationType == HabitEvaluationType.checklist &&
+        _checklistItems.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Add at least one checklist item.')),
+      );
+      return;
+    }
+    if (_frequencyType == HabitFrequencyType.specificDays &&
+        _scheduledDays.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Select at least one scheduled day.')),
+      );
+      return;
+    }
+    if (_frequencyType == HabitFrequencyType.specificDatesOfYear &&
+        _specificDates.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Add at least one scheduled date.')),
+      );
+      return;
+    }
+    if (_endDate != null &&
+        DateUtils.dateOnly(
+          _endDate!,
+        ).isBefore(DateUtils.dateOnly(_startDate))) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('End date cannot be before start date.')),
+      );
       return;
     }
 
@@ -134,15 +217,35 @@ class _RecurringTaskWizardState extends State<RecurringTaskWizard> {
           : null;
       task.frequencyType = _frequencyType;
       task.scheduledDays = List<int>.from(_scheduledDays);
+      task.repeatInterval = _frequencyType == HabitFrequencyType.repeatEvery
+          ? _repeatInterval
+          : null;
+      task.daysPerPeriod =
+          _frequencyType == HabitFrequencyType.someDaysPerPeriod
+          ? _daysPerPeriod
+          : null;
+      task.specificDates =
+          _frequencyType == HabitFrequencyType.specificDatesOfYear
+          ? List<DateTime>.from(_specificDates)
+          : null;
       task.startDate = _startDate;
       task.endDate = _endDate;
+      task.reminderTimes =
+          (_supportsDeviceReminderSchedule
+                  ? _reminderTimes
+                  : const <TimeOfDay>[])
+              .map(
+                (time) =>
+                    '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}',
+              )
+              .toList();
       task.priorityLevel = _priority;
       task.linkedFactorIds = List<String>.from(_linkedFactorIds);
       task.description = _description.trim().isNotEmpty
           ? _description.trim()
           : null;
       // Intentionally preserve fields not edited in this wizard:
-      // reminderTimes, logs, createdAt, sortOrder, isArchived
+      // logs, createdAt, sortOrder, isArchived
       await appState.updateRecurringTask(task);
     } else {
       final task = RecurringTask(
@@ -164,6 +267,15 @@ class _RecurringTaskWizardState extends State<RecurringTaskWizard> {
             : null,
         startDate: _startDate,
         endDate: _endDate,
+        reminderTimes:
+            (_supportsDeviceReminderSchedule
+                    ? _reminderTimes
+                    : const <TimeOfDay>[])
+                .map(
+                  (time) =>
+                      '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}',
+                )
+                .toList(),
         priorityLevel: _priority,
         linkedFactorIds: _linkedFactorIds,
         description: _description.isNotEmpty ? _description : null,
@@ -180,11 +292,9 @@ class _RecurringTaskWizardState extends State<RecurringTaskWizard> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? AppColors.background : LightColors.background;
-    final textPrimary = isDark
-        ? AppColors.textPrimary
-        : LightColors.textPrimary;
+    final colors = context.colors;
+    final bgColor = colors.background;
+    final textPrimary = colors.textPrimary;
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -223,6 +333,7 @@ class _RecurringTaskWizardState extends State<RecurringTaskWizard> {
   }
 
   Widget _buildProgressIndicator() {
+    final colors = context.colors;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       child: Row(
@@ -233,7 +344,7 @@ class _RecurringTaskWizardState extends State<RecurringTaskWizard> {
               height: 4,
               margin: const EdgeInsets.symmetric(horizontal: 2),
               decoration: BoxDecoration(
-                color: isActive ? AppColors.primary : AppColors.glassBorder,
+                color: isActive ? colors.primary : colors.glassBorder,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -244,6 +355,7 @@ class _RecurringTaskWizardState extends State<RecurringTaskWizard> {
   }
 
   Widget _buildNavigationButtons() {
+    final colors = context.colors;
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -269,7 +381,7 @@ class _RecurringTaskWizardState extends State<RecurringTaskWizard> {
                     ? _saveTask
                     : _nextPage,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
+                  backgroundColor: colors.primary,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
@@ -292,14 +404,9 @@ class _RecurringTaskWizardState extends State<RecurringTaskWizard> {
 
   // ========== PAGE 1: Name & Category ==========
   Widget _buildPage1NameAndCategory() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textPrimary = isDark
-        ? AppColors.textPrimary
-        : LightColors.textPrimary;
-    final textSecondary = isDark
-        ? AppColors.textSecondary
-        : LightColors.textSecondary;
-    final categories = context.watch<AppState>().categories;
+    final colors = context.colors;
+    final textPrimary = colors.textPrimary;
+    final textSecondary = colors.textSecondary;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -328,9 +435,7 @@ class _RecurringTaskWizardState extends State<RecurringTaskWizard> {
               hintText: 'e.g., Weekly review, Water plants',
               hintStyle: TextStyle(color: textSecondary),
               filled: true,
-              fillColor: isDark
-                  ? AppColors.surfaceLight
-                  : LightColors.surfaceLight,
+              fillColor: colors.surfaceLight,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
@@ -349,22 +454,11 @@ class _RecurringTaskWizardState extends State<RecurringTaskWizard> {
             ),
           ),
           const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: categories
-                .map(
-                  (cat) => _CategoryChip(
-                    category: cat,
-                    isSelected: _selectedCategoryId == cat.id,
-                    onTap: () => setState(() {
-                      _selectedCategoryId = _selectedCategoryId == cat.id
-                          ? null
-                          : cat.id;
-                    }),
-                  ),
-                )
-                .toList(),
+          CategoryPicker(
+            selectedCategoryId: _selectedCategoryId,
+            onChanged: (id) => setState(() => _selectedCategoryId = id),
+            wrap: true,
+            allowDeselect: false,
           ),
         ],
       ),
@@ -373,13 +467,9 @@ class _RecurringTaskWizardState extends State<RecurringTaskWizard> {
 
   // ========== PAGE 2: Evaluation Type ==========
   Widget _buildPage2EvaluationType() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textPrimary = isDark
-        ? AppColors.textPrimary
-        : LightColors.textPrimary;
-    final textSecondary = isDark
-        ? AppColors.textSecondary
-        : LightColors.textSecondary;
+    final colors = context.colors;
+    final textPrimary = colors.textPrimary;
+    final textSecondary = colors.textSecondary;
 
     // Recurring tasks only support yesNo or checklist
     final supportedTypes = [
@@ -438,9 +528,7 @@ class _RecurringTaskWizardState extends State<RecurringTaskWizard> {
                           vertical: 12,
                         ),
                         decoration: BoxDecoration(
-                          color: isDark
-                              ? AppColors.surfaceLight
-                              : LightColors.surfaceLight,
+                          color: colors.surfaceLight,
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
@@ -465,14 +553,12 @@ class _RecurringTaskWizardState extends State<RecurringTaskWizard> {
                 hintText: 'Add item...',
                 hintStyle: TextStyle(color: textSecondary),
                 filled: true,
-                fillColor: isDark
-                    ? AppColors.surfaceLight
-                    : LightColors.surfaceLight,
+                fillColor: colors.surfaceLight,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
                 ),
-                suffixIcon: Icon(Icons.add_rounded, color: AppColors.primary),
+                suffixIcon: Icon(Icons.add_rounded, color: colors.primary),
               ),
               onSubmitted: (value) {
                 if (value.isNotEmpty) {
@@ -488,13 +574,9 @@ class _RecurringTaskWizardState extends State<RecurringTaskWizard> {
 
   // ========== PAGE 3: Frequency ==========
   Widget _buildPage3Frequency() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textPrimary = isDark
-        ? AppColors.textPrimary
-        : LightColors.textPrimary;
-    final textSecondary = isDark
-        ? AppColors.textSecondary
-        : LightColors.textSecondary;
+    final colors = context.colors;
+    final textPrimary = colors.textPrimary;
+    final textSecondary = colors.textSecondary;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -608,10 +690,8 @@ class _RecurringTaskWizardState extends State<RecurringTaskWizard> {
 
   // ========== PAGE 4: Schedule & Priority ==========
   Widget _buildPage4Schedule() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textPrimary = isDark
-        ? AppColors.textPrimary
-        : LightColors.textPrimary;
+    final colors = context.colors;
+    final textPrimary = colors.textPrimary;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -633,13 +713,27 @@ class _RecurringTaskWizardState extends State<RecurringTaskWizard> {
             title: 'Start date',
             value: _formatDate(_startDate),
             onTap: () async {
+              final today = DateUtils.dateOnly(DateTime.now());
+              final currentStart = DateUtils.dateOnly(_startDate);
+              final firstDate = _isEditMode && currentStart.isBefore(today)
+                  ? currentStart
+                  : today;
+              final defaultLastDate = DateTime(2100);
+              final lastDate = currentStart.isAfter(defaultLastDate)
+                  ? currentStart
+                  : defaultLastDate;
               final picked = await showDatePicker(
                 context: context,
-                initialDate: _startDate,
-                firstDate: DateTime.now(),
-                lastDate: DateTime(2100),
+                initialDate: currentStart,
+                firstDate: firstDate,
+                lastDate: lastDate,
               );
-              if (picked != null) setState(() => _startDate = picked);
+              if (picked != null) {
+                setState(() {
+                  _startDate = picked;
+                  if (_endDate?.isBefore(picked) ?? false) _endDate = null;
+                });
+              }
             },
           ),
           const SizedBox(height: 12),
@@ -649,16 +743,83 @@ class _RecurringTaskWizardState extends State<RecurringTaskWizard> {
             title: 'End date (optional)',
             value: _endDate != null ? _formatDate(_endDate!) : 'Never',
             onTap: () async {
+              final startDate = DateUtils.dateOnly(_startDate);
+              final defaultLastDate = DateTime(2100);
+              final lastDate = startDate.isAfter(defaultLastDate)
+                  ? startDate
+                  : defaultLastDate;
+              final proposedInitial =
+                  _endDate ?? startDate.add(const Duration(days: 30));
+              final validInitial = proposedInitial.isBefore(startDate)
+                  ? startDate
+                  : proposedInitial;
+              final initialDate = validInitial.isAfter(lastDate)
+                  ? lastDate
+                  : validInitial;
               final picked = await showDatePicker(
                 context: context,
-                initialDate:
-                    _endDate ?? _startDate.add(const Duration(days: 30)),
-                firstDate: _startDate,
-                lastDate: DateTime(2100),
+                initialDate: initialDate,
+                firstDate: startDate,
+                lastDate: lastDate,
               );
               if (picked != null) setState(() => _endDate = picked);
             },
           ),
+          const SizedBox(height: 24),
+
+          Text(
+            'Reminders',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: textPrimary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (!NotificationService.isSupported)
+            Text(
+              'Device reminders are unavailable in this Web build.',
+              style: TextStyle(color: colors.textSecondary, fontSize: 13),
+            )
+          else if (!_supportsDeviceReminderSchedule)
+            Text(
+              _endDate != null
+                  ? 'Device reminders currently require a schedule without an end date.'
+                  : 'Device reminders currently support Every day or Specific days schedules.',
+              style: TextStyle(color: colors.textSecondary, fontSize: 13),
+            )
+          else ...[
+            if (DateUtils.dateOnly(
+              _startDate,
+            ).isAfter(DateUtils.dateOnly(DateTime.now())))
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  'The reminder will activate when you next open the app on or after the start date.',
+                  style: TextStyle(color: colors.textSecondary, fontSize: 13),
+                ),
+              ),
+            if (_reminderTimes.isNotEmpty)
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: _reminderTimes
+                    .map(
+                      (time) => InputChip(
+                        label: Text(time.format(context)),
+                        onDeleted: () =>
+                            setState(() => _reminderTimes.remove(time)),
+                      ),
+                    )
+                    .toList(),
+              ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: _addReminderTime,
+              icon: const Icon(Icons.add_alarm_rounded),
+              label: const Text('Add reminder'),
+            ),
+          ],
           const SizedBox(height: 24),
 
           Text(
@@ -678,7 +839,7 @@ class _RecurringTaskWizardState extends State<RecurringTaskWizard> {
                     label: Text(p.label),
                     selected: _priority == p,
                     onSelected: (_) => setState(() => _priority = p),
-                    selectedColor: AppColors.primary.withAlpha(50),
+                    selectedColor: colors.primary.withAlpha(50),
                   ),
                 )
                 .toList(),
@@ -688,8 +849,7 @@ class _RecurringTaskWizardState extends State<RecurringTaskWizard> {
           // Growth Area Selector (Dissected Trees)
           GrowthAreaSelector(
             selectedAreaIds: _linkedFactorIds,
-            onSelectionChanged: (ids) =>
-                setState(() => _linkedFactorIds = ids),
+            onSelectionChanged: (ids) => setState(() => _linkedFactorIds = ids),
             label: 'Link to Dissected Tree (Optional)',
           ),
           const SizedBox(height: 24),
@@ -698,7 +858,7 @@ class _RecurringTaskWizardState extends State<RecurringTaskWizard> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: isDark ? AppColors.surfaceLight : LightColors.surfaceLight,
+              color: colors.surfaceLight,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Column(
@@ -751,56 +911,6 @@ class _RecurringTaskWizardState extends State<RecurringTaskWizard> {
 
 // ========== HELPER WIDGETS ==========
 
-class _CategoryChip extends StatelessWidget {
-  final CategoryModel category;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _CategoryChip({
-    required this.category,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final color = Color(category.colorValue);
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? color.withAlpha(50) : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected ? color : Colors.grey.withAlpha(100),
-            width: isSelected ? 2 : 1,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              category.icon,
-              size: 16,
-              color: isSelected ? color : Colors.grey,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              category.name,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                color: isSelected ? color : Colors.grey,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _EvaluationTypeCard extends StatelessWidget {
   final HabitEvaluationType evaluationType;
   final bool isSelected;
@@ -814,10 +924,8 @@ class _EvaluationTypeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textPrimary = isDark
-        ? AppColors.textPrimary
-        : LightColors.textPrimary;
+    final colors = context.colors;
+    final textPrimary = colors.textPrimary;
 
     return GestureDetector(
       onTap: onTap,
@@ -825,11 +933,11 @@ class _EvaluationTypeCard extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: isSelected
-              ? AppColors.primary.withAlpha(20)
-              : (isDark ? AppColors.surfaceLight : LightColors.surfaceLight),
+              ? colors.primary.withAlpha(20)
+              : colors.surfaceLight,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? AppColors.primary : Colors.transparent,
+            color: isSelected ? colors.primary : Colors.transparent,
             width: 2,
           ),
         ),
@@ -840,8 +948,8 @@ class _EvaluationTypeCard extends StatelessWidget {
               height: 48,
               decoration: BoxDecoration(
                 color: isSelected
-                    ? AppColors.primary.withAlpha(50)
-                    : Colors.grey.withAlpha(30),
+                    ? colors.primary.withAlpha(50)
+                    : colors.textMuted.withAlpha(30),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Center(
@@ -865,18 +973,13 @@ class _EvaluationTypeCard extends StatelessWidget {
                   ),
                   Text(
                     evaluationType.description,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: isDark
-                          ? AppColors.textSecondary
-                          : LightColors.textSecondary,
-                    ),
+                    style: TextStyle(fontSize: 13, color: colors.textSecondary),
                   ),
                 ],
               ),
             ),
             if (isSelected)
-              Icon(Icons.check_circle_rounded, color: AppColors.primary),
+              Icon(Icons.check_circle_rounded, color: colors.primary),
           ],
         ),
       ),
@@ -901,10 +1004,8 @@ class _FrequencyOption extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textPrimary = isDark
-        ? AppColors.textPrimary
-        : LightColors.textPrimary;
+    final colors = context.colors;
+    final textPrimary = colors.textPrimary;
 
     return GestureDetector(
       onTap: onTap,
@@ -912,17 +1013,17 @@ class _FrequencyOption extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: isSelected
-              ? AppColors.primary.withAlpha(20)
-              : (isDark ? AppColors.surfaceLight : LightColors.surfaceLight),
+              ? colors.primary.withAlpha(20)
+              : colors.surfaceLight,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? AppColors.primary : Colors.transparent,
+            color: isSelected ? colors.primary : Colors.transparent,
             width: 2,
           ),
         ),
         child: Row(
           children: [
-            Icon(icon, color: isSelected ? AppColors.primary : Colors.grey),
+            Icon(icon, color: isSelected ? colors.primary : colors.textMuted),
             const SizedBox(width: 16),
             Expanded(
               child: Column(
@@ -937,18 +1038,13 @@ class _FrequencyOption extends StatelessWidget {
                   ),
                   Text(
                     subtitle,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: isDark
-                          ? AppColors.textSecondary
-                          : LightColors.textSecondary,
-                    ),
+                    style: TextStyle(fontSize: 13, color: colors.textSecondary),
                   ),
                 ],
               ),
             ),
             if (isSelected)
-              Icon(Icons.check_circle_rounded, color: AppColors.primary),
+              Icon(Icons.check_circle_rounded, color: colors.primary),
           ],
         ),
       ),
@@ -964,6 +1060,7 @@ class _DaySelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -981,12 +1078,12 @@ class _DaySelector extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: isSelected ? AppColors.primary : Colors.transparent,
+              color: isSelected ? colors.primary : Colors.transparent,
               shape: BoxShape.circle,
               border: Border.all(
                 color: isSelected
-                    ? AppColors.primary
-                    : Colors.grey.withAlpha(100),
+                    ? colors.primary
+                    : colors.textMuted.withAlpha(100),
               ),
             ),
             child: Center(
@@ -994,7 +1091,7 @@ class _DaySelector extends StatelessWidget {
                 days[index],
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
-                  color: isSelected ? Colors.white : Colors.grey,
+                  color: isSelected ? colors.onPrimary : colors.textMuted,
                 ),
               ),
             ),
@@ -1017,15 +1114,13 @@ class _RepeatIntervalSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textPrimary = isDark
-        ? AppColors.textPrimary
-        : LightColors.textPrimary;
+    final colors = context.colors;
+    final textPrimary = colors.textPrimary;
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceLight : LightColors.surfaceLight,
+        color: colors.surfaceLight,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -1036,7 +1131,7 @@ class _RepeatIntervalSelector extends StatelessWidget {
             width: 60,
             height: 40,
             decoration: BoxDecoration(
-              border: Border.all(color: AppColors.primary),
+              border: Border.all(color: colors.primary),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
@@ -1046,7 +1141,7 @@ class _RepeatIntervalSelector extends StatelessWidget {
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(minWidth: 20),
                   icon: const Icon(Icons.remove, size: 16),
-                  color: AppColors.primary,
+                  color: colors.primary,
                   onPressed: interval > 2
                       ? () => onChanged(interval - 1)
                       : null,
@@ -1063,7 +1158,7 @@ class _RepeatIntervalSelector extends StatelessWidget {
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(minWidth: 20),
                   icon: const Icon(Icons.add, size: 16),
-                  color: AppColors.primary,
+                  color: colors.primary,
                   onPressed: interval < 30
                       ? () => onChanged(interval + 1)
                       : null,
@@ -1091,15 +1186,13 @@ class _DaysPerPeriodSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textPrimary = isDark
-        ? AppColors.textPrimary
-        : LightColors.textPrimary;
+    final colors = context.colors;
+    final textPrimary = colors.textPrimary;
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceLight : LightColors.surfaceLight,
+        color: colors.surfaceLight,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -1121,14 +1214,12 @@ class _DaysPerPeriodSelector extends StatelessWidget {
                     margin: EdgeInsets.only(right: index < 6 ? 4 : 0),
                     height: 36,
                     decoration: BoxDecoration(
-                      color: isSelected
-                          ? AppColors.primary
-                          : Colors.transparent,
+                      color: isSelected ? colors.primary : Colors.transparent,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
                         color: isSelected
-                            ? AppColors.primary
-                            : Colors.grey.withAlpha(100),
+                            ? colors.primary
+                            : colors.textMuted.withAlpha(100),
                       ),
                     ),
                     child: Center(
@@ -1136,7 +1227,9 @@ class _DaysPerPeriodSelector extends StatelessWidget {
                         '$days',
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
-                          color: isSelected ? Colors.white : Colors.grey,
+                          color: isSelected
+                              ? colors.onPrimary
+                              : colors.textMuted,
                         ),
                       ),
                     ),
@@ -1160,13 +1253,9 @@ class _SpecificDatesSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textPrimary = isDark
-        ? AppColors.textPrimary
-        : LightColors.textPrimary;
-    final textSecondary = isDark
-        ? AppColors.textSecondary
-        : LightColors.textSecondary;
+    final colors = context.colors;
+    final textPrimary = colors.textPrimary;
+    final textSecondary = colors.textSecondary;
     final months = [
       'Jan',
       'Feb',
@@ -1185,7 +1274,7 @@ class _SpecificDatesSelector extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceLight : LightColors.surfaceLight,
+        color: colors.surfaceLight,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -1271,22 +1360,20 @@ class _ScheduleOption extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textPrimary = isDark
-        ? AppColors.textPrimary
-        : LightColors.textPrimary;
+    final colors = context.colors;
+    final textPrimary = colors.textPrimary;
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isDark ? AppColors.surfaceLight : LightColors.surfaceLight,
+          color: colors.surfaceLight,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
           children: [
-            Icon(icon, color: AppColors.primary),
+            Icon(icon, color: colors.primary),
             const SizedBox(width: 12),
             Expanded(
               child: Text(title, style: TextStyle(color: textPrimary)),
@@ -1294,12 +1381,12 @@ class _ScheduleOption extends StatelessWidget {
             Text(
               value,
               style: TextStyle(
-                color: AppColors.primary,
+                color: colors.primary,
                 fontWeight: FontWeight.w500,
               ),
             ),
             const SizedBox(width: 8),
-            Icon(Icons.chevron_right_rounded, color: Colors.grey),
+            Icon(Icons.chevron_right_rounded, color: colors.textMuted),
           ],
         ),
       ),
@@ -1315,25 +1402,18 @@ class _SummaryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.colors;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              color: isDark
-                  ? AppColors.textSecondary
-                  : LightColors.textSecondary,
-            ),
-          ),
+          Text(label, style: TextStyle(color: colors.textSecondary)),
           Text(
             value,
             style: TextStyle(
               fontWeight: FontWeight.w500,
-              color: isDark ? AppColors.textPrimary : LightColors.textPrimary,
+              color: colors.textPrimary,
             ),
           ),
         ],

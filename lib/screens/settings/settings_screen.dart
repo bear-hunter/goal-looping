@@ -77,8 +77,8 @@ class SettingsScreen extends StatelessWidget {
               onChanged: (value) {
                 themeProvider.toggleTheme();
               },
-              activeTrackColor: AppColors.primary.withAlpha(128),
-              thumbColor: WidgetStatePropertyAll(AppColors.primary),
+              activeTrackColor: colors.primary.withAlpha(128),
+              thumbColor: WidgetStatePropertyAll(colors.primary),
             ),
           ),
           const SizedBox(height: 8),
@@ -170,10 +170,10 @@ class _SettingsTile extends StatelessWidget {
               width: 32,
               height: 32,
               decoration: BoxDecoration(
-                color: AppColors.primary.withAlpha(25),
+                color: colors.primary.withAlpha(25),
                 borderRadius: BorderRadius.circular(6),
               ),
-              child: Icon(icon, color: AppColors.primary, size: 16),
+              child: Icon(icon, color: colors.primary, size: 16),
             ),
             const SizedBox(width: 10),
             Expanded(

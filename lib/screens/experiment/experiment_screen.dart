@@ -20,25 +20,26 @@ class _ExperimentScreenState extends State<ExperimentScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Consumer<AppState>(
       builder: (context, state, _) {
         final experiments = _getFilteredExperiments(state);
 
         return Scaffold(
-          backgroundColor: AppColors.background,
+          backgroundColor: colors.background,
           appBar: AppBar(
             title: const Text('Experiments'),
             backgroundColor: Colors.transparent,
             actions: [
               PopupMenuButton<ExperimentFilter>(
-                icon: Icon(Icons.filter_list_rounded, color: AppColors.textSecondary),
+                icon: Icon(Icons.filter_list_rounded, color: colors.textSecondary),
                 onSelected: (filter) => setState(() => _filter = filter),
                 itemBuilder: (ctx) => [
-                  _buildFilterItem(ExperimentFilter.all, 'All', Icons.list_rounded),
-                  _buildFilterItem(ExperimentFilter.active, 'Active', Icons.play_arrow_rounded),
-                  _buildFilterItem(ExperimentFilter.pending, 'Pending', Icons.hourglass_empty_rounded),
-                  _buildFilterItem(ExperimentFilter.completed, 'Completed', Icons.check_circle_rounded),
-                  _buildFilterItem(ExperimentFilter.archived, 'Archived', Icons.archive_rounded),
+                  _buildFilterItem(ExperimentFilter.all, 'All', Icons.list_rounded, colors),
+                  _buildFilterItem(ExperimentFilter.active, 'Active', Icons.play_arrow_rounded, colors),
+                  _buildFilterItem(ExperimentFilter.pending, 'Pending', Icons.hourglass_empty_rounded, colors),
+                  _buildFilterItem(ExperimentFilter.completed, 'Completed', Icons.check_circle_rounded, colors),
+                  _buildFilterItem(ExperimentFilter.archived, 'Archived', Icons.archive_rounded, colors),
                 ],
               ),
             ],
@@ -80,16 +81,17 @@ class _ExperimentScreenState extends State<ExperimentScreen> {
     ExperimentFilter value,
     String label,
     IconData icon,
+    AppColorsTheme colors,
   ) {
     final isSelected = _filter == value;
     return PopupMenuItem(
       value: value,
       child: Row(
         children: [
-          Icon(icon, size: 18, color: isSelected ? AppColors.primary : AppColors.textMuted),
+          Icon(icon, size: 18, color: isSelected ? colors.primary : colors.textMuted),
           const SizedBox(width: 12),
           Text(label, style: TextStyle(
-            color: isSelected ? AppColors.primary : AppColors.textPrimary,
+            color: isSelected ? colors.primary : colors.textPrimary,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
           )),
         ],
@@ -106,6 +108,7 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final (icon, message) = switch (filter) {
       ExperimentFilter.all => (Icons.science_outlined, 'No experiments yet'),
       ExperimentFilter.active => (Icons.play_circle_outline_rounded, 'No active experiments'),
@@ -118,13 +121,13 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: 64, color: AppColors.textMuted),
+          Icon(icon, size: 64, color: colors.textMuted),
           const SizedBox(height: 16),
-          Text(message, style: TextStyle(color: AppColors.textMuted, fontSize: 16)),
+          Text(message, style: TextStyle(color: colors.textMuted, fontSize: 16)),
           const SizedBox(height: 8),
           Text(
             'Experiments come from your reflections',
-            style: TextStyle(color: AppColors.textMuted.withAlpha(150), fontSize: 13),
+            style: TextStyle(color: colors.textMuted.withAlpha(150), fontSize: 13),
           ),
         ],
       ),
@@ -149,6 +152,7 @@ class _ExperimentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return GlassCard(
       margin: const EdgeInsets.only(bottom: 12),
       child: Column(
@@ -166,7 +170,7 @@ class _ExperimentCard extends StatelessWidget {
                 child: Text(
                   experiment.description,
                   style: TextStyle(
-                    color: AppColors.textPrimary,
+                    color: colors.textPrimary,
                     fontSize: 15,
                     fontWeight: FontWeight.w500,
                   ),
@@ -186,12 +190,12 @@ class _ExperimentCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withAlpha(30),
+                    color: colors.primary.withAlpha(30),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     '🔁 ${experiment.cycleCount}x cycled',
-                    style: TextStyle(fontSize: 11, color: AppColors.primary),
+                    style: TextStyle(fontSize: 11, color: colors.primary),
                   ),
                 ),
               ],
@@ -201,14 +205,14 @@ class _ExperimentCard extends StatelessWidget {
           // Action buttons based on status
           if (experiment.isActionable) ...[
             const SizedBox(height: 16),
-            _buildActionButtons(),
+            _buildActionButtons(colors),
           ],
         ],
       ),
     );
   }
 
-  Widget _buildActionButtons() {
+  Widget _buildActionButtons(AppColorsTheme colors) {
     switch (experiment.status) {
       case ExperimentStatus.pending:
         return SingleChildScrollView(
@@ -218,14 +222,14 @@ class _ExperimentCard extends StatelessWidget {
               _ActionButton(
                 label: 'Start',
                 icon: Icons.play_arrow_rounded,
-                color: AppColors.primary,
+                color: colors.primary,
                 onTap: onStart,
               ),
               const SizedBox(width: 8),
               _ActionButton(
                 label: 'Archive',
                 icon: Icons.archive_outlined,
-                color: AppColors.textMuted,
+                color: colors.textMuted,
                 onTap: onArchive,
               ),
             ],
@@ -239,21 +243,21 @@ class _ExperimentCard extends StatelessWidget {
               _ActionButton(
                 label: 'Complete',
                 icon: Icons.check_circle_rounded,
-                color: AppColors.success,
+                color: colors.success,
                 onTap: onComplete,
               ),
               const SizedBox(width: 8),
               _ActionButton(
                 label: 'Cycle Forward',
                 icon: Icons.replay_rounded,
-                color: AppColors.info,
+                color: colors.info,
                 onTap: onCycle,
               ),
               const SizedBox(width: 8),
               _ActionButton(
                 label: 'Archive',
                 icon: Icons.archive_outlined,
-                color: AppColors.textMuted,
+                color: colors.textMuted,
                 onTap: onArchive,
               ),
             ],
@@ -271,12 +275,13 @@ class _StatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final (label, color) = switch (status) {
-      ExperimentStatus.pending => ('Pending', AppColors.warning),
-      ExperimentStatus.inProgress => ('In Progress', AppColors.info),
-      ExperimentStatus.completed => ('Completed', AppColors.success),
-      ExperimentStatus.cycled => ('Cycled', AppColors.primary),
-      ExperimentStatus.archived => ('Archived', AppColors.textMuted),
+      ExperimentStatus.pending => ('Pending', colors.warning),
+      ExperimentStatus.inProgress => ('In Progress', colors.info),
+      ExperimentStatus.completed => ('Completed', colors.success),
+      ExperimentStatus.cycled => ('Cycled', colors.primary),
+      ExperimentStatus.archived => ('Archived', colors.textMuted),
     };
 
     return Container(

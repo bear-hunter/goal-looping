@@ -50,6 +50,10 @@ class HabitLog extends HiveObject {
   @HiveField(8)
   int? score;
 
+  /// Whether this date's XP/coin reward has already been granted.
+  @HiveField(9)
+  bool? rewardGranted;
+
   HabitLog({
     required this.date,
     this.completed = false,
@@ -60,12 +64,13 @@ class HabitLog extends HiveObject {
     this.checklistCompleted,
     this.timerSeconds,
     this.score,
+    this.rewardGranted,
   });
 }
 
 /// Habit - Build, Quit, or Timed habits with scheduling
 /// Enhanced with evaluation types, frequency options, and category support
-@HiveType(typeId: 5)
+@HiveType(typeId: 5, adapterName: 'GeneratedHabitAdapter')
 class Habit extends HiveObject {
   @HiveField(0)
   String id;
@@ -108,11 +113,11 @@ class Habit extends HiveObject {
   @HiveField(11)
   List<int> scheduledDays; // [1,3,5] = Mon,Wed,Fri (1=Mon, 7=Sun)
 
-  @HiveField(12)
+  @HiveField(12, defaultValue: 1)
   int targetFrequency; // Times per day for repetition habits
 
   // Phase 2: Psychological Depth (Proddy standard)
-  @HiveField(13)
+  @HiveField(13, defaultValue: '')
   String motivation; // "The Why" - displayed during check-in
 
   // Phase 2: Timed Habits
@@ -120,10 +125,10 @@ class Habit extends HiveObject {
   int? timerMinutes; // Duration for timed habits
 
   // Phase 2: Streak Freeze
-  @HiveField(15)
+  @HiveField(15, defaultValue: 0)
   int streakFreezes; // Allowed skips without breaking streak
 
-  @HiveField(16)
+  @HiveField(16, defaultValue: 0)
   int freezesUsed; // Freezes consumed this streak
 
   // === Phase 3: HabitNow-style enhancements ===
@@ -158,7 +163,7 @@ class Habit extends HiveObject {
   @HiveField(26)
   List<String>? reminderTimes; // Stored as "HH:MM" strings
 
-  @HiveField(27)
+  @HiveField(27, defaultValue: false)
   bool isArchived; // Archived habits (hidden but not deleted)
 
   @HiveField(28)
@@ -176,15 +181,15 @@ class Habit extends HiveObject {
   @HiveField(32)
   int? extraGoal; // Extra goal beyond daily goal
 
-  @HiveField(33)
+  @HiveField(33, defaultValue: 0)
   int sortOrder; // For custom ordering in lists
 
   /// Whether this habit uses optional scoring (0-100) instead of simple yes/no
   /// When true, user can mark as "completed with scoring" or "failed with scoring"
-  @HiveField(34)
+  @HiveField(34, defaultValue: false)
   bool scoringEnabled;
 
-  @HiveField(35)
+  @HiveField(35, defaultValue: 0)
   int priority; // Numeric priority (-20 to 20, higher = more important)
 
   Habit({
@@ -288,11 +293,31 @@ class Habit extends HiveObject {
         );
 
       case HabitFrequencyType.someDaysPerPeriod:
-        return scheduledDays.contains(date.weekday);
+        final quota = daysPerPeriod ?? 0;
+        if (quota <= 0) return false;
+
+        // Flexible weekly habits remain due until their quota is met. Logged
+        // dates stay visible so history does not disappear later in the week.
+        if (getLogFor(date) != null) return true;
+        final day = DateTime(date.year, date.month, date.day);
+        final weekStart = day.subtract(Duration(days: day.weekday - 1));
+        final completedBefore = logs.where((log) {
+          final logDay = DateTime(log.date.year, log.date.month, log.date.day);
+          return log.completed &&
+              !logDay.isBefore(weekStart) &&
+              logDay.isBefore(day);
+        }).length;
+        return completedBefore < quota;
 
       case HabitFrequencyType.repeatEvery:
         if (repeatInterval == null || repeatInterval! <= 0) return false;
-        final daysDiff = date.difference(effectiveStartDate).inDays;
+        final day = DateTime(date.year, date.month, date.day);
+        final start = DateTime(
+          effectiveStartDate.year,
+          effectiveStartDate.month,
+          effectiveStartDate.day,
+        );
+        final daysDiff = day.difference(start).inDays;
         return daysDiff % repeatInterval! == 0;
     }
   }
@@ -337,7 +362,15 @@ class Habit extends HiveObject {
     List<bool>? checklistCompleted,
     int? timerSeconds,
     int? score,
+    bool? rewardGranted,
+    bool affectsStreak = true,
   }) {
+    final previousLog = getLogFor(date);
+    final completionChanged = (previousLog?.completed ?? false) != completed;
+    final streakStateChanged = previousLog == null
+        ? affectsStreak
+        : previousLog.completed != completed;
+
     // Remove existing log for this date
     logs.removeWhere(
       (log) =>
@@ -357,12 +390,21 @@ class Habit extends HiveObject {
         checklistCompleted: checklistCompleted,
         timerSeconds: timerSeconds,
         score: score,
+        rewardGranted: rewardGranted ?? previousLog?.rewardGranted,
       ),
     );
 
-    // Update streaks (only if logging for today)
+    if (type != HabitType.quit && completionChanged) {
+      completionCount = completed
+          ? completionCount + 1
+          : (completionCount > 0 ? completionCount - 1 : 0);
+    }
+
+    // Update streaks only when today's completion state changes.
     final now = DateTime.now();
-    if (date.year == now.year &&
+    if (affectsStreak &&
+        streakStateChanged &&
+        date.year == now.year &&
         date.month == now.month &&
         date.day == now.day) {
       _updateStreaks(completed);
@@ -376,6 +418,7 @@ class Habit extends HiveObject {
     int? mood,
     String? barrier,
     int? score,
+    bool? rewardGranted,
   }) {
     logForDate(
       date: DateTime.now(),
@@ -384,6 +427,7 @@ class Habit extends HiveObject {
       mood: mood,
       barrier: barrier,
       score: score,
+      rewardGranted: rewardGranted,
     );
   }
 
@@ -405,7 +449,6 @@ class Habit extends HiveObject {
     } else {
       // Build/Timed habit: completed = did the action
       if (completed) {
-        completionCount++;
         currentStreak++;
         if (currentStreak > bestStreak) bestStreak = currentStreak;
       } else {
@@ -530,12 +573,102 @@ class Habit extends HiveObject {
   }
 }
 
-/// Barrier Journal Entry
+/// Reads the original ten-field Habit layout without changing the current
+/// generated layout or writer.
+class HabitAdapter extends GeneratedHabitAdapter {
+  @override
+  Habit read(BinaryReader reader) {
+    final numOfFields = reader.readByte();
+    if (numOfFields != 10) {
+      return super.read(_HabitReaderWithFieldCount(reader, numOfFields));
+    }
+
+    final fields = <int, dynamic>{
+      for (var i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
+    };
+
+    // The current enum adapter decodes the original wire values as build (0)
+    // and quit (1), so swap them back to their original meanings.
+    final decodedType = fields[2] as HabitType;
+    final isLegacyLimiting = decodedType == HabitType.build;
+    final migratedType = switch (decodedType) {
+      HabitType.build => HabitType.quit,
+      HabitType.quit => HabitType.build,
+      HabitType.timed => HabitType.timed,
+    };
+
+    final decodedLogs = (fields[7] as List?)?.cast<HabitLog>();
+    final migratedLogs = isLegacyLimiting
+        ? decodedLogs?.map(_invertLegacyLimitingLog).toList()
+        : decodedLogs;
+
+    return Habit(
+      id: fields[0] as String,
+      name: fields[1] as String,
+      type: migratedType,
+      triggerResponse: fields[3] as String?,
+      currentStreak: fields[4] as int,
+      bestStreak: fields[5] as int,
+      completionCount: fields[6] as int,
+      logs: migratedLogs,
+      createdAt: fields[8] as DateTime?,
+      isActive: fields[9] as bool,
+    );
+  }
+
+  static HabitLog _invertLegacyLimitingLog(HabitLog log) {
+    return HabitLog(
+      date: log.date,
+      completed: !log.completed,
+      note: log.note,
+      moodRating: log.moodRating,
+      barrierTag: log.barrierTag,
+      numericValue: log.numericValue,
+      checklistCompleted: log.checklistCompleted,
+      timerSeconds: log.timerSeconds,
+      score: log.score,
+      rewardGranted: log.rewardGranted,
+    );
+  }
+}
+
+/// Replays the field count already consumed for legacy-layout detection.
+class _HabitReaderWithFieldCount implements BinaryReader {
+  _HabitReaderWithFieldCount(this._reader, this._fieldCount);
+
+  final BinaryReader _reader;
+  int? _fieldCount;
+
+  @override
+  int readByte() {
+    final fieldCount = _fieldCount;
+    if (fieldCount != null) {
+      _fieldCount = null;
+      return fieldCount;
+    }
+    return _reader.readByte();
+  }
+
+  @override
+  dynamic read([int? typeId]) => _reader.read(typeId);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw UnsupportedError('Unexpected BinaryReader call: $invocation');
+}
+
+/// Barrier entry - a contextual record of something that blocked progress.
+///
+/// Tag metadata, colors and the legacy-label mapping live in
+/// `barrier_tag.dart` (kept separate so this file stays Flutter-free).
 @HiveType(typeId: 15)
 class BarrierEntry extends HiveObject {
   @HiveField(0)
   String id;
 
+  /// Legacy free-text description. Superseded by [tag] + [note] but kept
+  /// physically present so old records still deserialize. New entries leave
+  /// this empty; the barrier migration moves it into [tag]/[note].
   @HiveField(1)
   String description;
 
@@ -549,29 +682,39 @@ class BarrierEntry extends HiveObject {
   bool wasHandled;
 
   @HiveField(5)
-  String? factorId; // Link to Factor
+  String? factorId; // Link to Factor (vestigial)
+
+  /// Barrier tag key (see `BarrierTags`). Null on un-migrated legacy records.
+  @HiveField(6)
+  String? tag;
+
+  /// Free-text note, kept separate from the tag.
+  @HiveField(7)
+  String? note;
+
+  /// Optional link to the habit this barrier blocked.
+  @HiveField(8)
+  String? linkedHabitId;
+
+  /// Optional link to the task this barrier blocked.
+  @HiveField(9)
+  String? linkedTaskId;
+
+  /// Optional mood rating (1-5) captured alongside the barrier.
+  @HiveField(10)
+  int? moodRating;
 
   BarrierEntry({
     required this.id,
-    required this.description,
+    this.description = '',
     DateTime? occurredAt,
     this.response,
     this.wasHandled = false,
     this.factorId,
+    this.tag,
+    this.note,
+    this.linkedHabitId,
+    this.linkedTaskId,
+    this.moodRating,
   }) : occurredAt = occurredAt ?? DateTime.now();
-}
-
-/// Common barrier tags for quick selection
-class BarrierTags {
-  static const List<String> common = [
-    'Tired',
-    'No Time',
-    'Stressed',
-    'Distracted',
-    'Unmotivated',
-    'Sick',
-    'Social Pressure',
-    'Forgot',
-    'Other',
-  ];
 }

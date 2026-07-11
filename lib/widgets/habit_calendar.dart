@@ -8,7 +8,6 @@ import '../models/habit.dart';
 class HabitCalendar extends StatefulWidget {
   final Habit habit;
   final Function(DateTime)? onDayTap;
-  /// Callback when user wants to log with score for a date
   final Function(DateTime, bool, int?)? onLogWithScore;
 
   const HabitCalendar({
@@ -33,93 +32,111 @@ class _HabitCalendarState extends State<HabitCalendar> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.glassBorder),
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: colors.glassBorder),
       ),
       child: Column(
         children: [
-          // Month header with navigation
-          _buildMonthHeader(),
+          _buildMonthHeader(context),
           const SizedBox(height: 16),
-          
-          // Day labels
-          _buildDayLabels(),
+          _buildDayLabels(context),
           const SizedBox(height: 8),
-          
-          // Calendar grid
           _buildCalendarGrid(),
-          
-          // Legend
           const SizedBox(height: 12),
-          _buildLegend(),
+          _buildLegend(context),
         ],
       ),
-    ).animate().fadeIn(duration: 300.ms);
+    ).animate().fadeIn(duration: AppMotion.expressive);
   }
 
-  Widget _buildMonthHeader() {
+  Widget _buildMonthHeader(BuildContext context) {
+    final colors = context.colors;
     final monthName = _getMonthName(_currentMonth.month);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         IconButton(
           onPressed: _previousMonth,
-          icon: Icon(Icons.chevron_left_rounded, color: AppColors.textSecondary),
+          icon: Icon(
+            Icons.chevron_left_rounded,
+            color: colors.textSecondary,
+          ),
         ),
         Text(
           '$monthName ${_currentMonth.year}',
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
+            color: colors.textPrimary,
           ),
         ),
         IconButton(
           onPressed: _nextMonth,
-          icon: Icon(Icons.chevron_right_rounded, color: AppColors.textSecondary),
+          icon: Icon(
+            Icons.chevron_right_rounded,
+            color: colors.textSecondary,
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildDayLabels() {
+  Widget _buildDayLabels(BuildContext context) {
+    final colors = context.colors;
     const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceAround,
-      children: days.map((d) => SizedBox(
-        width: 44, // Match _DayCell width for alignment
-        child: Center(
-          child: Text(d, style: TextStyle(fontSize: 12, color: AppColors.textMuted, fontWeight: FontWeight.w600)),
-        ),
-      )).toList(),
+      children: days
+          .map(
+            (d) => SizedBox(
+              width: 44,
+              child: Center(
+                child: Text(
+                  d,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: colors.textMuted,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          )
+          .toList(),
     );
   }
 
   Widget _buildCalendarGrid() {
-    final daysInMonth = DateTime(_currentMonth.year, _currentMonth.month + 1, 0).day;
-    final firstDayOfMonth = DateTime(_currentMonth.year, _currentMonth.month, 1);
-    final startingWeekday = firstDayOfMonth.weekday; // 1 = Monday
-    
+    final daysInMonth =
+        DateTime(_currentMonth.year, _currentMonth.month + 1, 0).day;
+    final firstDayOfMonth = DateTime(
+      _currentMonth.year,
+      _currentMonth.month,
+      1,
+    );
+    final startingWeekday = firstDayOfMonth.weekday;
+
     final today = DateTime.now();
     final cells = <Widget>[];
-    
-    // Empty cells for days before the 1st
+
     for (var i = 1; i < startingWeekday; i++) {
-      cells.add(const SizedBox(width: 44, height: 44)); // Match _DayCell dimensions
+      cells.add(const SizedBox(width: 44, height: 44));
     }
-    
-    // Day cells
+
     for (var day = 1; day <= daysInMonth; day++) {
       final date = DateTime(_currentMonth.year, _currentMonth.month, day);
       final status = _getStatusForDate(date);
-      final isToday = date.year == today.year && date.month == today.month && date.day == today.day;
+      final isToday = date.year == today.year &&
+          date.month == today.month &&
+          date.day == today.day;
       final isFuture = date.isAfter(today);
       final log = widget.habit.getLogFor(date);
-      
+
       cells.add(_DayCell(
         day: day,
         date: date,
@@ -131,7 +148,7 @@ class _HabitCalendarState extends State<HabitCalendar> {
         onTap: widget.onDayTap != null ? () => widget.onDayTap!(date) : null,
       ));
     }
-    
+
     return Wrap(
       alignment: WrapAlignment.start,
       spacing: 4,
@@ -140,35 +157,43 @@ class _HabitCalendarState extends State<HabitCalendar> {
     );
   }
 
-  Widget _buildLegend() {
+  Widget _buildLegend(BuildContext context) {
+    final colors = context.colors;
     final showScoring = widget.habit.scoringEnabled;
     return Wrap(
       alignment: WrapAlignment.center,
       spacing: 16,
       runSpacing: 8,
       children: [
-        _LegendItem(color: AppColors.success, label: showScoring ? 'Done (100%)' : 'Done'),
-        _LegendItem(color: AppColors.danger, label: showScoring ? 'Missed (0%)' : 'Missed'),
+        _LegendItem(
+          color: colors.success,
+          label: showScoring ? 'Done (100%)' : 'Done',
+        ),
+        _LegendItem(
+          color: colors.danger,
+          label: showScoring ? 'Missed (0%)' : 'Missed',
+        ),
         if (showScoring)
-          _LegendItem(color: AppColors.warning, label: 'Partial'),
-        _LegendItem(color: AppColors.surfaceLight, label: 'No data'),
+          _LegendItem(color: colors.warning, label: 'Partial'),
+        _LegendItem(color: colors.surfaceLight, label: 'No data'),
       ],
     );
   }
 
   _DayStatus _getStatusForDate(DateTime date) {
-    // Check if habit was scheduled for this day
     if (!widget.habit.scheduledDays.contains(date.weekday)) {
       return _DayStatus.notScheduled;
     }
-    
-    // Check logs for this date
-    final log = widget.habit.logs.where((l) => 
-      l.date.year == date.year && 
-      l.date.month == date.month && 
-      l.date.day == date.day
-    ).firstOrNull;
-    
+
+    final log = widget.habit.logs
+        .where(
+          (l) =>
+              l.date.year == date.year &&
+              l.date.month == date.month &&
+              l.date.day == date.day,
+        )
+        .firstOrNull;
+
     if (log == null) return _DayStatus.noData;
     return log.completed ? _DayStatus.completed : _DayStatus.missed;
   }
@@ -190,8 +215,21 @@ class _HabitCalendarState extends State<HabitCalendar> {
   }
 
   String _getMonthName(int month) {
-    const months = ['', 'January', 'February', 'March', 'April', 'May', 'June',
-                    'July', 'August', 'September', 'October', 'November', 'December'];
+    const months = [
+      '',
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
     return months[month];
   }
 }
@@ -218,10 +256,10 @@ class _DayCell extends StatelessWidget {
     this.scoringEnabled = false,
     this.onTap,
   });
-  
+
   String _getSemanticLabel() {
     final dateStr = '${_monthNames[date.month]} $day';
-    
+
     if (isFuture) return '$dateStr, future date';
     if (isToday) {
       final statusText = _getStatusText();
@@ -229,14 +267,14 @@ class _DayCell extends StatelessWidget {
     }
     return '$dateStr, ${_getStatusText()}';
   }
-  
+
   String _getStatusText() {
     if (scoringEnabled && score != null) {
       if (score! >= 70) return 'completed with $score% score';
       if (score! >= 40) return 'partial completion with $score% score';
       return 'missed with $score% score';
     }
-    
+
     switch (status) {
       case _DayStatus.completed:
         return 'completed';
@@ -248,55 +286,67 @@ class _DayCell extends StatelessWidget {
         return 'not scheduled';
     }
   }
-  
-  static const _monthNames = ['', 'January', 'February', 'March', 'April', 'May', 'June',
-                              'July', 'August', 'September', 'October', 'November', 'December'];
+
+  static const _monthNames = [
+    '',
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ];
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     Color bgColor;
     Color textColor;
     bool showCheckmark = false;
     bool showX = false;
-    
+
     if (isFuture) {
       bgColor = Colors.transparent;
-      textColor = AppColors.textMuted;
+      textColor = colors.textMuted;
     } else if (scoringEnabled && score != null) {
-      // Score-based coloring: interpolate between red (0) and green (100)
       final normalizedScore = score!.clamp(0, 100) / 100.0;
       if (normalizedScore >= 0.7) {
-        bgColor = AppColors.success;
+        bgColor = colors.success;
         showCheckmark = true;
       } else if (normalizedScore >= 0.4) {
-        bgColor = AppColors.warning;
+        bgColor = colors.warning;
       } else {
-        bgColor = AppColors.danger;
+        bgColor = colors.danger;
         if (normalizedScore < 0.1) showX = true;
       }
-      textColor = Colors.white;
+      textColor = colors.onPrimary;
     } else {
       switch (status) {
         case _DayStatus.completed:
-          bgColor = AppColors.success;
-          textColor = Colors.white;
+          bgColor = colors.success;
+          textColor = colors.onPrimary;
           showCheckmark = true;
         case _DayStatus.missed:
-          bgColor = AppColors.danger;
-          textColor = Colors.white;
+          bgColor = colors.danger;
+          textColor = colors.onPrimary;
           showX = true;
         case _DayStatus.noData:
-          bgColor = AppColors.surfaceLight;
-          textColor = AppColors.textMuted;
+          bgColor = colors.surfaceLight;
+          textColor = colors.textMuted;
         case _DayStatus.notScheduled:
           bgColor = Colors.transparent;
-          textColor = AppColors.textMuted;
+          textColor = colors.textMuted;
       }
     }
-    
+
     Widget content;
     if (scoringEnabled && score != null) {
-      // Show score percentage
       content = Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -328,7 +378,11 @@ class _DayCell extends StatelessWidget {
           Positioned(
             right: 2,
             top: 2,
-            child: Icon(Icons.check, size: 10, color: textColor.withAlpha(200)),
+            child: Icon(
+              Icons.check,
+              size: 10,
+              color: textColor.withAlpha(200),
+            ),
           ),
         ],
       );
@@ -348,7 +402,11 @@ class _DayCell extends StatelessWidget {
           Positioned(
             right: 2,
             top: 2,
-            child: Icon(Icons.close, size: 10, color: textColor.withAlpha(200)),
+            child: Icon(
+              Icons.close,
+              size: 10,
+              color: textColor.withAlpha(200),
+            ),
           ),
         ],
       );
@@ -364,7 +422,7 @@ class _DayCell extends StatelessWidget {
         ),
       );
     }
-    
+
     return Semantics(
       label: _getSemanticLabel(),
       button: onTap != null && !isFuture,
@@ -372,17 +430,24 @@ class _DayCell extends StatelessWidget {
       child: GestureDetector(
         onTap: isFuture ? null : onTap,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          width: 44, // Increased from 32 to meet 44px touch target minimum
-          height: 44, // Increased from 32 to meet 44px touch target minimum
+          duration: AppMotion.standard,
+          width: 44,
+          height: 44,
           decoration: BoxDecoration(
             color: bgColor,
-            borderRadius: BorderRadius.circular(8),
-            border: isToday 
-                ? Border.all(color: AppColors.primary, width: 2) 
+            borderRadius: BorderRadius.circular(AppRadius.sm),
+            border: isToday
+                ? Border.all(color: colors.primary, width: 2)
                 : null,
-            boxShadow: (status == _DayStatus.completed || (scoringEnabled && score != null && score! >= 70))
-                ? [BoxShadow(color: bgColor.withAlpha(100), blurRadius: 4, spreadRadius: 1)]
+            boxShadow: (status == _DayStatus.completed ||
+                    (scoringEnabled && score != null && score! >= 70))
+                ? [
+                    BoxShadow(
+                      color: bgColor.withAlpha(100),
+                      blurRadius: 4,
+                      spreadRadius: 1,
+                    ),
+                  ]
                 : null,
           ),
           child: content,
@@ -400,6 +465,7 @@ class _LegendItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -412,7 +478,10 @@ class _LegendItem extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 4),
-        Text(label, style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+        Text(
+          label,
+          style: TextStyle(fontSize: 11, color: colors.textMuted),
+        ),
       ],
     );
   }

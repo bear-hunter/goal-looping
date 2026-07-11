@@ -24,9 +24,11 @@ class FocusModeScreen extends StatefulWidget {
 
 class _FocusModeScreenState extends State<FocusModeScreen> {
   // Pomodoro Timer
+  static const int _breakDurationSeconds = 5 * 60;
   int _initialSeconds = 25 * 60;
   int _secondsRemaining = 25 * 60;
   bool _isRunning = false;
+  bool _isBreak = false;
   Timer? _timer;
 
   // Distraction Pad
@@ -43,11 +45,12 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
   void _showAdjustTimerDialog() {
     if (_isRunning) return;
 
+    final colors = context.colors;
     int selectedMins = _initialSeconds ~/ 60;
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.surface,
+      backgroundColor: colors.surface,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setModalState) => Padding(
           padding: const EdgeInsets.all(24),
@@ -103,22 +106,34 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
   }
 
   void _toggleTimer() {
-    setState(() {
-      _isRunning = !_isRunning;
-      if (_isRunning) {
-        _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-          setState(() {
-            if (_secondsRemaining > 0) {
-              _secondsRemaining--;
-            } else {
-              _isRunning = false;
-              timer.cancel();
-              _showTimerComplete();
-            }
-          });
-        });
+    if (_isRunning) {
+      _timer?.cancel();
+      setState(() => _isRunning = false);
+      return;
+    }
+
+    setState(() => _isRunning = true);
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+
+      if (_secondsRemaining > 1) {
+        setState(() => _secondsRemaining--);
+        return;
+      }
+
+      final completedBreak = _isBreak;
+      timer.cancel();
+      setState(() {
+        _isRunning = false;
+        _secondsRemaining = 0;
+      });
+      if (completedBreak) {
+        _finishBreak();
       } else {
-        _timer?.cancel();
+        _showTimerComplete();
       }
     });
   }
@@ -127,11 +142,25 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
     setState(() {
       _timer?.cancel();
       _isRunning = false;
-      _secondsRemaining = _initialSeconds;
+      _secondsRemaining = _isBreak
+          ? _breakDurationSeconds
+          : _initialSeconds;
     });
   }
 
+  void _finishBreak() {
+    setState(() {
+      _isBreak = false;
+      _secondsRemaining = _initialSeconds;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Break complete — ready to focus again.')),
+    );
+  }
+
   void _showTimerComplete() {
+    final colors = context.colors;
+    setState(() => _secondsRemaining = _initialSeconds);
     // Save Focus Session Log
     final state = context.read<AppState>();
     final sessionLog = FocusLog(
@@ -148,10 +177,10 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surface,
+        backgroundColor: colors.surface,
         title: Row(
           children: [
-            Icon(Icons.celebration_rounded, color: AppColors.success),
+            Icon(Icons.celebration_rounded, color: colors.success),
             const SizedBox(width: 8),
             const Text('Focus Session Complete!'),
           ],
@@ -163,7 +192,10 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(ctx);
-              setState(() => _secondsRemaining = 5 * 60); // 5 min break
+              setState(() {
+                _isBreak = true;
+                _secondsRemaining = _breakDurationSeconds;
+              });
             },
             child: const Text('Start Break'),
           ),
@@ -175,6 +207,7 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
   void _addDistraction() {
     final text = _distractionController.text.trim();
     if (text.isNotEmpty) {
+      final colors = context.colors;
       setState(() => _distractions.add(text));
       _distractionController.clear();
 
@@ -192,13 +225,14 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
         SnackBar(
           content: Text('📝 Added to backlog: $text'),
           duration: const Duration(seconds: 2),
-          backgroundColor: AppColors.info,
+          backgroundColor: colors.info,
         ),
       );
     }
   }
 
   void _showStuckDialog() {
+    final colors = context.colors;
     final state = context.read<AppState>();
     // Get build habits (scripted actions)
     final scriptedActions = state.habits
@@ -207,7 +241,7 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.surface,
+      backgroundColor: colors.surface,
       builder: (ctx) => Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -216,7 +250,7 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
           children: [
             Row(
               children: [
-                Icon(Icons.psychology_rounded, color: AppColors.warning),
+                Icon(Icons.psychology_rounded, color: colors.warning),
                 const SizedBox(width: 8),
                 Text(
                   'You\'re Stuck?',
@@ -227,19 +261,19 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
             const SizedBox(height: 16),
             Text(
               'Your Scripted Actions:',
-              style: TextStyle(color: AppColors.textMuted),
+              style: TextStyle(color: colors.textMuted),
             ),
             const SizedBox(height: 12),
             if (scriptedActions.isEmpty)
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceLight,
+                  color: colors.surfaceLight,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
                   'No scripted actions yet. Add them in the Habits screen!',
-                  style: TextStyle(color: AppColors.textMuted),
+                  style: TextStyle(color: colors.textMuted),
                 ),
               )
             else
@@ -250,10 +284,10 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
                       margin: const EdgeInsets.only(bottom: 8),
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: AppColors.success.withAlpha(20),
+                        color: colors.success.withAlpha(20),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: AppColors.success.withAlpha(50),
+                          color: colors.success.withAlpha(50),
                         ),
                       ),
                       child: Row(
@@ -261,7 +295,7 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
                           Text(
                             '✓',
                             style: TextStyle(
-                              color: AppColors.success,
+                              color: colors.success,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -269,7 +303,7 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
                           Expanded(
                             child: Text(
                               action.name,
-                              style: TextStyle(color: AppColors.textPrimary),
+                              style: TextStyle(color: colors.textPrimary),
                             ),
                           ),
                         ],
@@ -277,7 +311,7 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
                     ),
                   ),
             const SizedBox(height: 16),
-            Text('Quick Tips:', style: TextStyle(color: AppColors.textMuted)),
+            Text('Quick Tips:', style: TextStyle(color: colors.textMuted)),
             const SizedBox(height: 8),
             _QuickTip(icon: Icons.air_rounded, text: 'Take 3 deep breaths'),
             _QuickTip(
@@ -312,11 +346,12 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
   Widget build(BuildContext context) {
     return Consumer<AppState>(
       builder: (context, state, _) {
+        final colors = context.colors;
         final subtasks = state.getSubtasksForTask(widget.task.id);
         final completedSubtasks = subtasks.where((s) => s.isCompleted).length;
 
         return Scaffold(
-          backgroundColor: AppColors.background,
+          backgroundColor: colors.background,
           body: SafeArea(
             child: Column(
               children: [
@@ -328,7 +363,7 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
                       IconButton(
                         icon: Icon(
                           Icons.close_rounded,
-                          color: AppColors.textMuted,
+                          color: colors.textMuted,
                         ),
                         onPressed: () => Navigator.pop(context),
                       ),
@@ -339,13 +374,13 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color: AppColors.primary.withAlpha(20),
+                          color: colors.primary.withAlpha(20),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
-                          'Focus Mode',
+                          _isBreak ? 'Break' : 'Focus Mode',
                           style: TextStyle(
-                            color: AppColors.primary,
+                            color: colors.primary,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -371,8 +406,8 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                               colors: [
-                                AppColors.primary.withAlpha(30),
-                                AppColors.success.withAlpha(20),
+                                colors.primary.withAlpha(30),
+                                colors.success.withAlpha(20),
                               ],
                             ),
                             borderRadius: BorderRadius.circular(24),
@@ -384,7 +419,7 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
                                 style: TextStyle(
                                   fontSize: 56,
                                   fontWeight: FontWeight.w300,
-                                  color: AppColors.textPrimary,
+                                  color: colors.textPrimary,
                                   fontFeatures: const [
                                     FontFeature.tabularFigures(),
                                   ],
@@ -398,19 +433,19 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
                                     icon: _isRunning
                                         ? Icons.pause_rounded
                                         : Icons.play_arrow_rounded,
-                                    color: AppColors.primary,
+                                    color: colors.primary,
                                     onTap: _toggleTimer,
                                   ),
                                   const SizedBox(width: 16),
                                   _TimerButton(
                                     icon: Icons.replay_rounded,
-                                    color: AppColors.textMuted,
+                                    color: colors.textMuted,
                                     onTap: _resetTimer,
                                   ),
                                   const SizedBox(width: 16),
                                   _TimerButton(
                                     icon: Icons.timer_outlined,
-                                    color: AppColors.info,
+                                    color: colors.info,
                                     onTap: _showAdjustTimerDialog,
                                   ),
                                 ],
@@ -430,10 +465,10 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
                               width: double.infinity,
                               padding: const EdgeInsets.all(20),
                               decoration: BoxDecoration(
-                                color: AppColors.surfaceLight,
+                                color: colors.surfaceLight,
                                 borderRadius: BorderRadius.circular(16),
                                 border: Border.all(
-                                  color: AppColors.glassBorder,
+                                  color: colors.glassBorder,
                                 ),
                               ),
                               child: Column(
@@ -462,7 +497,7 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
                                         Text(
                                           '$completedSubtasks/${subtasks.length}',
                                           style: TextStyle(
-                                            color: AppColors.textMuted,
+                                            color: colors.textMuted,
                                             decoration: TextDecoration.none,
                                           ),
                                         ),
@@ -474,7 +509,7 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
                                     style: TextStyle(
                                       fontSize: 20,
                                       fontWeight: FontWeight.w600,
-                                      color: AppColors.textPrimary,
+                                      color: colors.textPrimary,
                                       decoration: TextDecoration.none,
                                     ),
                                   ),
@@ -483,7 +518,7 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
                                     Text(
                                       widget.task.description,
                                       style: TextStyle(
-                                        color: AppColors.textMuted,
+                                        color: colors.textMuted,
                                         decoration: TextDecoration.none,
                                       ),
                                     ),
@@ -515,10 +550,10 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
                           width: double.infinity,
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: AppColors.warning.withAlpha(15),
+                            color: colors.warning.withAlpha(15),
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
-                              color: AppColors.warning.withAlpha(40),
+                              color: colors.warning.withAlpha(40),
                             ),
                           ),
                           child: Column(
@@ -529,14 +564,14 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
                                   Icon(
                                     Icons.lightbulb_outline_rounded,
                                     size: 18,
-                                    color: AppColors.warning,
+                                    color: colors.warning,
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
                                     'Distraction Pad',
                                     style: TextStyle(
                                       fontWeight: FontWeight.w600,
-                                      color: AppColors.textPrimary,
+                                      color: colors.textPrimary,
                                     ),
                                   ),
                                 ],
@@ -546,7 +581,7 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
                                 'Offload thoughts here → auto-adds to backlog',
                                 style: TextStyle(
                                   fontSize: 11,
-                                  color: AppColors.textMuted,
+                                  color: colors.textMuted,
                                 ),
                               ),
                               const SizedBox(height: 12),
@@ -556,12 +591,12 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
                                     child: TextField(
                                       controller: _distractionController,
                                       style: TextStyle(
-                                        color: AppColors.textPrimary,
+                                        color: colors.textPrimary,
                                       ),
                                       decoration: InputDecoration(
                                         hintText: 'Got distracted by...',
                                         hintStyle: TextStyle(
-                                          color: AppColors.textMuted,
+                                          color: colors.textMuted,
                                         ),
                                         border: OutlineInputBorder(
                                           borderRadius: BorderRadius.circular(
@@ -570,7 +605,7 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
                                           borderSide: BorderSide.none,
                                         ),
                                         filled: true,
-                                        fillColor: AppColors.surface,
+                                        fillColor: colors.surface,
                                         contentPadding:
                                             const EdgeInsets.symmetric(
                                               horizontal: 12,
@@ -584,7 +619,7 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
                                   IconButton(
                                     icon: Icon(
                                       Icons.add_rounded,
-                                      color: AppColors.warning,
+                                      color: colors.warning,
                                     ),
                                     onPressed: _addDistraction,
                                   ),
@@ -602,11 +637,11 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
                                             d,
                                             style: TextStyle(
                                               fontSize: 11,
-                                              color: AppColors.textMuted,
+                                              color: colors.textMuted,
                                             ),
                                           ),
                                           backgroundColor:
-                                              AppColors.surfaceLight,
+                                              colors.surfaceLight,
                                           padding: EdgeInsets.zero,
                                           visualDensity: VisualDensity.compact,
                                         ),
@@ -628,9 +663,9 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: AppColors.surface,
+                    color: colors.surface,
                     border: Border(
-                      top: BorderSide(color: AppColors.glassBorder),
+                      top: BorderSide(color: colors.glassBorder),
                     ),
                   ),
                   child: Row(
@@ -640,14 +675,14 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
                           onPressed: _showStuckDialog,
                           icon: Icon(
                             Icons.help_outline_rounded,
-                            color: AppColors.warning,
+                            color: colors.warning,
                           ),
                           label: Text(
                             'I\'m Stuck',
-                            style: TextStyle(color: AppColors.warning),
+                            style: TextStyle(color: colors.warning),
                           ),
                           style: OutlinedButton.styleFrom(
-                            side: BorderSide(color: AppColors.warning),
+                            side: BorderSide(color: colors.warning),
                             padding: const EdgeInsets.symmetric(vertical: 12),
                           ),
                         ),
@@ -656,13 +691,12 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
                       Expanded(
                         child: ElevatedButton.icon(
                           onPressed: () {
-                            widget.task.complete();
-                            state.updateTask(widget.task);
+                            state.toggleTaskComplete(widget.task.id);
                             Navigator.pop(context);
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text('🎉 Task completed!'),
-                                backgroundColor: AppColors.success,
+                                backgroundColor: colors.success,
                               ),
                             );
                           },
@@ -720,6 +754,7 @@ class _SubtaskItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return GestureDetector(
       onTap: onToggle,
       child: Container(
@@ -727,13 +762,13 @@ class _SubtaskItem extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: subtask.isCompleted
-              ? AppColors.success.withAlpha(20)
-              : AppColors.surfaceLight,
+              ? colors.success.withAlpha(20)
+              : colors.surfaceLight,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: subtask.isCompleted
-                ? AppColors.success.withAlpha(50)
-                : AppColors.glassBorder,
+                ? colors.success.withAlpha(50)
+                : colors.glassBorder,
           ),
         ),
         child: Row(
@@ -743,8 +778,8 @@ class _SubtaskItem extends StatelessWidget {
                   ? Icons.check_circle_rounded
                   : Icons.radio_button_unchecked_rounded,
               color: subtask.isCompleted
-                  ? AppColors.success
-                  : AppColors.textMuted,
+                  ? colors.success
+                  : colors.textMuted,
               size: 20,
             ),
             const SizedBox(width: 12),
@@ -753,8 +788,8 @@ class _SubtaskItem extends StatelessWidget {
                 subtask.title,
                 style: TextStyle(
                   color: subtask.isCompleted
-                      ? AppColors.textMuted
-                      : AppColors.textPrimary,
+                      ? colors.textMuted
+                      : colors.textPrimary,
                   decoration: subtask.isCompleted
                       ? TextDecoration.lineThrough
                       : null,
@@ -776,15 +811,16 @@ class _QuickTip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: Row(
         children: [
-          Icon(icon, size: 16, color: AppColors.info),
+          Icon(icon, size: 16, color: colors.info),
           const SizedBox(width: 8),
           Text(
             text,
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+            style: TextStyle(color: colors.textSecondary, fontSize: 13),
           ),
         ],
       ),

@@ -44,7 +44,7 @@ class BadgeGalleryScreen extends StatelessWidget {
                   margin: const EdgeInsets.all(16),
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    gradient: AppColors.primaryGradient,
+                    gradient: colors.primaryGradient,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(

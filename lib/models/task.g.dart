@@ -28,35 +28,39 @@ class TaskAdapter extends TypeAdapter<Task> {
       linkedFactorIds: (fields[8] as List?)?.cast<String>(),
       experimentId: fields[9] as String?,
       sortOrder: fields[10] as int,
-      effort: fields[11] as TaskEffort,
-      impact: fields[12] as TaskImpact,
+      effort: fields[11] == null ? TaskEffort.quick : fields[11] as TaskEffort,
+      impact: fields[12] == null ? TaskImpact.high : fields[12] as TaskImpact,
       addedToPriorityAt: fields[13] as DateTime?,
       abandonReason: fields[14] as TaskAbandonReason?,
       blockedByTaskId: fields[15] as String?,
-      category: fields[16] as String,
+      category: fields[16] == null ? 'General' : fields[16] as String,
       deadline: fields[17] as DateTime?,
       customTag: fields[18] as String?,
       marginalGainDescription: fields[19] as String?,
-      isResearchTask: fields[20] as bool,
+      isResearchTask: fields[20] == null ? false : fields[20] as bool,
       categoryId: fields[21] as String?,
       checklistItems: (fields[22] as List?)?.cast<String>(),
       checklistCompleted: (fields[23] as List?)?.cast<bool>(),
-      priorityLevel: fields[24] as PriorityLevel,
+      priorityLevel:
+          fields[24] == null ? PriorityLevel.none : fields[24] as PriorityLevel,
       note: fields[25] as String?,
-      isPending: fields[26] as bool,
+      isPending: fields[26] == null ? false : fields[26] as bool,
       reminderTimes: (fields[27] as List?)?.cast<String>(),
       scheduledDate: fields[28] as DateTime?,
       scheduledTime: fields[29] as String?,
-      isArchived: fields[30] as bool,
-      priority: fields[31] as int,
-      quadrant: fields[32] as EisenhowerQuadrant,
+      isArchived: fields[30] == null ? false : fields[30] as bool,
+      priority: fields[31] == null ? 0 : fields[31] as int,
+      quadrant: fields[32] == null
+          ? EisenhowerQuadrant.inbox
+          : fields[32] as EisenhowerQuadrant,
+      completionRewardGranted: fields[33] as bool?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Task obj) {
     writer
-      ..writeByte(33)
+      ..writeByte(34)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -122,7 +126,9 @@ class TaskAdapter extends TypeAdapter<Task> {
       ..writeByte(31)
       ..write(obj.priority)
       ..writeByte(32)
-      ..write(obj.quadrant);
+      ..write(obj.quadrant)
+      ..writeByte(33)
+      ..write(obj.completionRewardGranted);
   }
 
   @override

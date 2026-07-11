@@ -1,21 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
-import 'package:uuid/uuid.dart';
 
 import '../../core/theme/theme.dart';
 import '../../models/category_model.dart';
 import '../../providers/app_state.dart';
+import '../../widgets/category_picker.dart';
 import '../../widgets/glass_card.dart';
+import 'category_wizard.dart';
 
-/// Screen for managing task categories
+/// Screen for managing task/habit categories.
+///
+/// Operates entirely on [CategoryModel]: each row edits icon, color and name
+/// through [CategoryWizard]. Default categories are editable but not deletable;
+/// deleting a category that is still in use first reassigns its items.
 class CategoryManagementScreen extends StatelessWidget {
   const CategoryManagementScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.background,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         title: Text(
@@ -29,6 +35,7 @@ class CategoryManagementScreen extends StatelessWidget {
       ),
       body: Consumer<AppState>(
         builder: (context, state, _) {
+          final categories = state.categories;
           return Column(
             children: [
               // Info banner
@@ -39,13 +46,15 @@ class CategoryManagementScreen extends StatelessWidget {
                     children: [
                       Icon(
                         Icons.info_outline_rounded,
-                        color: AppColors.info,
+                        color: colors.info,
                         size: 20,
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          'Long-press to edit. The "General" category cannot be deleted.',
+                          'Tap a category to change its icon, color or name. '
+                          'Drag to reorder. Default categories can\'t be '
+                          'deleted.',
                           style: Theme.of(context).textTheme.bodyMedium,
                         ),
                       ),
@@ -58,34 +67,30 @@ class CategoryManagementScreen extends StatelessWidget {
               Expanded(
                 child: ReorderableListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: state.taskCategories.length,
+                  itemCount: categories.length,
                   onReorder: (oldIndex, newIndex) {
                     if (newIndex > oldIndex) newIndex--;
-                    final categories = List<String>.from(state.taskCategories);
-                    final item = categories.removeAt(oldIndex);
-                    categories.insert(newIndex, item);
-                    state.reorderTaskCategories(categories);
+                    final reordered = List<CategoryModel>.from(categories);
+                    final item = reordered.removeAt(oldIndex);
+                    reordered.insert(newIndex, item);
+                    state.reorderCategories(reordered);
                   },
                   itemBuilder: (context, index) {
-                    final category = state.taskCategories[index];
-                    final isProtected = category == 'General';
-                    final taskCount = state.tasks
-                        .where((t) => t.category == category)
-                        .length;
-
+                    final category = categories[index];
                     return KeyedSubtree(
-                      key: ValueKey(category),
+                      key: ValueKey(category.id),
                       child:
                           _CategoryTile(
                                 category: category,
-                                taskCount: taskCount,
-                                isProtected: isProtected,
-                                onEdit: () => _showEditCategoryDialog(
-                                  context,
-                                  state,
-                                  category,
+                                index: index,
+                                usageCount: state.categoryUsageCount(
+                                  category.id,
                                 ),
-                                onDelete: () => _showDeleteCategoryDialog(
+                                onEdit: () => CategoryWizard.show(
+                                  context,
+                                  category: category,
+                                ),
+                                onDelete: () => _deleteCategory(
                                   context,
                                   state,
                                   category,
@@ -103,323 +108,249 @@ class CategoryManagementScreen extends StatelessWidget {
         },
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddCategoryDialog(context),
-        backgroundColor: AppColors.primary,
+        onPressed: () => CategoryWizard.show(context),
+        backgroundColor: colors.primary,
         icon: const Icon(Icons.add_rounded),
         label: const Text('Add Category'),
       ),
     );
   }
 
-  void _showAddCategoryDialog(BuildContext context) {
-    final controller = TextEditingController();
-    final state = context.read<AppState>();
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        title: Text(
-          'New Category',
-          style: TextStyle(color: AppColors.textPrimary),
-        ),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          style: TextStyle(color: AppColors.textPrimary),
-          decoration: InputDecoration(
-            hintText: 'Category Name',
-            filled: true,
-            fillColor: AppColors.surfaceLight,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('Cancel', style: TextStyle(color: AppColors.textMuted)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (controller.text.trim().isNotEmpty) {
-                final name = controller.text.trim();
-                state.addTaskCategory(name);
-                // Also add to CategoryModel system so it appears in New Task sheet
-                final categoryModel = CategoryModel.create(
-                  id: const Uuid().v4(),
-                  name: name,
-                  icon: Icons.category_rounded,
-                  color: Colors.blue,
-                );
-                state.addCategory(categoryModel);
-                Navigator.pop(ctx);
-              }
-            },
-            child: const Text('Add'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showEditCategoryDialog(
+  void _deleteCategory(
     BuildContext context,
     AppState state,
-    String oldCategory,
+    CategoryModel category,
   ) {
-    if (oldCategory == 'General') return;
+    final colors = context.colors;
+    final usage = state.categoryUsageCount(category.id);
 
-    final controller = TextEditingController(text: oldCategory);
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        title: Text(
-          'Rename Category',
-          style: TextStyle(color: AppColors.textPrimary),
-        ),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          style: TextStyle(color: AppColors.textPrimary),
-          decoration: InputDecoration(
-            hintText: 'Category Name',
-            filled: true,
-            fillColor: AppColors.surfaceLight,
+    if (usage == 0) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: colors.surface,
+          title: Text(
+            'Delete Category',
+            style: TextStyle(color: colors.textPrimary),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('Cancel', style: TextStyle(color: AppColors.textMuted)),
+          content: Text(
+            'Delete "${category.name}"? Nothing is using it.',
+            style: TextStyle(color: colors.textSecondary),
           ),
-          ElevatedButton(
-            onPressed: () {
-              final newName = controller.text.trim();
-              if (newName.isNotEmpty && newName != oldCategory) {
-                // Update all tasks with old category
-                for (final task in state.tasks.where(
-                  (t) => t.category == oldCategory,
-                )) {
-                  task.category = newName;
-                  state.updateTask(task);
-                }
-                // Replace the category in legacy system
-                state.renameTaskCategory(oldCategory, newName);
-                // Also update matching CategoryModel
-                final matchingCategory = state.categories
-                    .where(
-                      (c) => c.name.toLowerCase() == oldCategory.toLowerCase(),
-                    )
-                    .firstOrNull;
-                if (matchingCategory != null) {
-                  state.updateCategory(
-                    matchingCategory.copyWith(name: newName),
-                  );
-                }
-                Navigator.pop(ctx);
-              }
-            },
-            child: const Text('Rename'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showDeleteCategoryDialog(
-    BuildContext context,
-    AppState state,
-    String category,
-  ) {
-    if (category == 'General') return;
-
-    final taskCount = state.tasks.where((t) => t.category == category).length;
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        title: Text(
-          'Delete Category',
-          style: TextStyle(color: AppColors.textPrimary),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Delete "$category"?',
-              style: TextStyle(color: AppColors.textSecondary),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('Cancel', style: TextStyle(color: colors.textMuted)),
             ),
-            if (taskCount > 0) ...[
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.warning.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: AppColors.warning.withValues(alpha: 0.3),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.warning_amber_rounded,
-                      color: AppColors.warning,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        '$taskCount task${taskCount == 1 ? '' : 's'} will be moved to "General"',
-                        style: TextStyle(
-                          color: AppColors.warning,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+            TextButton(
+              onPressed: () {
+                state.deleteCategory(category.id);
+                Navigator.pop(ctx);
+              },
+              child: Text('Delete', style: TextStyle(color: colors.danger)),
+            ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('Cancel', style: TextStyle(color: AppColors.textMuted)),
-          ),
-          TextButton(
-            onPressed: () {
-              // Move tasks to General before deleting
-              for (final task in state.tasks.where(
-                (t) => t.category == category,
-              )) {
-                task.category = 'General';
-                state.updateTask(task);
-              }
-              state.deleteTaskCategory(category);
-              // Also delete matching CategoryModel
-              final matchingCategory = state.categories
-                  .where((c) => c.name.toLowerCase() == category.toLowerCase())
-                  .firstOrNull;
-              if (matchingCategory != null && !matchingCategory.isDefault) {
-                state.deleteCategory(matchingCategory.id);
-              }
-              Navigator.pop(ctx);
-            },
-            child: Text('Delete', style: TextStyle(color: AppColors.danger)),
-          ),
-        ],
-      ),
+      );
+      return;
+    }
+
+    // In use: require a reassignment target before deleting.
+    showDialog(
+      context: context,
+      builder: (ctx) => _ReassignDeleteDialog(category: category, usage: usage),
     );
   }
 }
 
+/// A single category row: color swatch, name, default pill, usage subtitle.
 class _CategoryTile extends StatelessWidget {
-  final String category;
-  final int taskCount;
-  final bool isProtected;
+  final CategoryModel category;
+  final int index;
+  final int usageCount;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
   const _CategoryTile({
     required this.category,
-    required this.taskCount,
-    required this.isProtected,
+    required this.index,
+    required this.usageCount,
     required this.onEdit,
     required this.onDelete,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onLongPress: isProtected ? null : onEdit,
-      child: GlassCard(
-        margin: const EdgeInsets.only(bottom: 8),
-        onTap: isProtected ? null : onEdit,
-        child: Row(
-          children: [
-            // Drag handle
-            ReorderableDragStartListener(
-              index: 0,
-              child: Icon(
-                Icons.drag_handle_rounded,
-                color: AppColors.textMuted,
-              ),
-            ),
-            const SizedBox(width: 12),
+    final colors = context.colors;
+    return GlassCard(
+      margin: const EdgeInsets.only(bottom: 8),
+      onTap: onEdit,
+      child: Row(
+        children: [
+          // Drag handle
+          ReorderableDragStartListener(
+            index: index,
+            child: Icon(Icons.drag_handle_rounded, color: colors.textMuted),
+          ),
+          const SizedBox(width: 12),
 
-            // Category name
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        category,
+          // Icon + color swatch
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: category.color.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(category.icon, color: category.color, size: 22),
+          ),
+          const SizedBox(width: 12),
+
+          // Name + usage
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        category.name,
                         style: Theme.of(context).textTheme.titleMedium,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      if (isProtected) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.textMuted.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            'Default',
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: AppColors.textMuted,
-                            ),
+                    ),
+                    if (category.isDefault) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: colors.textMuted.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          'Default',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: colors.textMuted,
                           ),
                         ),
-                      ],
+                      ),
                     ],
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '$taskCount task${taskCount == 1 ? '' : 's'}',
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodyMedium?.copyWith(fontSize: 12),
-                  ),
-                ],
-              ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '$usageCount item${usageCount == 1 ? '' : 's'}',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(fontSize: 12),
+                ),
+              ],
             ),
+          ),
 
-            // Actions
-            if (!isProtected) ...[
-              IconButton(
-                icon: Icon(
-                  Icons.edit_rounded,
-                  size: 20,
-                  color: AppColors.textMuted,
-                ),
-                onPressed: onEdit,
-                tooltip: 'Rename',
+          // Actions
+          IconButton(
+            icon: Icon(Icons.edit_rounded, size: 20, color: colors.textMuted),
+            onPressed: onEdit,
+            tooltip: 'Edit',
+          ),
+          if (!category.isDefault)
+            IconButton(
+              icon: Icon(
+                Icons.delete_outline_rounded,
+                size: 20,
+                color: colors.danger,
               ),
-              IconButton(
-                icon: Icon(
-                  Icons.delete_outline_rounded,
-                  size: 20,
-                  color: AppColors.danger,
-                ),
-                onPressed: onDelete,
-                tooltip: 'Delete',
-              ),
-            ],
+              onPressed: onDelete,
+              tooltip: 'Delete',
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Delete dialog for a category still in use: forces picking a category to
+/// move its tasks, habits and recurring tasks to before deletion.
+class _ReassignDeleteDialog extends StatefulWidget {
+  final CategoryModel category;
+  final int usage;
+
+  const _ReassignDeleteDialog({required this.category, required this.usage});
+
+  @override
+  State<_ReassignDeleteDialog> createState() => _ReassignDeleteDialogState();
+}
+
+class _ReassignDeleteDialogState extends State<_ReassignDeleteDialog> {
+  String? _targetId;
+  bool _deleting = false;
+
+  Future<void> _confirm() async {
+    final target = _targetId;
+    if (target == null || _deleting) return;
+    setState(() => _deleting = true);
+    final state = context.read<AppState>();
+    await state.reassignCategory(widget.category.id, target);
+    await state.deleteCategory(widget.category.id);
+    if (mounted) Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final count = widget.usage;
+    return AlertDialog(
+      backgroundColor: colors.surface,
+      title: Text(
+        'Delete Category',
+        style: TextStyle(color: colors.textPrimary),
+      ),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '$count item${count == 1 ? '' : 's'} use "${widget.category.name}". '
+              'Pick a category to move ${count == 1 ? 'it' : 'them'} to:',
+              style: TextStyle(color: colors.textSecondary),
+            ),
+            const SizedBox(height: 16),
+            CategoryPicker(
+              selectedCategoryId: _targetId,
+              onChanged: (id) => setState(() => _targetId = id),
+              allowDeselect: false,
+              showNewButton: false,
+              wrap: true,
+              excludeCategoryId: widget.category.id,
+            ),
           ],
         ),
       ),
+      actions: [
+        TextButton(
+          onPressed: _deleting ? null : () => Navigator.pop(context),
+          child: Text('Cancel', style: TextStyle(color: colors.textMuted)),
+        ),
+        TextButton(
+          onPressed: (_targetId == null || _deleting) ? null : _confirm,
+          child: Text(
+            'Move & Delete',
+            style: TextStyle(
+              color: (_targetId == null || _deleting)
+                  ? colors.textMuted
+                  : colors.danger,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
