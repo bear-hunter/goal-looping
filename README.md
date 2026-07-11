@@ -1,16 +1,58 @@
-# firstmobileapp
+# Centile
 
-A new Flutter project.
+Centile is a local-first Flutter app for managing goals, daily work, habits,
+focus sessions, and reflections. The main areas of the app are Today, Plan,
+Habits, Grow, and You.
 
-## Getting Started
+App data is stored locally with Hive. Backups can be exported as JSON, and
+reflection data can be exported as PDF.
 
-This project is a starting point for a Flutter application.
+## Run locally
 
-A few resources to get you started if this is your first Flutter project:
+Install Flutter and make sure Chrome appears in `flutter devices`, then run:
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+```bash
+flutter pub get
+flutter run -d chrome
+```
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Android Studio is not required for browser development.
+
+## Checks
+
+```bash
+flutter analyze
+flutter test
+flutter build web --no-wasm-dry-run
+```
+
+The browser smoke tests use Playwright. Set them up once with:
+
+```bash
+cd qa
+npm ci
+npx playwright install chromium
+cd ..
+```
+
+Run the Web build and smoke tests together with:
+
+```bash
+./scripts/qa-run.sh
+```
+
+## Project layout
+
+- `lib/models` contains the Hive models and adapters.
+- `lib/providers` contains shared application state.
+- `lib/screens` contains the main app screens and flows.
+- `lib/services` contains storage, backup, export, and notification code.
+- `lib/widgets` contains reusable UI components.
+- `test` contains Flutter unit and widget tests.
+- `qa` contains the Playwright smoke tests.
+
+## Platform notes
+
+Chrome/Web is the default development target. Scheduled device notifications
+are available on Android and iOS; the Web build keeps reminder settings visible
+but does not attempt to schedule local OS notifications.
