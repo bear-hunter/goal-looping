@@ -26,15 +26,15 @@ class TreePlatform extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final stage = getLifeStage(
       factor.currentLevel,
-      factor.healthPercent,
-      factor.healthPercent <= 0,
+      factor.effectiveHealthPercent,
+      factor.effectiveHealthPercent <= 0,
     );
-    
-    // Calculate progress to next level (each level needs ~10 effort units)
+
     final progressToNextLevel = (effortUnits % 10) / 10;
-    
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -43,50 +43,57 @@ class TreePlatform extends StatelessWidget {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            const Color(0xFFE8F5E9),
-            const Color(0xFFC8E6C9),
-            const Color(0xFFA5D6A7),
+            colors.surfaceVariant,
+            colors.surface,
+            Color.alphaBlend(colors.primary.withAlpha(8), colors.surface),
           ],
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: colors.glassBorder),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Level Progress Header
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
                 'Level ',
-                style: TextStyle(fontSize: 14, color: AppColors.textMuted),
+                style: TextStyle(fontSize: 14, color: colors.textMuted),
               ),
               Text(
                 '${factor.currentLevel}',
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.primary),
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: colors.primary,
+                ),
               ),
               if (factor.currentLevel < factor.targetLevel) ...[
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: Icon(Icons.arrow_forward_rounded, size: 18, color: AppColors.textMuted),
+                  child: Icon(
+                    Icons.arrow_forward_rounded,
+                    size: 18,
+                    color: colors.textMuted,
+                  ),
                 ),
                 Text(
                   '${factor.currentLevel + 1}',
-                  style: TextStyle(fontSize: 18, color: AppColors.textMuted),
+                  style: TextStyle(fontSize: 18, color: colors.textMuted),
                 ),
               ],
             ],
-          ).animate().fadeIn(duration: 400.ms),
-          
+          ).animate().fadeIn(duration: AppMotion.expressive),
+
           const SizedBox(height: 8),
-          
-          // Progress bar to next level
+
           Container(
             height: 10,
             width: 220,
             decoration: BoxDecoration(
-              color: Colors.white.withAlpha(180),
-              borderRadius: BorderRadius.circular(5),
+              color: colors.surfaceVariant.withAlpha(180),
+              borderRadius: BorderRadius.circular(AppRadius.sm),
             ),
             child: Stack(
               children: [
@@ -96,30 +103,28 @@ class TreePlatform extends StatelessWidget {
                   child: Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [AppColors.primary, AppColors.success],
+                        colors: [colors.primary, colors.success],
                       ),
-                      borderRadius: BorderRadius.circular(5),
+                      borderRadius: BorderRadius.circular(AppRadius.sm),
                     ),
                   ),
                 ),
               ],
             ),
           ),
-          
+
           Text(
-            '${(progressToNextLevel * 100).toInt()}% to next level',
-            style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+            '${effortUnits % 10}/10 effort to next stage',
+            style: TextStyle(fontSize: 11, color: colors.textMuted),
           ),
-          
+
           const SizedBox(height: 20),
-          
-          // Tree with ground glow (no more wooden deck)
+
           SizedBox(
             height: 180,
             child: Stack(
               alignment: Alignment.center,
               children: [
-                // Ground glow/shadow effect
                 Positioned(
                   bottom: 10,
                   child: Container(
@@ -128,8 +133,8 @@ class TreePlatform extends StatelessWidget {
                     decoration: BoxDecoration(
                       gradient: RadialGradient(
                         colors: [
-                          Colors.black.withAlpha(40),
-                          Colors.black.withAlpha(15),
+                          colors.textPrimary.withAlpha(40),
+                          colors.textPrimary.withAlpha(15),
                           Colors.transparent,
                         ],
                         stops: const [0.0, 0.5, 1.0],
@@ -137,95 +142,125 @@ class TreePlatform extends StatelessWidget {
                     ),
                   ),
                 ),
-                
-                // Tree image
+
                 Positioned(
                   bottom: 15,
-                  child: SizedBox(
-                    width: 150,
-                    height: 150,
-                    child: Image.asset(
-                      _getTreeAssetPath(stage),
-                      fit: BoxFit.contain,
-                      errorBuilder: (context, error, stackTrace) {
-                        // Fallback to emoji
-                        return Center(
-                          child: Text(factor.treeEmoji, style: const TextStyle(fontSize: 60)),
-                        );
-                      },
-                    ),
-                  ).animate().fadeIn(duration: 600.ms).scale(
-                    begin: const Offset(0.9, 0.9),
-                    duration: 800.ms,
-                    curve: Curves.elasticOut,
-                  ),
+                  child:
+                      SizedBox(
+                            width: 150,
+                            height: 150,
+                            child: Image.asset(
+                              _getTreeAssetPath(stage),
+                              fit: BoxFit.contain,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Center(
+                                  child: Text(
+                                    factor.treeEmoji,
+                                    style: const TextStyle(fontSize: 60),
+                                  ),
+                                );
+                              },
+                            ),
+                          )
+                          .animate()
+                          .fadeIn(duration: AppMotion.celebration)
+                          .scale(
+                            begin: const Offset(0.9, 0.9),
+                            duration: 800.ms,
+                            curve: Curves.elasticOut,
+                          ),
                 ),
-                
-                // Life stage label
+
                 Positioned(
                   bottom: 25,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 5,
+                    ),
                     decoration: BoxDecoration(
-                      color: _getStageColor(stage),
-                      borderRadius: BorderRadius.circular(14),
+                      color: _stageColor(context, stage),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
                       boxShadow: [
                         BoxShadow(
-                          color: _getStageColor(stage).withAlpha(100),
+                          color: _stageColor(context, stage).withAlpha(100),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
                       ],
                     ),
                     child: Text(
-                      _getStageName(stage),
-                      style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                      _stageName(stage),
+                      style: TextStyle(
+                        color: colors.onPrimary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ),
               ],
             ),
           ),
-          
+
           const SizedBox(height: 16),
-          
-          // Effort Stats Row
+
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.white.withAlpha(200),
-              borderRadius: BorderRadius.circular(12),
+              color: colors.surface.withAlpha(200),
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              border: Border.all(color: colors.glassBorder),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _EffortStat(icon: Icons.bolt_rounded, value: '$effortUnits', label: 'Effort', color: AppColors.warning),
-                Container(width: 1, height: 30, color: AppColors.glassBorder),
-                _EffortStat(icon: Icons.task_alt_rounded, value: '$tasksCompleted', label: 'Tasks', color: AppColors.info),
-                Container(width: 1, height: 30, color: AppColors.glassBorder),
-                _EffortStat(icon: Icons.repeat_rounded, value: '$habitsLogged', label: 'Habits', color: AppColors.success),
-                Container(width: 1, height: 30, color: AppColors.glassBorder),
-                _EffortStat(icon: Icons.psychology_rounded, value: '$reflections', label: 'Reflect', color: AppColors.primary),
+                _EffortStat(
+                  icon: Icons.bolt_rounded,
+                  value: '$effortUnits',
+                  label: 'Effort',
+                  color: colors.warning,
+                ),
+                Container(width: 1, height: 30, color: colors.glassBorder),
+                _EffortStat(
+                  icon: Icons.task_alt_rounded,
+                  value: '$tasksCompleted',
+                  label: 'Tasks',
+                  color: colors.info,
+                ),
+                Container(width: 1, height: 30, color: colors.glassBorder),
+                _EffortStat(
+                  icon: Icons.repeat_rounded,
+                  value: '$habitsLogged',
+                  label: 'Habits',
+                  color: colors.success,
+                ),
+                Container(width: 1, height: 30, color: colors.glassBorder),
+                _EffortStat(
+                  icon: Icons.psychology_rounded,
+                  value: '$reflections',
+                  label: 'Reflect',
+                  color: colors.primary,
+                ),
               ],
             ),
           ),
-          
+
           const SizedBox(height: 12),
-          
-          // Inspirational quote
+
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: Colors.white.withAlpha(150),
-              borderRadius: BorderRadius.circular(10),
+              color: colors.surface.withAlpha(150),
+              borderRadius: BorderRadius.circular(AppRadius.md),
             ),
             child: Text(
-              _getQuote(stage),
+              _quote(stage),
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 11,
                 fontStyle: FontStyle.italic,
-                color: AppColors.textSecondary,
+                color: colors.textSecondary,
               ),
             ),
           ),
@@ -234,31 +269,46 @@ class TreePlatform extends StatelessWidget {
     );
   }
 
-  String _getStageName(TreeLifeStage stage) {
+  String _stageName(TreeLifeStage stage) {
     switch (stage) {
-      case TreeLifeStage.seed: return 'Seed';
-      case TreeLifeStage.sprout: return 'Sprout';
-      case TreeLifeStage.seedling: return 'Seedling';
-      case TreeLifeStage.sapling: return 'Sapling';
-      case TreeLifeStage.mature: return 'Mature';
-      case TreeLifeStage.decline: return 'Declining';
-      case TreeLifeStage.snag: return 'Snag';
+      case TreeLifeStage.seed:
+        return 'Seed';
+      case TreeLifeStage.sprout:
+        return 'Sprout';
+      case TreeLifeStage.seedling:
+        return 'Seedling';
+      case TreeLifeStage.sapling:
+        return 'Sapling';
+      case TreeLifeStage.mature:
+        return 'Mature';
+      case TreeLifeStage.decline:
+        return 'Declining';
+      case TreeLifeStage.snag:
+        return 'Snag';
     }
   }
 
-  Color _getStageColor(TreeLifeStage stage) {
+  Color _stageColor(BuildContext context, TreeLifeStage stage) {
+    final colors = context.colors;
     switch (stage) {
-      case TreeLifeStage.seed: return const Color(0xFF8D6E63);
-      case TreeLifeStage.sprout: return const Color(0xFF81C784);
-      case TreeLifeStage.seedling: return const Color(0xFF66BB6A);
-      case TreeLifeStage.sapling: return const Color(0xFF4CAF50);
-      case TreeLifeStage.mature: return const Color(0xFF2E7D32);
-      case TreeLifeStage.decline: return const Color(0xFFFF8A65);
-      case TreeLifeStage.snag: return const Color(0xFF6D4C41);
+      case TreeLifeStage.seed:
+        return ForestTokens.soil(context);
+      case TreeLifeStage.sprout:
+        return Color.lerp(colors.primary, colors.success, 0.4)!;
+      case TreeLifeStage.seedling:
+        return Color.lerp(colors.primary, colors.success, 0.25)!;
+      case TreeLifeStage.sapling:
+        return colors.primary;
+      case TreeLifeStage.mature:
+        return ForestTokens.canopy(context);
+      case TreeLifeStage.decline:
+        return colors.warning;
+      case TreeLifeStage.snag:
+        return ForestTokens.bark(context);
     }
   }
 
-  String _getQuote(TreeLifeStage stage) {
+  String _quote(TreeLifeStage stage) {
     switch (stage) {
       case TreeLifeStage.seed:
         return '"Every mighty oak was once a nut that held its ground."';
@@ -277,29 +327,26 @@ class TreePlatform extends StatelessWidget {
     }
   }
 
-  /// Map TreeLifeStage to asset path using TreeDesigns
   String _getTreeAssetPath(TreeLifeStage stage) {
-    // Get the tree design for this factor
     final design = TreeDesigns.getById(factor.treeDesignId);
-    
-    // Map life stage to asset stage (0-5 for sprout/sapling/mature)
+
     int assetStage;
     switch (stage) {
       case TreeLifeStage.seed:
       case TreeLifeStage.sprout:
-        assetStage = 0; // sprout
+        assetStage = 0;
         break;
       case TreeLifeStage.seedling:
       case TreeLifeStage.sapling:
-        assetStage = 2; // sapling
+        assetStage = 2;
         break;
       case TreeLifeStage.mature:
       case TreeLifeStage.decline:
       case TreeLifeStage.snag:
-        assetStage = 5; // mature
+        assetStage = 5;
         break;
     }
-    
+
     return design.getAssetPath(assetStage);
   }
 }
@@ -310,17 +357,30 @@ class _EffortStat extends StatelessWidget {
   final String label;
   final Color color;
 
-  const _EffortStat({required this.icon, required this.value, required this.label, required this.color});
+  const _EffortStat({
+    required this.icon,
+    required this.value,
+    required this.label,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(icon, size: 16, color: color),
         const SizedBox(height: 2),
-        Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: color)),
-        Text(label, style: TextStyle(fontSize: 9, color: AppColors.textMuted)),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+        Text(label, style: TextStyle(fontSize: 9, color: colors.textMuted)),
       ],
     );
   }

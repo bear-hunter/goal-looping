@@ -39,22 +39,20 @@ class _ArchivedItemsScreenState extends State<ArchivedItemsScreen>
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? AppColors.background : LightColors.background;
-    final textPrimary = isDark ? AppColors.textPrimary : LightColors.textPrimary;
+    final colors = context.colors;
 
     return Scaffold(
-      backgroundColor: bgColor,
+      backgroundColor: colors.background,
       appBar: AppBar(
         title: const Text('Archived Items'),
-        backgroundColor: isDark ? AppColors.surface : LightColors.surface,
-        foregroundColor: textPrimary,
+        backgroundColor: colors.surface,
+        foregroundColor: colors.textPrimary,
         elevation: 0,
         bottom: TabBar(
           controller: _tabController,
-          labelColor: AppColors.primary,
-          unselectedLabelColor: textPrimary.withAlpha(150),
-          indicatorColor: AppColors.primary,
+          labelColor: colors.primary,
+          unselectedLabelColor: colors.textPrimary.withAlpha(150),
+          indicatorColor: colors.primary,
           tabs: const [
             Tab(text: 'Habits'),
             Tab(text: 'Tasks'),
@@ -71,9 +69,9 @@ class _ArchivedItemsScreenState extends State<ArchivedItemsScreen>
           return TabBarView(
             controller: _tabController,
             children: [
-              _buildHabitsList(archivedHabits, state, isDark, textPrimary),
-              _buildTasksList(archivedTasks, state, isDark, textPrimary),
-              _buildRecurringList(archivedRecurring, state, isDark, textPrimary),
+              _buildHabitsList(archivedHabits, state, colors),
+              _buildTasksList(archivedTasks, state, colors),
+              _buildRecurringList(archivedRecurring, state, colors),
             ],
           );
         },
@@ -84,11 +82,10 @@ class _ArchivedItemsScreenState extends State<ArchivedItemsScreen>
   Widget _buildHabitsList(
     List<Habit> habits,
     AppState state,
-    bool isDark,
-    Color textPrimary,
+    AppColorsTheme colors,
   ) {
     if (habits.isEmpty) {
-      return _buildEmptyState('No archived habits', isDark);
+      return _buildEmptyState('No archived habits', colors);
     }
 
     return ListView.builder(
@@ -100,7 +97,7 @@ class _ArchivedItemsScreenState extends State<ArchivedItemsScreen>
           title: habit.name,
           subtitle: '${habit.type.name} habit • ${habit.completionCount} completions',
           icon: Icons.repeat_rounded,
-          iconColor: habit.type == HabitType.build ? Colors.green : Colors.red,
+          iconColor: habit.type == HabitType.build ? colors.success : colors.danger,
           onRestore: () => _restoreHabit(habit, state),
           onDelete: () => _confirmDeleteHabit(habit, state),
         );
@@ -111,11 +108,10 @@ class _ArchivedItemsScreenState extends State<ArchivedItemsScreen>
   Widget _buildTasksList(
     List<Task> tasks,
     AppState state,
-    bool isDark,
-    Color textPrimary,
+    AppColorsTheme colors,
   ) {
     if (tasks.isEmpty) {
-      return _buildEmptyState('No archived tasks', isDark);
+      return _buildEmptyState('No archived tasks', colors);
     }
 
     return ListView.builder(
@@ -127,7 +123,7 @@ class _ArchivedItemsScreenState extends State<ArchivedItemsScreen>
           title: task.title,
           subtitle: task.isCompleted ? 'Completed' : 'Not completed',
           icon: Icons.check_circle_outline_rounded,
-          iconColor: AppColors.primary,
+          iconColor: colors.primary,
           onRestore: () => _restoreTask(task, state),
           onDelete: () => _confirmDeleteTask(task, state),
         );
@@ -138,11 +134,10 @@ class _ArchivedItemsScreenState extends State<ArchivedItemsScreen>
   Widget _buildRecurringList(
     List<RecurringTask> tasks,
     AppState state,
-    bool isDark,
-    Color textPrimary,
+    AppColorsTheme colors,
   ) {
     if (tasks.isEmpty) {
-      return _buildEmptyState('No archived recurring tasks', isDark);
+      return _buildEmptyState('No archived recurring tasks', colors);
     }
 
     return ListView.builder(
@@ -154,7 +149,7 @@ class _ArchivedItemsScreenState extends State<ArchivedItemsScreen>
           title: task.name,
           subtitle: 'Recurring task',
           icon: Icons.event_repeat_rounded,
-          iconColor: Colors.purple,
+          iconColor: CategoryPalette.of(context)[2],
           onRestore: () => _restoreRecurringTask(task, state),
           onDelete: () => _confirmDeleteRecurringTask(task, state),
         );
@@ -162,7 +157,7 @@ class _ArchivedItemsScreenState extends State<ArchivedItemsScreen>
     );
   }
 
-  Widget _buildEmptyState(String message, bool isDark) {
+  Widget _buildEmptyState(String message, AppColorsTheme colors) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -170,14 +165,14 @@ class _ArchivedItemsScreenState extends State<ArchivedItemsScreen>
           Icon(
             Icons.archive_outlined,
             size: 64,
-            color: (isDark ? AppColors.textMuted : LightColors.textMuted).withAlpha(100),
+            color: colors.textMuted.withAlpha(100),
           ),
           const SizedBox(height: 16),
           Text(
             message,
             style: TextStyle(
               fontSize: 16,
-              color: isDark ? AppColors.textSecondary : LightColors.textSecondary,
+              color: colors.textSecondary,
             ),
           ),
         ],
@@ -243,7 +238,7 @@ class _ArchivedItemsScreenState extends State<ArchivedItemsScreen>
               ),
               TextButton(
                 onPressed: () => Navigator.pop(context, true),
-                child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                child: Text('Delete', style: TextStyle(color: context.colors.danger)),
               ),
             ],
           ),
@@ -272,19 +267,16 @@ class _ArchivedItemCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = isDark ? AppColors.surface : LightColors.surface;
-    final textPrimary = isDark ? AppColors.textPrimary : LightColors.textPrimary;
-    final textSecondary = isDark ? AppColors.textSecondary : LightColors.textSecondary;
+    final colors = context.colors;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: cardColor,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isDark ? AppColors.glassBorder : LightColors.glassBorder,
+          color: colors.glassBorder,
         ),
       ),
       child: Row(
@@ -311,7 +303,7 @@ class _ArchivedItemCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    color: textPrimary,
+                    color: colors.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -319,7 +311,7 @@ class _ArchivedItemCard extends StatelessWidget {
                   subtitle,
                   style: TextStyle(
                     fontSize: 12,
-                    color: textSecondary,
+                    color: colors.textSecondary,
                   ),
                 ),
               ],
@@ -329,13 +321,13 @@ class _ArchivedItemCard extends StatelessWidget {
           // Actions
           IconButton(
             icon: const Icon(Icons.restore_rounded),
-            color: AppColors.primary,
+            color: colors.primary,
             tooltip: 'Restore',
             onPressed: onRestore,
           ),
           IconButton(
             icon: const Icon(Icons.delete_forever_rounded),
-            color: Colors.red,
+            color: colors.danger,
             tooltip: 'Delete permanently',
             onPressed: onDelete,
           ),

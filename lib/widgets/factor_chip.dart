@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../core/theme/theme.dart';
 import '../models/growth_area.dart';
 
-/// Selectable chip for factors (Knowledge, Skills, Attributes)
+/// Selectable chip for factors (Knowledge, Skills, Attributes, Process, Resource)
 class FactorChip extends StatelessWidget {
   final Factor factor;
   final bool isSelected;
@@ -17,18 +17,19 @@ class FactorChip extends StatelessWidget {
     this.showGap = false,
   });
 
-  Color get typeColor {
+  Color _typeColor(BuildContext context) {
+    final colors = context.colors;
     switch (factor.type) {
       case FactorType.knowledge:
-        return AppColors.info;
+        return colors.info;
       case FactorType.skill:
-        return AppColors.success;
+        return colors.success;
       case FactorType.attribute:
-        return AppColors.warning;
+        return colors.warning;
       case FactorType.process:
-        return AppColors.primary;
+        return colors.primary;
       case FactorType.resource:
-        return AppColors.danger;
+        return colors.accent;
     }
   }
 
@@ -49,18 +50,20 @@ class FactorChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+    final typeColor = _typeColor(context);
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+        duration: AppMotion.standard,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected 
-              ? typeColor.withValues(alpha: 0.2) 
-              : AppColors.surfaceLight,
-          borderRadius: BorderRadius.circular(20),
+          color: isSelected
+              ? typeColor.withValues(alpha: 0.2)
+              : colors.surfaceVariant,
+          borderRadius: BorderRadius.circular(AppRadius.full),
           border: Border.all(
-            color: isSelected ? typeColor : AppColors.glassBorder,
+            color: isSelected ? typeColor : colors.glassBorder,
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -70,7 +73,7 @@ class FactorChip extends StatelessWidget {
             Icon(
               typeIcon,
               size: 16,
-              color: isSelected ? typeColor : AppColors.textMuted,
+              color: isSelected ? typeColor : colors.textMuted,
             ),
             const SizedBox(width: 6),
             Text(
@@ -78,7 +81,7 @@ class FactorChip extends StatelessWidget {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                color: isSelected ? typeColor : AppColors.textSecondary,
+                color: isSelected ? typeColor : colors.textSecondary,
               ),
             ),
             if (showGap && factor.gap > 0) ...[
@@ -86,19 +89,17 @@ class FactorChip extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: factor.needsFocus 
-                      ? AppColors.danger.withValues(alpha: 0.2) 
-                      : AppColors.warning.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(8),
+                  color: factor.needsFocus
+                      ? colors.danger.withValues(alpha: 0.2)
+                      : colors.warning.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
                 ),
                 child: Text(
                   '-${factor.gap}',
                   style: TextStyle(
                     fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: factor.needsFocus 
-                        ? AppColors.danger 
-                        : AppColors.warning,
+                    fontWeight: FontWeight.w700,
+                    color: factor.needsFocus ? colors.danger : colors.warning,
                   ),
                 ),
               ),
@@ -123,18 +124,19 @@ class FactorTypeChip extends StatelessWidget {
     this.onTap,
   });
 
-  Color get typeColor {
+  Color _typeColor(BuildContext context) {
+    final colors = context.colors;
     switch (type) {
       case FactorType.knowledge:
-        return AppColors.info;
+        return colors.info;
       case FactorType.skill:
-        return AppColors.success;
+        return colors.success;
       case FactorType.attribute:
-        return AppColors.warning;
+        return colors.warning;
       case FactorType.process:
-        return AppColors.primary;
+        return colors.primary;
       case FactorType.resource:
-        return AppColors.danger;
+        return colors.accent;
     }
   }
 
@@ -155,16 +157,18 @@ class FactorTypeChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+    final typeColor = _typeColor(context);
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+        duration: AppMotion.standard,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
           color: isSelected ? typeColor : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppRadius.lg),
           border: Border.all(
-            color: isSelected ? typeColor : AppColors.glassBorder,
+            color: isSelected ? typeColor : colors.glassBorder,
             width: 1.5,
           ),
         ),
@@ -173,7 +177,7 @@ class FactorTypeChip extends StatelessWidget {
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
-            color: isSelected ? Colors.white : AppColors.textSecondary,
+            color: isSelected ? colors.onPrimary : colors.textSecondary,
           ),
         ),
       ),

@@ -1,15 +1,13 @@
-import 'dart:io';
 import 'dart:typed_data';
-import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
+import 'package:printing/printing.dart';
 import 'package:intl/intl.dart';
 
 import '../models/reflection.dart';
 import '../models/reflection_group.dart';
 import '../models/experiment.dart';
+import '../models/growth_area.dart';
 import '../providers/app_state.dart';
 
 class PdfExportService {
@@ -87,7 +85,7 @@ class PdfExportService {
   static pw.Widget _buildReflectionSection(Reflection reflection, int cycleNumber, List<Experiment> experiments, AppState state) {
     final linkedFactors = reflection.linkedFactorIds
         .map((id) => state.factors.where((f) => f.id == id).firstOrNull)
-        .whereType<dynamic>()
+        .whereType<Factor>()
         .toList();
 
     return pw.Container(
@@ -105,7 +103,7 @@ class PdfExportService {
           pw.SizedBox(height: 10),
           
           if (linkedFactors.isNotEmpty) ...[
-            pw.Text('Linked Factors: ${linkedFactors.map((f) => f.title).join(', ')}', 
+            pw.Text('Linked Factors: ${linkedFactors.map((f) => f.name).join(', ')}',
               style: pw.TextStyle(fontSize: 10, fontStyle: pw.FontStyle.italic, color: PdfColors.grey700)),
             pw.SizedBox(height: 10),
           ],
@@ -143,10 +141,6 @@ class PdfExportService {
   }
 
   static Future<void> _sharePdf(Uint8List bytes, String fileName) async {
-    final directory = await getTemporaryDirectory();
-    final file = File('${directory.path}/$fileName');
-    await file.writeAsBytes(bytes);
-
-    await Share.shareXFiles([XFile(file.path)], text: 'My Reflection Cycle Export');
+    await Printing.sharePdf(bytes: bytes, filename: fileName);
   }
 }

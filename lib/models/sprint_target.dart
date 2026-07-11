@@ -39,7 +39,7 @@ class SprintTarget extends HiveObject {
   @HiveField(7)
   List<String> linkedFactorIds;
 
-  @HiveField(8)
+  @HiveField(8, defaultValue: false)
   bool isFailed;
 
   @HiveField(9)
@@ -74,4 +74,3 @@ class SprintTarget extends HiveObject {
   String get durationLabel => 
       duration == SprintDuration.thirtyDays ? '30 Days' : '14 Days';
 }
-

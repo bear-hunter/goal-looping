@@ -46,9 +46,10 @@ class _ShimmerLoadingState extends State<ShimmerLoading>
   @override
   Widget build(BuildContext context) {
     if (!widget.isLoading) return widget.child;
+    final colors = context.colors;
 
-    final baseColor = widget.baseColor ?? AppColors.surfaceLight;
-    final highlightColor = widget.highlightColor ?? AppColors.surface;
+    final baseColor = widget.baseColor ?? colors.surfaceLight;
+    final highlightColor = widget.highlightColor ?? colors.surface;
 
     return AnimatedBuilder(
       animation: _animation,
@@ -58,16 +59,8 @@ class _ShimmerLoadingState extends State<ShimmerLoading>
             return LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
-                baseColor,
-                highlightColor,
-                baseColor,
-              ],
-              stops: [
-                0.0,
-                0.5 + (_animation.value * 0.25),
-                1.0,
-              ],
+              colors: [baseColor, highlightColor, baseColor],
+              stops: [0.0, 0.5 + (_animation.value * 0.25), 1.0],
               transform: _SlidingGradientTransform(_animation.value),
             ).createShader(bounds);
           },
@@ -105,12 +98,13 @@ class SkeletonBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Container(
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: AppColors.surfaceLight,
-        borderRadius: borderRadius ?? BorderRadius.circular(8),
+        color: colors.surfaceLight,
+        borderRadius: borderRadius ?? BorderRadius.circular(AppRadius.sm),
       ),
     );
   }
@@ -122,25 +116,36 @@ class SkeletonTaskCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return ShimmerLoading(
       child: Container(
         padding: const EdgeInsets.all(16),
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.glassBorder),
+          color: colors.surface,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(color: colors.glassBorder),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                SkeletonBox(width: 24, height: 24, borderRadius: BorderRadius.circular(6)),
+                SkeletonBox(
+                  width: 24,
+                  height: 24,
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                ),
                 const SizedBox(width: 12),
-                const Expanded(child: SkeletonBox(width: double.infinity, height: 20)),
+                const Expanded(
+                  child: SkeletonBox(width: double.infinity, height: 20),
+                ),
                 const SizedBox(width: 12),
-                SkeletonBox(width: 60, height: 24, borderRadius: BorderRadius.circular(12)),
+                SkeletonBox(
+                  width: 60,
+                  height: 24,
+                  borderRadius: BorderRadius.circular(AppRadius.full),
+                ),
               ],
             ),
             const SizedBox(height: 12),
@@ -150,9 +155,17 @@ class SkeletonTaskCard extends StatelessWidget {
             const SizedBox(height: 16),
             Row(
               children: [
-                SkeletonBox(width: 80, height: 32, borderRadius: BorderRadius.circular(8)),
+                SkeletonBox(
+                  width: 80,
+                  height: 32,
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                ),
                 const SizedBox(width: 8),
-                SkeletonBox(width: 80, height: 32, borderRadius: BorderRadius.circular(8)),
+                SkeletonBox(
+                  width: 80,
+                  height: 32,
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                ),
               ],
             ),
           ],
@@ -168,18 +181,23 @@ class SkeletonHabitCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return ShimmerLoading(
       child: Container(
         padding: const EdgeInsets.all(16),
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.glassBorder),
+          color: colors.surface,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(color: colors.glassBorder),
         ),
         child: Row(
           children: [
-            SkeletonBox(width: 48, height: 48, borderRadius: BorderRadius.circular(12)),
+            SkeletonBox(
+              width: 48,
+              height: 48,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
             const SizedBox(width: 16),
             Expanded(
               child: Column(
@@ -191,7 +209,11 @@ class SkeletonHabitCard extends StatelessWidget {
                 ],
               ),
             ),
-            SkeletonBox(width: 40, height: 40, borderRadius: BorderRadius.circular(20)),
+            SkeletonBox(
+              width: 40,
+              height: 40,
+              borderRadius: BorderRadius.circular(AppRadius.full),
+            ),
           ],
         ),
       ),
@@ -210,7 +232,6 @@ class SkeletonList extends StatelessWidget {
     required this.itemBuilder,
   });
 
-  /// Factory for task list skeleton
   factory SkeletonList.tasks({int count = 3}) {
     return SkeletonList(
       itemCount: count,
@@ -218,7 +239,6 @@ class SkeletonList extends StatelessWidget {
     );
   }
 
-  /// Factory for habit list skeleton
   factory SkeletonList.habits({int count = 3}) {
     return SkeletonList(
       itemCount: count,
@@ -243,14 +263,15 @@ class SkeletonStats extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return ShimmerLoading(
       child: Container(
         padding: const EdgeInsets.all(20),
         margin: const EdgeInsets.symmetric(horizontal: 16),
         decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.glassBorder),
+          color: colors.surface,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(color: colors.glassBorder),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -267,7 +288,11 @@ class SkeletonStats extends StatelessWidget {
   Widget _buildStatColumn() {
     return Column(
       children: [
-        SkeletonBox(width: 40, height: 40, borderRadius: BorderRadius.circular(20)),
+        SkeletonBox(
+          width: 40,
+          height: 40,
+          borderRadius: BorderRadius.circular(AppRadius.full),
+        ),
         const SizedBox(height: 8),
         const SkeletonBox(width: 60, height: 16),
         const SizedBox(height: 4),

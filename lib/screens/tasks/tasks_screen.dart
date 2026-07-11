@@ -75,7 +75,7 @@ class _TasksScreenState extends State<TasksScreen> {
                 context,
                 MaterialPageRoute(builder: (_) => const CollectTaskScreen()),
               ),
-              backgroundColor: AppColors.primary,
+              backgroundColor: colors.primary,
               child: const Icon(Icons.add_rounded),
             ).animate().scale(delay: 300.ms, duration: 200.ms),
             body: CustomScrollView(
@@ -102,7 +102,7 @@ class _TasksScreenState extends State<TasksScreen> {
                                 ? Icons.help_rounded
                                 : Icons.help_outline_rounded,
                             color: _showDecisionHelper
-                                ? AppColors.primary
+                                ? colors.primary
                                 : colors.textMuted,
                           ),
                           tooltip: 'Decision Helper',
@@ -150,7 +150,7 @@ class _TasksScreenState extends State<TasksScreen> {
                   title: 'Focus',
                   subtitle: 'Important & Urgent → Do now',
                   icon: Icons.local_fire_department_rounded,
-                  color: AppColors.danger,
+                  color: colors.danger,
                   tasks: focusTasks,
                   quadrant: EisenhowerQuadrant.focus,
                 ),
@@ -163,7 +163,7 @@ class _TasksScreenState extends State<TasksScreen> {
                   title: 'Schedule',
                   subtitle: 'Important & Not Urgent → Plan it',
                   icon: Icons.calendar_today_rounded,
-                  color: AppColors.primary,
+                  color: colors.primary,
                   tasks: scheduleTasks,
                   quadrant: EisenhowerQuadrant.schedule,
                 ),
@@ -176,7 +176,7 @@ class _TasksScreenState extends State<TasksScreen> {
                   title: 'Branch',
                   subtitle: 'Not Important & Urgent → Delegate/batch',
                   icon: Icons.call_split_rounded,
-                  color: AppColors.warning,
+                  color: colors.warning,
                   tasks: branchTasks,
                   quadrant: EisenhowerQuadrant.branch,
                 ),
@@ -301,10 +301,7 @@ class _TasksScreenState extends State<TasksScreen> {
                   task: task,
                   color: color,
                   colors: colors,
-                  onComplete: () {
-                    task.complete();
-                    state.updateTask(task);
-                  },
+                  onComplete: () => state.toggleTaskComplete(task.id),
                   onChangeQuadrant: (newQuadrant) {
                     task.quadrant = newQuadrant;
                     state.updateTask(task);
@@ -350,14 +347,14 @@ class _DecisionHelperCard extends StatelessWidget {
             colors: colors,
             question: '"What happens if I don\'t do this today?"',
             answer: 'Major negative consequences → It\'s urgent',
-            color: AppColors.danger,
+            color: colors.danger,
           ),
           const SizedBox(height: 8),
           _QuestionRow(
             colors: colors,
             question: '"What happens if I never do this?"',
             answer: 'Derails long-term goals → It\'s important',
-            color: AppColors.primary,
+            color: colors.primary,
           ),
         ],
       ),
@@ -447,13 +444,13 @@ class _TaskTile extends StatelessWidget {
                   width: 28,
                   height: 28,
                   decoration: BoxDecoration(
-                    color: AppColors.danger.withAlpha(20),
+                    color: colors.danger.withAlpha(20),
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.delete_outline_rounded,
                     size: 16,
-                    color: AppColors.danger,
+                    color: colors.danger,
                   ),
                 ),
               )
@@ -531,7 +528,7 @@ class _TaskTile extends StatelessWidget {
               title: 'Focus',
               subtitle: 'Important & Urgent',
               icon: Icons.local_fire_department_rounded,
-              color: AppColors.danger,
+              color: colors.danger,
               isSelected: task.quadrant == EisenhowerQuadrant.focus,
               onTap: () {
                 onChangeQuadrant(EisenhowerQuadrant.focus);
@@ -543,7 +540,7 @@ class _TaskTile extends StatelessWidget {
               title: 'Schedule',
               subtitle: 'Important & Not Urgent',
               icon: Icons.calendar_today_rounded,
-              color: AppColors.primary,
+              color: colors.primary,
               isSelected: task.quadrant == EisenhowerQuadrant.schedule,
               onTap: () {
                 onChangeQuadrant(EisenhowerQuadrant.schedule);
@@ -555,7 +552,7 @@ class _TaskTile extends StatelessWidget {
               title: 'Branch',
               subtitle: 'Not Important & Urgent',
               icon: Icons.call_split_rounded,
-              color: AppColors.warning,
+              color: colors.warning,
               isSelected: task.quadrant == EisenhowerQuadrant.branch,
               onTap: () {
                 onChangeQuadrant(EisenhowerQuadrant.branch);

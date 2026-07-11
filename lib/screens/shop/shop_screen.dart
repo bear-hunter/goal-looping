@@ -21,25 +21,24 @@ class ShopScreen extends StatelessWidget {
       builder: (context, data, child) {
         final userCoins = data.coins;
         final unlockedIds = data.unlockedIds;
-        final isDark = Theme.of(context).brightness == Brightness.dark;
-        final bgColor = isDark ? AppColors.background : LightColors.background;
-        final textPrimary = isDark
-            ? AppColors.textPrimary
-            : LightColors.textPrimary;
+        final colors = context.colors;
 
         return Scaffold(
-          backgroundColor: bgColor,
+          backgroundColor: colors.background,
           appBar: AppBar(
             backgroundColor: Colors.transparent,
             elevation: 0,
             title: Row(
               children: [
                 const Text('🌱 '),
-                Text('Tree Nursery', style: TextStyle(color: textPrimary)),
+                Text(
+                  'Tree Nursery',
+                  style: TextStyle(color: colors.textPrimary),
+                ),
               ],
             ),
             leading: IconButton(
-              icon: Icon(Icons.arrow_back_rounded, color: textPrimary),
+              icon: Icon(Icons.arrow_back_rounded, color: colors.textPrimary),
               onPressed: () => Navigator.pop(context),
             ),
             actions: [
@@ -50,7 +49,7 @@ class ShopScreen extends StatelessWidget {
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.warning.withAlpha(30),
+                  color: colors.warning.withAlpha(30),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Row(
@@ -61,7 +60,7 @@ class ShopScreen extends StatelessWidget {
                       '$userCoins',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: AppColors.warning,
+                        color: colors.warning,
                       ),
                     ),
                   ],
@@ -78,9 +77,9 @@ class ShopScreen extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: AppColors.success.withAlpha(20),
+                    color: colors.success.withAlpha(20),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.success.withAlpha(50)),
+                    border: Border.all(color: colors.success.withAlpha(50)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -90,14 +89,14 @@ class ShopScreen extends StatelessWidget {
                           Icon(
                             Icons.info_outline_rounded,
                             size: 18,
-                            color: AppColors.success,
+                            color: colors.success,
                           ),
                           const SizedBox(width: 8),
                           Text(
                             'Tree Life Cycle',
                             style: TextStyle(
                               fontWeight: FontWeight.w600,
-                              color: AppColors.textPrimary,
+                              color: colors.textPrimary,
                             ),
                           ),
                         ],
@@ -107,7 +106,7 @@ class ShopScreen extends StatelessWidget {
                         'Each species grows through 7 stages:\nSeed → Sprout → Seedling → Sapling → Mature → Decline → Snag',
                         style: TextStyle(
                           fontSize: 12,
-                          color: AppColors.textSecondary,
+                          color: colors.textSecondary,
                         ),
                       ),
                     ],
@@ -150,6 +149,7 @@ class ShopScreen extends StatelessWidget {
   }
 
   void _purchaseSpecies(BuildContext context, TreeDesign design) {
+    final colors = context.colors;
     final state = context.read<AppState>();
     if (design.cost == 0) return;
 
@@ -157,7 +157,7 @@ class ShopScreen extends StatelessWidget {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Not enough coins! Need ${design.cost} 🪙'),
-          backgroundColor: AppColors.danger,
+          backgroundColor: colors.danger,
         ),
       );
       return;
@@ -166,7 +166,7 @@ class ShopScreen extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surface,
+        backgroundColor: colors.surface,
         title: Text('Unlock ${design.name}?'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -175,26 +175,23 @@ class ShopScreen extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               design.description,
-              style: TextStyle(color: AppColors.textSecondary),
+              style: TextStyle(color: colors.textSecondary),
             ),
             const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppColors.surfaceLight,
+                color: colors.surfaceLight,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.park_rounded, size: 16, color: AppColors.success),
+                  Icon(Icons.park_rounded, size: 16, color: colors.success),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'Mature: ${design.matureDescription}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textMuted,
-                      ),
+                      style: TextStyle(fontSize: 12, color: colors.textMuted),
                     ),
                   ),
                 ],
@@ -211,7 +208,7 @@ class ShopScreen extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.warning,
+                    color: colors.warning,
                   ),
                 ),
               ],
@@ -225,13 +222,25 @@ class ShopScreen extends StatelessWidget {
           ),
           ElevatedButton(
             onPressed: () {
-              state.userStats.spendCoins(design.cost);
-              state.userStats.unlockBadge('tree_${design.id}');
+              final purchased = state.purchaseTreeDesign(
+                designId: design.id,
+                cost: design.cost,
+              );
+              if (!purchased) {
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Not enough coins! Need ${design.cost} 🪙'),
+                    backgroundColor: colors.danger,
+                  ),
+                );
+                return;
+              }
               Navigator.pop(ctx);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text('🌱 Unlocked ${design.name}!'),
-                  backgroundColor: AppColors.success,
+                  backgroundColor: colors.success,
                 ),
               );
             },
@@ -258,30 +267,23 @@ class _SpeciesCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final surfaceLight = isDark
-        ? AppColors.surfaceLight
-        : LightColors.surfaceLight;
-    final glassBorder = isDark
-        ? AppColors.glassBorder
-        : LightColors.glassBorder;
-    final textPrimary = isDark
-        ? AppColors.textPrimary
-        : LightColors.textPrimary;
+    final colors = context.colors;
 
     return GestureDetector(
       onTap: isUnlocked ? null : onPurchase,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isUnlocked ? AppColors.success.withAlpha(15) : surfaceLight,
+          color: isUnlocked
+              ? colors.success.withAlpha(15)
+              : colors.surfaceLight,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isUnlocked
-                ? AppColors.success.withAlpha(100)
+                ? colors.success.withAlpha(100)
                 : canAfford
-                ? AppColors.warning.withAlpha(100)
-                : glassBorder,
+                ? colors.warning.withAlpha(100)
+                : colors.glassBorder,
             width: isUnlocked ? 2 : 1,
           ),
         ),
@@ -293,7 +295,10 @@ class _SpeciesCard extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               design.name,
-              style: TextStyle(fontWeight: FontWeight.w600, color: textPrimary),
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: colors.textPrimary,
+              ),
             ),
             const SizedBox(height: 4),
             Text(design.emoji, style: const TextStyle(fontSize: 20)),
@@ -305,7 +310,7 @@ class _SpeciesCard extends StatelessWidget {
                   vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.success.withAlpha(30),
+                  color: colors.success.withAlpha(30),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -313,7 +318,7 @@ class _SpeciesCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.success,
+                    color: colors.success,
                   ),
                 ),
               )
@@ -327,9 +332,7 @@ class _SpeciesCard extends StatelessWidget {
                     '${design.cost}',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: canAfford
-                          ? AppColors.warning
-                          : AppColors.textMuted,
+                      color: canAfford ? colors.warning : colors.textMuted,
                     ),
                   ),
                 ],

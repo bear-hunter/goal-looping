@@ -30,11 +30,13 @@ class UserStatsAdapter extends TypeAdapter<UserStats> {
       actionsToday: fields[10] as int,
       lastResetDate: fields[11] as DateTime?,
       lastReflectionAt: fields[12] as DateTime?,
-      reminderFrequency: fields[13] as ReflectionReminderFrequency,
-      totalTasksCompleted: fields[14] as int,
-      priorityTasksCompleted: fields[15] as int,
-      backlogTasksCompleted: fields[16] as int,
-      tasksCompletedToday: fields[17] as int,
+      reminderFrequency: fields[13] == null
+          ? ReflectionReminderFrequency.daily
+          : fields[13] as ReflectionReminderFrequency,
+      totalTasksCompleted: fields[14] == null ? 0 : fields[14] as int,
+      priorityTasksCompleted: fields[15] == null ? 0 : fields[15] as int,
+      backlogTasksCompleted: fields[16] == null ? 0 : fields[16] as int,
+      tasksCompletedToday: fields[17] == null ? 0 : fields[17] as int,
       lastTaskCompletionReset: fields[18] as DateTime?,
     );
   }

@@ -12,17 +12,15 @@ class AuditScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? AppColors.background : LightColors.background;
-    final textPrimary = isDark ? AppColors.textPrimary : LightColors.textPrimary;
+    final colors = context.colors;
 
     return Scaffold(
-      backgroundColor: bgColor,
+      backgroundColor: colors.background,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_rounded, color: textPrimary),
+          icon: Icon(Icons.arrow_back_rounded, color: colors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -58,13 +56,13 @@ class AuditScreen extends StatelessWidget {
                           children: [
                             Icon(
                               Icons.lightbulb_rounded,
-                              color: AppColors.warning,
+                              color: colors.warning,
                             ),
                             const SizedBox(width: 12),
                             Text(
                               'Focus Suggestion',
                               style: Theme.of(context).textTheme.titleMedium
-                                  ?.copyWith(color: AppColors.warning),
+                                  ?.copyWith(color: colors.warning),
                             ),
                           ],
                         ),
@@ -73,7 +71,7 @@ class AuditScreen extends StatelessWidget {
                           'Your biggest gap is in "${state.biggestGapFactor!.name}" (${state.biggestGapFactor!.gap} points). '
                           'This should be the subject of your next Kolb\'s Cycle.',
                           style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(color: AppColors.textPrimary),
+                              ?.copyWith(color: colors.textPrimary),
                         ),
                       ],
                     ),
@@ -87,13 +85,13 @@ class AuditScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Divider(color: AppColors.divider, thickness: 1),
+                      Divider(color: colors.divider, thickness: 1),
                       const SizedBox(height: 16),
                       Row(
                         children: [
                           Icon(
                             Icons.analytics_rounded,
-                            color: AppColors.info,
+                            color: colors.info,
                             size: 20,
                           ),
                           const SizedBox(width: 12),
@@ -119,13 +117,13 @@ class AuditScreen extends StatelessWidget {
                             Icon(
                               Icons.psychology_rounded,
                               size: 48,
-                              color: AppColors.textMuted.withValues(alpha: 0.5),
+                              color: colors.textMuted.withValues(alpha: 0.5),
                             ),
                             const SizedBox(height: 12),
                             Text(
                               'Add factors in Strategy to see gap analysis',
                               style: Theme.of(context).textTheme.bodyMedium
-                                  ?.copyWith(color: AppColors.textMuted),
+                                  ?.copyWith(color: colors.textMuted),
                               textAlign: TextAlign.center,
                             ),
                           ],
@@ -164,21 +162,21 @@ class AuditScreen extends StatelessWidget {
                                     _LevelChip(
                                       label: 'Target',
                                       value: factor.targetLevel,
-                                      color: AppColors.primary,
+                                      color: colors.primary,
                                     ),
                                     const SizedBox(width: 8),
                                     _LevelChip(
                                       label: 'Current',
                                       value: factor.currentLevel,
-                                      color: AppColors.success,
+                                      color: colors.success,
                                     ),
                                     const SizedBox(width: 8),
                                     _LevelChip(
                                       label: 'Gap',
                                       value: factor.gap,
                                       color: factor.needsFocus
-                                          ? AppColors.danger
-                                          : AppColors.warning,
+                                          ? colors.danger
+                                          : colors.warning,
                                     ),
                                   ],
                                 ),
@@ -187,7 +185,7 @@ class AuditScreen extends StatelessWidget {
                           ),
                           Icon(
                             Icons.edit_rounded,
-                            color: AppColors.textMuted,
+                            color: colors.textMuted,
                             size: 20,
                           ),
                         ],
@@ -204,7 +202,7 @@ class AuditScreen extends StatelessWidget {
                     children: [
                       Icon(
                         Icons.check_circle_rounded,
-                        color: AppColors.success,
+                        color: colors.success,
                         size: 20,
                       ),
                       const SizedBox(width: 12),
@@ -226,7 +224,7 @@ class AuditScreen extends StatelessWidget {
                         child: _StatCard(
                           value: '${state.completedTasks.length}',
                           label: 'Tasks Done',
-                          color: AppColors.success,
+                          color: colors.success,
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -235,7 +233,7 @@ class AuditScreen extends StatelessWidget {
                           value:
                               '${state.habits.where((h) => h.currentStreak > 0).length}',
                           label: 'Active Streaks',
-                          color: AppColors.warning,
+                          color: colors.warning,
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -243,7 +241,7 @@ class AuditScreen extends StatelessWidget {
                         child: _StatCard(
                           value: '${state.reflections.length}',
                           label: 'Reflections',
-                          color: AppColors.info,
+                          color: colors.info,
                         ),
                       ),
                     ],
@@ -262,13 +260,11 @@ class AuditScreen extends StatelessWidget {
   void _showEditDialog(BuildContext context, factor, AppState state) {
     int target = factor.targetLevel;
     int current = factor.currentLevel;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final surfaceColor = isDark ? AppColors.surface : LightColors.surface;
-    final textMuted = isDark ? AppColors.textMuted : LightColors.textMuted;
+    final colors = context.colors;
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: surfaceColor,
+      backgroundColor: colors.surface,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setModalState) => Padding(
           padding: const EdgeInsets.all(20),
@@ -280,7 +276,7 @@ class AuditScreen extends StatelessWidget {
               const SizedBox(height: 20),
               Text(
                 'Target Level: $target',
-                style: TextStyle(color: textMuted),
+                style: TextStyle(color: colors.textMuted),
               ),
               Slider(
                 value: target.toDouble(),
@@ -291,7 +287,7 @@ class AuditScreen extends StatelessWidget {
               ),
               Text(
                 'Current Level: $current',
-                style: TextStyle(color: textMuted),
+                style: TextStyle(color: colors.textMuted),
               ),
               Slider(
                 value: current.toDouble(),
@@ -390,7 +386,7 @@ class _StatCard extends StatelessWidget {
               label,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 fontSize: 12,
-                color: AppColors.textMuted,
+                color: context.colors.textMuted,
               ),
               textAlign: TextAlign.center,
             ),

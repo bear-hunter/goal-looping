@@ -2,17 +2,18 @@ import 'package:flutter/material.dart';
 
 import '../core/theme/theme.dart';
 import '../models/reflection.dart';
-import 'glass_card.dart';
 
 /// Manual entry form for Kolb's reflection - Mobile-First Design
-/// 
-/// Architecture: 12 individual pages, one question each
-/// - Page controller managed by parent (NewReflectionSheet)
-/// - Each page has full-screen text input
-/// - Returns current page widget via getPage(index)
+///
+/// Architecture: 11 individual pages, one question each. Owns its own
+/// [PageView]; the parent supplies the [PageController] and step callbacks.
+/// Each page is a full-screen text input.
 class ManualReflectionForm extends StatefulWidget {
   final String? targetFactorId;
   final String? previousExperimentId;
+  final bool isFollowUp;
+  final Reflection? initialReflection;
+  final String initialExperimentText;
   final Function(Reflection) onSave;
   final PageController? pageController;
   final Function(int)? onPageChanged;
@@ -22,6 +23,9 @@ class ManualReflectionForm extends StatefulWidget {
     super.key,
     this.targetFactorId,
     this.previousExperimentId,
+    this.isFollowUp = false,
+    this.initialReflection,
+    this.initialExperimentText = '',
     required this.onSave,
     this.pageController,
     this.onPageChanged,
@@ -29,7 +33,15 @@ class ManualReflectionForm extends StatefulWidget {
   });
 
   /// Total number of pages in Manual Entry mode
-  static const int totalPages = 12;
+  static const int totalPages = 11;
+
+  /// Kolb phase label for a page index — pure, drives the step subtitle.
+  static String getPhaseName(int index) {
+    if (index <= 1) return 'Experience';
+    if (index <= 7) return 'Reflection';
+    if (index <= 9) return 'Abstraction';
+    return 'Experiment';
+  }
 
   @override
   State<ManualReflectionForm> createState() => ManualReflectionFormState();
@@ -48,13 +60,24 @@ class ManualReflectionFormState extends State<ManualReflectionForm> {
   final _abstractionController = TextEditingController();
   final _crossLifePatternsController = TextEditingController();
   final _experimentsController = TextEditingController();
-  
-  bool _isFollowUp = false;
 
   @override
   void initState() {
     super.initState();
-    _isFollowUp = widget.previousExperimentId != null;
+    final reflection = widget.initialReflection;
+    if (reflection == null) return;
+
+    _experienceController.text = reflection.experience;
+    _marginalGainController.text = reflection.marginalGainDescription ?? '';
+    _eventSequenceController.text = reflection.eventSequence ?? '';
+    _feelingsController.text = reflection.feelings ?? '';
+    _difficultiesController.text = reflection.difficulties ?? '';
+    _challengeResponseController.text = reflection.challengeResponse ?? '';
+    _triggersController.text = reflection.triggers ?? '';
+    _whyBehaviorController.text = reflection.whyBehavior ?? '';
+    _abstractionController.text = reflection.abstraction;
+    _crossLifePatternsController.text = reflection.crossLifePatterns ?? '';
+    _experimentsController.text = widget.initialExperimentText;
   }
 
   @override
@@ -73,52 +96,34 @@ class ManualReflectionFormState extends State<ManualReflectionForm> {
     super.dispose();
   }
 
-  /// Get page content for given index (0-11)
-  Widget getPage(int index, double keyboardHeight) {
+  /// Builds page content for the given index (0-11).
+  Widget _buildPage(int index, double keyboardHeight) {
     switch (index) {
       case 0:
-        return _buildFollowUpPage(keyboardHeight);
-      case 1:
         return _buildExperiencePage(keyboardHeight);
-      case 2:
+      case 1:
         return _buildMarginalGainPage(keyboardHeight);
-      case 3:
+      case 2:
         return _buildEventSequencePage(keyboardHeight);
-      case 4:
+      case 3:
         return _buildFeelingsPage(keyboardHeight);
-      case 5:
+      case 4:
         return _buildDifficultiesPage(keyboardHeight);
-      case 6:
+      case 5:
         return _buildChallengeResponsePage(keyboardHeight);
-      case 7:
+      case 6:
         return _buildTriggersPage(keyboardHeight);
-      case 8:
+      case 7:
         return _buildWhyBehaviorPage(keyboardHeight);
-      case 9:
+      case 8:
         return _buildAbstractionPage(keyboardHeight);
-      case 10:
+      case 9:
         return _buildCrossLifePage(keyboardHeight);
-      case 11:
+      case 10:
         return _buildExperimentsPage(keyboardHeight);
       default:
         return const SizedBox.shrink();
     }
-  }
-
-  /// Get phase name for page index
-  String getPhaseName(int index) {
-    if (index <= 2) return 'Experience';
-    if (index <= 8) return 'Reflection';
-    if (index <= 10) return 'Abstraction';
-    return 'Experiment';
-  }
-
-  /// Get phase emoji for page index
-  String getPhaseEmoji(int index) {
-    if (index <= 2) return '📝';
-    if (index <= 8) return '🔍';
-    if (index <= 10) return '💡';
-    return '🧪';
   }
 
   /// Save and return the reflection data
@@ -126,19 +131,23 @@ class ManualReflectionFormState extends State<ManualReflectionForm> {
     final reflection = Reflection(
       id: '',
       experience: _experienceController.text,
-      reflection: '''
+      reflection:
+          '''
 Events: ${_eventSequenceController.text}
 Feelings: ${_feelingsController.text}
 Difficulties: ${_difficultiesController.text}
 Response: ${_challengeResponseController.text}
 Triggers: ${_triggersController.text}
 Why: ${_whyBehaviorController.text}
-'''.trim(),
+'''
+              .trim(),
       abstraction: _abstractionController.text,
-      isFollowUp: _isFollowUp,
+      isFollowUp: widget.isFollowUp,
       previousExperimentId: widget.previousExperimentId,
       targetFactorId: widget.targetFactorId,
-      linkedFactorIds: widget.targetFactorId != null ? [widget.targetFactorId!] : [],
+      linkedFactorIds: widget.targetFactorId != null
+          ? [widget.targetFactorId!]
+          : [],
       isManualEntry: true,
       marginalGainDescription: _marginalGainController.text,
       eventSequence: _eventSequenceController.text,
@@ -156,71 +165,18 @@ Why: ${_whyBehaviorController.text}
 
   @override
   Widget build(BuildContext context) {
-    // This widget is now just a state holder
-    // Pages are rendered by parent via getPage()
-    return const SizedBox.shrink();
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+    return PageView.builder(
+      controller: widget.pageController,
+      itemCount: ManualReflectionForm.totalPages,
+      onPageChanged: widget.onPageChanged,
+      itemBuilder: (context, index) => _buildPage(index, keyboardHeight),
+    );
   }
 
   // ============================================
   // PAGE BUILDERS - One question per page
   // ============================================
-
-  Widget _buildFollowUpPage(double keyboardHeight) {
-    return _buildPageLayout(
-      title: 'Is this a follow-up?',
-      subtitle: 'Are you reflecting on an experiment from a previous Kolb\'s cycle?',
-      helperText: 'Always cycle experiments from the previous Kolb\'s into your next one to ensure your marginal gains are compounding.',
-      keyboardHeight: keyboardHeight,
-      child: GlassCard(
-        onTap: () {
-          setState(() => _isFollowUp = !_isFollowUp);
-          if (widget.onChanged != null) widget.onChanged!();
-        },
-        child: Row(
-          children: [
-            Icon(Icons.replay_rounded, color: AppColors.primary, size: 28),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Follow-up from previous cycle',
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _isFollowUp ? 'Yes, this is a follow-up' : 'No, this is a new reflection',
-                    style: TextStyle(color: AppColors.textMuted, fontSize: 13),
-                  ),
-                ],
-              ),
-            ),
-            Switch(
-              value: _isFollowUp,
-              onChanged: (v) {
-                setState(() => _isFollowUp = v);
-                if (widget.onChanged != null) widget.onChanged!();
-              },
-              activeTrackColor: AppColors.primary.withAlpha(128),
-              activeThumbColor: AppColors.primary,
-            ),
-          ],
-        ),
-      ),
-      showGuidelines: true,
-      guidelines: [
-        'Process-focused - avoid reflecting on outcomes (e.g. test results)',
-        'Specific - avoid reflecting on many events at once',
-        'Recent - don\'t reflect on experiences too long ago',
-        'Concise - experience is usually one sentence',
-      ],
-    );
-  }
 
   Widget _buildExperiencePage(double keyboardHeight) {
     return _buildPageLayout(
@@ -229,7 +185,8 @@ Why: ${_whyBehaviorController.text}
       keyboardHeight: keyboardHeight,
       child: _buildExpandedTextField(
         controller: _experienceController,
-        hint: 'Describe your experience...\n\nBe specific about what happened, when, and where.',
+        hint:
+            'Describe your experience...\n\nBe specific about what happened, when, and where.',
       ),
     );
   }
@@ -238,11 +195,13 @@ Why: ${_whyBehaviorController.text}
     return _buildPageLayout(
       title: 'What would a marginal gain look like?',
       subtitle: 'What small improvement could you achieve?',
-      helperText: 'Remember that marginal gains look different at different levels of the conscious competence model.',
+      helperText:
+          'Remember that marginal gains look different at different levels of the conscious competence model.',
       keyboardHeight: keyboardHeight,
       child: _buildExpandedTextField(
         controller: _marginalGainController,
-        hint: 'e.g., Reducing decision fatigue by preparing the night before\n\nThink about small, achievable improvements.',
+        hint:
+            'e.g., Reducing decision fatigue by preparing the night before\n\nThink about small, achievable improvements.',
       ),
     );
   }
@@ -250,11 +209,13 @@ Why: ${_whyBehaviorController.text}
   Widget _buildEventSequencePage(double keyboardHeight) {
     return _buildPageLayout(
       title: 'Sequence of events',
-      subtitle: 'List and describe the sequence of events in chronological order',
+      subtitle:
+          'List and describe the sequence of events in chronological order',
       keyboardHeight: keyboardHeight,
       child: _buildExpandedTextField(
         controller: _eventSequenceController,
-        hint: 'What happened first, then next...\n\n1. First I...\n2. Then...\n3. After that...',
+        hint:
+            'What happened first, then next...\n\n1. First I...\n2. Then...\n3. After that...',
       ),
     );
   }
@@ -263,11 +224,13 @@ Why: ${_whyBehaviorController.text}
     return _buildPageLayout(
       title: 'How did you feel?',
       subtitle: 'How did you feel about the experience?',
-      helperText: 'Be specific and detailed about how you felt and when. Heightened emotions often indicate key parts of the process.',
+      helperText:
+          'Be specific and detailed about how you felt and when. Heightened emotions often indicate key parts of the process.',
       keyboardHeight: keyboardHeight,
       child: _buildExpandedTextField(
         controller: _feelingsController,
-        hint: 'Frustrated, anxious, calm, motivated...\n\nDescribe when you felt each emotion.',
+        hint:
+            'Frustrated, anxious, calm, motivated...\n\nDescribe when you felt each emotion.',
       ),
     );
   }
@@ -279,7 +242,8 @@ Why: ${_whyBehaviorController.text}
       keyboardHeight: keyboardHeight,
       child: _buildExpandedTextField(
         controller: _difficultiesController,
-        hint: 'Difficult: ...\n\nWent well: ...\n\nBarriers, obstacles, or challenges faced.',
+        hint:
+            'Difficult: ...\n\nWent well: ...\n\nBarriers, obstacles, or challenges faced.',
       ),
     );
   }
@@ -288,11 +252,13 @@ Why: ${_whyBehaviorController.text}
     return _buildPageLayout(
       title: 'Response to challenges',
       subtitle: 'How did you respond to challenges and difficulties?',
-      helperText: 'This could include mental or physical activities you used to overcome the issue. Skip if no difficulties.',
+      helperText:
+          'This could include mental or physical activities you used to overcome the issue. Skip if no difficulties.',
       keyboardHeight: keyboardHeight,
       child: _buildExpandedTextField(
         controller: _challengeResponseController,
-        hint: 'Your actions, reactions, coping strategies...\n\nHow did you try to overcome obstacles?',
+        hint:
+            'Your actions, reactions, coping strategies...\n\nHow did you try to overcome obstacles?',
       ),
     );
   }
@@ -301,11 +267,13 @@ Why: ${_whyBehaviorController.text}
     return _buildPageLayout(
       title: 'What were the triggers?',
       subtitle: 'What triggered you to feel or act the way you did?',
-      helperText: 'Triggers are cues, signs, events, actions, or exposures that made you feel or act a certain way.',
+      helperText:
+          'Triggers are cues, signs, events, actions, or exposures that made you feel or act a certain way.',
       keyboardHeight: keyboardHeight,
       child: _buildExpandedTextField(
         controller: _triggersController,
-        hint: 'Time of day, emotion, environment, person...\n\nWhat specifically triggered your reactions?',
+        hint:
+            'Time of day, emotion, environment, person...\n\nWhat specifically triggered your reactions?',
       ),
     );
   }
@@ -314,11 +282,13 @@ Why: ${_whyBehaviorController.text}
     return _buildPageLayout(
       title: 'Why did you act this way?',
       subtitle: 'Root cause analysis of your behavior',
-      helperText: 'This question challenges your metacognition (thinking about thinking). Reflect on "why", not just "what".',
+      helperText:
+          'This question challenges your metacognition (thinking about thinking). Reflect on "why", not just "what".',
       keyboardHeight: keyboardHeight,
       child: _buildExpandedTextField(
         controller: _whyBehaviorController,
-        hint: 'I think I acted this way because...\n\nDig deep into the root causes.',
+        hint:
+            'I think I acted this way because...\n\nDig deep into the root causes.',
       ),
     );
   }
@@ -327,11 +297,13 @@ Why: ${_whyBehaviorController.text}
     return _buildPageLayout(
       title: 'Habits, beliefs, and tendencies',
       subtitle: 'What patterns can you identify from your reflection?',
-      helperText: 'For example: whenever you feel overwhelmed, you tend to avoid challenges and revert to something easier.',
+      helperText:
+          'For example: whenever you feel overwhelmed, you tend to avoid challenges and revert to something easier.',
       keyboardHeight: keyboardHeight,
       child: _buildExpandedTextField(
         controller: _abstractionController,
-        hint: 'I notice that I tend to...\n\nIdentify patterns and tendencies in your behavior.',
+        hint:
+            'I notice that I tend to...\n\nIdentify patterns and tendencies in your behavior.',
       ),
       showGuidelines: true,
       guidelines: [
@@ -346,7 +318,8 @@ Why: ${_whyBehaviorController.text}
     return _buildPageLayout(
       title: 'Cross-life patterns',
       subtitle: 'Do you act similarly in other parts of your life?',
-      helperText: 'This helps identify the holistic impact of your habits and tendencies.',
+      helperText:
+          'This helps identify the holistic impact of your habits and tendencies.',
       keyboardHeight: keyboardHeight,
       child: _buildExpandedTextField(
         controller: _crossLifePatternsController,
@@ -359,7 +332,8 @@ Why: ${_whyBehaviorController.text}
     return _buildPageLayout(
       title: 'Experiments to try',
       subtitle: 'List potential solutions and actions to experiment on',
-      helperText: 'Enter one experiment per line (max 3). Keep them concise, specific, and actionable.',
+      helperText:
+          'Enter one experiment per line (max 3). Keep them concise, specific, and actionable.',
       keyboardHeight: keyboardHeight,
       child: _buildExpandedTextField(
         controller: _experimentsController,
@@ -388,6 +362,7 @@ Why: ${_whyBehaviorController.text}
     bool showGuidelines = false,
     List<String>? guidelines,
   }) {
+    final colors = context.colors;
     return SingleChildScrollView(
       padding: EdgeInsets.only(
         left: 20,
@@ -402,59 +377,60 @@ Why: ${_whyBehaviorController.text}
           // Title
           Text(
             title,
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
-              height: 1.3,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.headlineMedium?.copyWith(height: 1.3),
           ),
           const SizedBox(height: 8),
-          
+
           // Subtitle
           Text(
             subtitle,
-            style: TextStyle(
-              fontSize: 14,
-              color: AppColors.textMuted,
-            ),
+            style: TextStyle(fontSize: 14, color: colors.textMuted),
           ),
-          
+
           // Helper text
           if (helperText != null) ...[
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppColors.info.withAlpha(20),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.info.withAlpha(50)),
+                color: colors.info.withAlpha(20),
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(color: colors.info.withAlpha(50)),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.lightbulb_outline_rounded, size: 18, color: AppColors.info),
+                  Icon(
+                    Icons.lightbulb_outline_rounded,
+                    size: 18,
+                    color: colors.info,
+                  ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       helperText,
-                      style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: colors.textSecondary,
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
           ],
-          
+
           // Guidelines
           if (showGuidelines && guidelines != null) ...[
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: AppColors.surfaceLight,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.glassBorder),
+                color: colors.surfaceLight,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(color: colors.glassBorder),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -463,33 +439,38 @@ Why: ${_whyBehaviorController.text}
                     'Guidelines',
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
+                      color: colors.textPrimary,
                       fontSize: 13,
                     ),
                   ),
                   const SizedBox(height: 10),
-                  ...guidelines.map((g) => Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('• ', style: TextStyle(color: AppColors.textMuted)),
-                        Expanded(
-                          child: Text(
-                            g,
-                            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  ...guidelines.map(
+                    (g) => Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('• ', style: TextStyle(color: colors.textMuted)),
+                          Expanded(
+                            child: Text(
+                              g,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: colors.textSecondary,
+                              ),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  )),
+                  ),
                 ],
               ),
             ),
           ],
-          
+
           const SizedBox(height: 20),
-          
+
           // Main input
           child,
         ],
@@ -501,33 +482,31 @@ Why: ${_whyBehaviorController.text}
     required TextEditingController controller,
     required String hint,
   }) {
+    final colors = context.colors;
     return TextField(
       controller: controller,
       maxLines: 10,
-      style: TextStyle(
-        color: AppColors.textPrimary,
-        fontSize: 16,
-        height: 1.5,
-      ),
+      onChanged: (_) => widget.onChanged?.call(),
+      style: TextStyle(color: colors.textPrimary, fontSize: 16, height: 1.5),
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: TextStyle(
-          color: AppColors.textMuted.withAlpha(150),
+          color: colors.textMuted.withAlpha(150),
           fontSize: 15,
         ),
         filled: true,
-        fillColor: AppColors.surfaceLight,
+        fillColor: colors.surfaceLight,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: AppColors.glassBorder),
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          borderSide: BorderSide(color: colors.glassBorder),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: AppColors.glassBorder),
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          borderSide: BorderSide(color: colors.glassBorder),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: AppColors.primary, width: 2),
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          borderSide: BorderSide(color: colors.primary, width: 2),
         ),
         contentPadding: const EdgeInsets.all(18),
       ),

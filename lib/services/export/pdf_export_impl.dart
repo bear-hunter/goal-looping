@@ -1,14 +1,11 @@
-/// PDF Export Implementation (Deferred Loading)
-/// 
-/// This file is loaded on-demand when user requests PDF export.
-/// Contains the actual pdf and printing package imports.
+// Deferred PDF export implementation, loaded only when the user exports.
 
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:intl/intl.dart';
 
 import 'pdf_export_loader.dart';
@@ -20,6 +17,8 @@ import '../../models/factor.dart';
 /// Implementation of PdfExportService
 class PdfExportServiceImpl implements PdfExportService {
   String? _lastExportPath;
+  Uint8List? _lastExportBytes;
+  String? _lastExportFileName;
   
   @override
   String? get lastExportPath => _lastExportPath;
@@ -256,12 +255,14 @@ class PdfExportServiceImpl implements PdfExportService {
   
   @override
   Future<void> shareLastExport() async {
-    if (_lastExportPath == null) {
+    if (_lastExportBytes == null || _lastExportFileName == null) {
       throw StateError('No PDF has been exported yet');
     }
-    
-    final file = XFile(_lastExportPath!);
-    await Share.shareXFiles([file], text: 'Exported from Centile');
+
+    await Printing.sharePdf(
+      bytes: _lastExportBytes!,
+      filename: _lastExportFileName!,
+    );
   }
   
   // Helper methods
@@ -288,17 +289,19 @@ class PdfExportServiceImpl implements PdfExportService {
   }
   
   Future<void> _savePdf(pw.Document pdf, String fileName) async {
-    final dir = await getApplicationDocumentsDirectory();
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final file = File('${dir.path}/${fileName}_$timestamp.pdf');
-    
-    await file.writeAsBytes(await pdf.save());
-    _lastExportPath = file.path;
-    
-    // Also trigger print/share dialog
-    await Printing.sharePdf(
-      bytes: await pdf.save(),
-      filename: '$fileName.pdf',
-    );
+    final bytes = await pdf.save();
+    final exportFileName = '$fileName.pdf';
+    _lastExportBytes = bytes;
+    _lastExportFileName = exportFileName;
+
+    if (!kIsWeb) {
+      final dir = await getApplicationDocumentsDirectory();
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final file = File('${dir.path}/${fileName}_$timestamp.pdf');
+      await file.writeAsBytes(bytes);
+      _lastExportPath = file.path;
+    }
+
+    await Printing.sharePdf(bytes: bytes, filename: exportFileName);
   }
 }

@@ -74,7 +74,7 @@ class Reflection extends HiveObject {
   String? crossLifePatterns; // Similar patterns in other parts of life?
 
   // Entry mode tracking
-  @HiveField(21)
+  @HiveField(21, defaultValue: false)
   bool isManualEntry; // True = manual template, False = Gemini paste
 
   Reflection({
@@ -201,4 +201,3 @@ class Reflection extends HiveObject {
     );
   }
 }
-

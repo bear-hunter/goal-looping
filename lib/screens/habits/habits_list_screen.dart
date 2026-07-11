@@ -31,6 +31,7 @@ class _HabitsListScreenState extends State<HabitsListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Consumer<AppState>(
       builder: (context, state, _) {
         final habits = _selectedType == HabitType.build
@@ -77,12 +78,12 @@ class _HabitsListScreenState extends State<HabitsListScreen> {
                           icon: Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: AppColors.primary.withAlpha(30),
+                              color: colors.primary.withAlpha(30),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Icon(
                               Icons.add_rounded,
-                              color: AppColors.primary,
+                              color: colors.primary,
                             ),
                           ),
                         ),
@@ -91,7 +92,7 @@ class _HabitsListScreenState extends State<HabitsListScreen> {
                     const SizedBox(height: 4),
                     Text(
                       '${habits.length} ${_selectedType == HabitType.build ? 'build' : 'quit'} habits',
-                      style: TextStyle(color: AppColors.textSecondary),
+                      style: TextStyle(color: colors.textSecondary),
                     ),
                   ],
                 ),
@@ -107,13 +108,13 @@ class _HabitsListScreenState extends State<HabitsListScreen> {
                     hintText: 'Search habits...',
                     prefixIcon: Icon(
                       Icons.search_rounded,
-                      color: AppColors.textMuted,
+                      color: colors.textMuted,
                     ),
                     suffixIcon: _searchQuery.isNotEmpty
                         ? IconButton(
                             icon: Icon(
                               Icons.close_rounded,
-                              color: AppColors.textMuted,
+                              color: colors.textMuted,
                             ),
                             onPressed: () {
                               _searchController.clear();
@@ -122,7 +123,7 @@ class _HabitsListScreenState extends State<HabitsListScreen> {
                           )
                         : null,
                     filled: true,
-                    fillColor: AppColors.surfaceLight,
+                    fillColor: colors.surfaceLight,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
@@ -146,7 +147,7 @@ class _HabitsListScreenState extends State<HabitsListScreen> {
                       label: 'Build Habits',
                       icon: Icons.trending_up_rounded,
                       isSelected: _selectedType == HabitType.build,
-                      color: AppColors.success,
+                      color: colors.success,
                       count: state.buildHabits.length,
                       onTap: () =>
                           setState(() => _selectedType = HabitType.build),
@@ -156,7 +157,7 @@ class _HabitsListScreenState extends State<HabitsListScreen> {
                       label: 'Quit Habits',
                       icon: Icons.block_rounded,
                       isSelected: _selectedType == HabitType.quit,
-                      color: AppColors.danger,
+                      color: colors.danger,
                       count: state.quitHabits.length,
                       onTap: () =>
                           setState(() => _selectedType = HabitType.quit),
@@ -179,7 +180,7 @@ class _HabitsListScreenState extends State<HabitsListScreen> {
                                   ? Icons.search_off_rounded
                                   : Icons.lightbulb_outline_rounded,
                               size: 64,
-                              color: AppColors.textMuted,
+                              color: colors.textMuted,
                             ),
                             const SizedBox(height: 16),
                             Text(
@@ -187,7 +188,7 @@ class _HabitsListScreenState extends State<HabitsListScreen> {
                                   ? 'No habits match your search'
                                   : 'No ${_selectedType == HabitType.build ? 'build' : 'quit'} habits yet',
                               style: TextStyle(
-                                color: AppColors.textMuted,
+                                color: colors.textMuted,
                                 fontSize: 16,
                               ),
                             ),
@@ -245,14 +246,10 @@ class _HabitsListScreenState extends State<HabitsListScreen> {
   }
 
   void _showEditHabitDialog(BuildContext context, AppState state, Habit habit) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final surfaceColor = isDark ? AppColors.surface : LightColors.surface;
-    final textPrimary = isDark
-        ? AppColors.textPrimary
-        : LightColors.textPrimary;
-    final textSecondary = isDark
-        ? AppColors.textSecondary
-        : LightColors.textSecondary;
+    final colors = context.colors;
+    final surfaceColor = colors.surface;
+    final textPrimary = colors.textPrimary;
+    final textSecondary = colors.textSecondary;
 
     final nameController = TextEditingController(text: habit.name);
     final triggerController = TextEditingController(
@@ -342,7 +339,7 @@ class _HabitsListScreenState extends State<HabitsListScreen> {
                         hintStyle: TextStyle(color: textSecondary),
                         prefixIcon: Icon(
                           Icons.psychology_rounded,
-                          color: AppColors.primary,
+                          color: colors.primary,
                         ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
@@ -465,8 +462,9 @@ class _HabitsListScreenState extends State<HabitsListScreen> {
                               onTap: () {
                                 setModalState(() {
                                   if (selectedDays.contains(i)) {
-                                    if (selectedDays.length > 1)
+                                    if (selectedDays.length > 1) {
                                       selectedDays.remove(i);
+                                    }
                                   } else {
                                     selectedDays.add(i);
                                   }
@@ -478,12 +476,12 @@ class _HabitsListScreenState extends State<HabitsListScreen> {
                                 height: 36,
                                 decoration: BoxDecoration(
                                   color: selectedDays.contains(i)
-                                      ? AppColors.primary
+                                      ? colors.primary
                                       : Colors.transparent,
                                   borderRadius: BorderRadius.circular(8),
                                   border: Border.all(
                                     color: selectedDays.contains(i)
-                                        ? AppColors.primary
+                                        ? colors.primary
                                         : textSecondary,
                                   ),
                                 ),
@@ -719,7 +717,7 @@ class _HabitsListScreenState extends State<HabitsListScreen> {
                           );
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
+                          backgroundColor: colors.primary,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
                         child: const Text('Save Changes'),
@@ -740,17 +738,18 @@ class _HabitsListScreenState extends State<HabitsListScreen> {
     AppState state,
     Habit habit,
   ) {
+    final colors = context.colors;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surface,
+        backgroundColor: colors.surface,
         title: Text(
           'Delete Habit?',
-          style: TextStyle(color: AppColors.textPrimary),
+          style: TextStyle(color: colors.textPrimary),
         ),
         content: Text(
           'This will permanently delete "${habit.name}" and all its logs. This cannot be undone.',
-          style: TextStyle(color: AppColors.textSecondary),
+          style: TextStyle(color: colors.textSecondary),
         ),
         actions: [
           TextButton(
@@ -762,7 +761,7 @@ class _HabitsListScreenState extends State<HabitsListScreen> {
               context.read<AppState>().deleteHabit(habit.id);
               Navigator.pop(ctx);
             },
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.danger),
+            style: ElevatedButton.styleFrom(backgroundColor: colors.danger),
             child: const Text('Delete'),
           ),
         ],
@@ -791,6 +790,7 @@ class _TypeChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
@@ -798,10 +798,10 @@ class _TypeChip extends StatelessWidget {
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           decoration: BoxDecoration(
-            color: isSelected ? color.withAlpha(20) : AppColors.surfaceLight,
+            color: isSelected ? color.withAlpha(20) : colors.surfaceLight,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: isSelected ? color : AppColors.glassBorder,
+              color: isSelected ? color : colors.glassBorder,
               width: isSelected ? 2 : 1,
             ),
           ),
@@ -811,7 +811,7 @@ class _TypeChip extends StatelessWidget {
               Icon(
                 icon,
                 size: 18,
-                color: isSelected ? color : AppColors.textMuted,
+                color: isSelected ? color : colors.textMuted,
               ),
               const SizedBox(width: 8),
               Flexible(
@@ -822,7 +822,7 @@ class _TypeChip extends StatelessWidget {
                     fontWeight: isSelected
                         ? FontWeight.w600
                         : FontWeight.normal,
-                    color: isSelected ? color : AppColors.textMuted,
+                    color: isSelected ? color : colors.textMuted,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -831,7 +831,7 @@ class _TypeChip extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: isSelected ? color.withAlpha(30) : AppColors.surface,
+                  color: isSelected ? color.withAlpha(30) : colors.surface,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
@@ -839,7 +839,7 @@ class _TypeChip extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
-                    color: isSelected ? color : AppColors.textMuted,
+                    color: isSelected ? color : colors.textMuted,
                   ),
                 ),
               ),
@@ -867,6 +867,7 @@ class _HabitListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -874,7 +875,7 @@ class _HabitListTile extends StatelessWidget {
         decoration: BoxDecoration(
           border: Border(
             bottom: BorderSide(
-              color: AppColors.glassBorder.withAlpha(40),
+              color: colors.glassBorder.withAlpha(40),
               width: 0.5,
             ),
           ),
@@ -888,17 +889,17 @@ class _HabitListTile extends StatelessWidget {
               decoration: BoxDecoration(
                 color: habit.isLoggedToday
                     ? (habit.todayLog?.completed == true
-                              ? AppColors.success
-                              : AppColors.danger)
+                              ? colors.success
+                              : colors.danger)
                           .withAlpha(15)
-                    : AppColors.surfaceLight.withAlpha(80),
+                    : colors.surfaceLight.withAlpha(80),
                 borderRadius: BorderRadius.circular(6),
                 border: Border.all(
                   color: habit.isLoggedToday
                       ? (habit.todayLog?.completed == true
-                            ? AppColors.success
-                            : AppColors.danger)
-                      : AppColors.glassBorder,
+                            ? colors.success
+                            : colors.danger)
+                      : colors.glassBorder,
                   width: 1,
                 ),
               ),
@@ -908,15 +909,15 @@ class _HabitListTile extends StatelessWidget {
                           ? Icons.check_rounded
                           : Icons.close_rounded,
                       color: habit.todayLog?.completed == true
-                          ? AppColors.success
-                          : AppColors.danger,
+                          ? colors.success
+                          : colors.danger,
                       size: 16,
                     )
                   : Icon(
                       habit.type == HabitType.build
                           ? Icons.trending_up_rounded
                           : Icons.block_rounded,
-                      color: AppColors.textMuted,
+                      color: colors.textMuted,
                       size: 14,
                     ),
             ),
@@ -935,7 +936,7 @@ class _HabitListTile extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
-                      color: AppColors.textPrimary,
+                      color: colors.textPrimary,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -945,7 +946,7 @@ class _HabitListTile extends StatelessWidget {
                       habit.triggerResponse!.isNotEmpty)
                     Text(
                       'If: ${habit.triggerResponse}',
-                      style: TextStyle(fontSize: 10, color: AppColors.warning),
+                      style: TextStyle(fontSize: 10, color: colors.warning),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -955,29 +956,23 @@ class _HabitListTile extends StatelessWidget {
                       Icon(
                         Icons.local_fire_department_rounded,
                         size: 11,
-                        color: AppColors.warning,
+                        color: colors.warning,
                       ),
                       const SizedBox(width: 2),
                       Text(
                         '${habit.currentStreak}d',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: AppColors.textMuted,
-                        ),
+                        style: TextStyle(fontSize: 10, color: colors.textMuted),
                       ),
                       const SizedBox(width: 8),
                       Icon(
                         Icons.emoji_events_rounded,
                         size: 11,
-                        color: AppColors.info,
+                        color: colors.info,
                       ),
                       const SizedBox(width: 2),
                       Text(
                         '${habit.bestStreak}d',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: AppColors.textMuted,
-                        ),
+                        style: TextStyle(fontSize: 10, color: colors.textMuted),
                       ),
                     ],
                   ),
@@ -989,14 +984,14 @@ class _HabitListTile extends StatelessWidget {
             PopupMenuButton<String>(
               icon: Icon(
                 Icons.more_vert_rounded,
-                color: AppColors.textMuted,
+                color: colors.textMuted,
                 size: 18,
               ),
               padding: EdgeInsets.zero,
-              color: AppColors.surface,
+              color: colors.surface,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
-                side: BorderSide(color: AppColors.glassBorder),
+                side: BorderSide(color: colors.glassBorder),
               ),
               onSelected: (value) {
                 switch (value) {
@@ -1014,12 +1009,12 @@ class _HabitListTile extends StatelessWidget {
                   height: 36,
                   child: Row(
                     children: [
-                      Icon(Icons.edit_rounded, size: 16, color: AppColors.info),
+                      Icon(Icons.edit_rounded, size: 16, color: colors.info),
                       const SizedBox(width: 8),
                       Text(
                         'Edit',
                         style: TextStyle(
-                          color: AppColors.textPrimary,
+                          color: colors.textPrimary,
                           fontSize: 13,
                         ),
                       ),
@@ -1034,12 +1029,12 @@ class _HabitListTile extends StatelessWidget {
                       Icon(
                         Icons.delete_rounded,
                         size: 16,
-                        color: AppColors.danger,
+                        color: colors.danger,
                       ),
                       const SizedBox(width: 8),
                       Text(
                         'Delete',
-                        style: TextStyle(color: AppColors.danger, fontSize: 13),
+                        style: TextStyle(color: colors.danger, fontSize: 13),
                       ),
                     ],
                   ),

@@ -10,19 +10,10 @@ import '../providers/app_state.dart';
 /// Used in task, habit, and recurring task creation/edit forms
 /// to connect work items to specific goal factors for tracking work history
 class GrowthAreaSelector extends StatelessWidget {
-  /// Currently selected factor IDs
   final List<String> selectedAreaIds;
-
-  /// Callback when selection changes
   final ValueChanged<List<String>> onSelectionChanged;
-
-  /// Optional label for the selector
   final String label;
-
-  /// Whether to allow multiple selections
   final bool multiSelect;
-
-  /// Whether to show only active focus areas
   final bool onlyActiveFocus;
 
   const GrowthAreaSelector({
@@ -36,23 +27,15 @@ class GrowthAreaSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final surfaceLight = isDark
-        ? AppColors.surfaceLight
-        : LightColors.surfaceLight;
-    final textSecondary = isDark
-        ? AppColors.textSecondary
-        : LightColors.textSecondary;
+    final colors = context.colors;
 
     return Consumer<AppState>(
       builder: (context, state, _) {
-        // Get all factors, optionally filtered
         List<Factor> areas = state.factors;
         if (onlyActiveFocus) {
           areas = areas.where((a) => a.isActiveFocus).toList();
         }
 
-        // Get selected areas for display
         final selectedAreas = areas
             .where((a) => selectedAreaIds.contains(a.id))
             .toList();
@@ -65,7 +48,7 @@ class GrowthAreaSelector extends StatelessWidget {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
-                color: textSecondary,
+                color: colors.textSecondary,
               ),
             ),
             const SizedBox(height: 8),
@@ -77,18 +60,17 @@ class GrowthAreaSelector extends StatelessWidget {
                   vertical: 14,
                 ),
                 decoration: BoxDecoration(
-                  color: surfaceLight,
-                  borderRadius: BorderRadius.circular(12),
+                  color: colors.surfaceLight,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
                   border: Border.all(
                     color: selectedAreas.isNotEmpty
-                        ? AppColors.success.withAlpha(100)
-                        : AppColors.glassBorder,
+                        ? colors.success.withAlpha(100)
+                        : colors.glassBorder,
                   ),
                 ),
                 child: Row(
                   children: [
                     if (selectedAreas.isNotEmpty) ...[
-                      // Show selected areas
                       Expanded(
                         child: Wrap(
                           spacing: 6,
@@ -109,21 +91,18 @@ class GrowthAreaSelector extends StatelessWidget {
                     ] else ...[
                       Icon(
                         Icons.account_tree_outlined,
-                        color: AppColors.textMuted,
+                        color: colors.textMuted,
                         size: 24,
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           'Tap to select a dissected tree',
-                          style: TextStyle(color: AppColors.textMuted),
+                          style: TextStyle(color: colors.textMuted),
                         ),
                       ),
                     ],
-                    Icon(
-                      Icons.chevron_right_rounded,
-                      color: AppColors.textMuted,
-                    ),
+                    Icon(Icons.chevron_right_rounded, color: colors.textMuted),
                   ],
                 ),
               ),
@@ -139,53 +118,46 @@ class GrowthAreaSelector extends StatelessWidget {
     AppState state,
     List<Factor> areas,
   ) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final surface = isDark ? AppColors.surface : LightColors.surface;
-    final textPrimary = isDark
-        ? AppColors.textPrimary
-        : LightColors.textPrimary;
+    final colors = context.colors;
 
-    // Group areas by goal
     final goals = state.goals;
     final areasByGoal = <String, List<Factor>>{};
     for (final area in areas) {
       areasByGoal.putIfAbsent(area.goalId, () => []).add(area);
     }
 
-    // Track local selection state
     List<String> localSelection = List<String>.from(selectedAreaIds);
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: surface,
+      backgroundColor: colors.surface,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) {
+      builder: (ctx) {
+        final innerColors = ctx.colors;
         return StatefulBuilder(
-          builder: (context, setModalState) {
+          builder: (ctx, setModalState) {
             return SafeArea(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Handle bar
                   Container(
                     width: 40,
                     height: 4,
                     margin: const EdgeInsets.symmetric(vertical: 12),
                     decoration: BoxDecoration(
-                      color: AppColors.glassBorder,
+                      color: innerColors.glassBorder,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                  // Title
                   Text(
                     'Select Dissected Tree',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: textPrimary,
+                      color: innerColors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -193,17 +165,15 @@ class GrowthAreaSelector extends StatelessWidget {
                     'Work will be tracked in the selected area\'s history',
                     style: TextStyle(
                       fontSize: 13,
-                      color: AppColors.textSecondary,
+                      color: innerColors.textSecondary,
                     ),
                   ),
                   const SizedBox(height: 16),
-                  // Areas list grouped by goal
                   SizedBox(
-                    height: MediaQuery.of(context).size.height * 0.5,
+                    height: MediaQuery.of(ctx).size.height * 0.5,
                     child: ListView(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       children: [
-                        // "None" option to clear selection
                         _AreaOption(
                           area: null,
                           goalName: null,
@@ -212,12 +182,11 @@ class GrowthAreaSelector extends StatelessWidget {
                             setModalState(() => localSelection.clear());
                             if (!multiSelect) {
                               onSelectionChanged([]);
-                              Navigator.pop(context);
+                              Navigator.pop(ctx);
                             }
                           },
                         ),
                         const SizedBox(height: 8),
-                        // Grouped by goals
                         ...areasByGoal.entries.map((entry) {
                           final goal = goals.firstWhere(
                             (g) => g.id == entry.key,
@@ -230,7 +199,6 @@ class GrowthAreaSelector extends StatelessWidget {
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Goal header
                               Padding(
                                 padding: const EdgeInsets.only(
                                   top: 16,
@@ -242,7 +210,7 @@ class GrowthAreaSelector extends StatelessWidget {
                                     Icon(
                                       Icons.flag_rounded,
                                       size: 16,
-                                      color: AppColors.primary,
+                                      color: innerColors.primary,
                                     ),
                                     const SizedBox(width: 6),
                                     Expanded(
@@ -251,14 +219,13 @@ class GrowthAreaSelector extends StatelessWidget {
                                         style: TextStyle(
                                           fontSize: 12,
                                           fontWeight: FontWeight.w600,
-                                          color: AppColors.textSecondary,
+                                          color: innerColors.textSecondary,
                                         ),
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
-                              // Areas under this goal
                               ...entry.value.map((area) {
                                 final isSelected = localSelection.contains(
                                   area.id,
@@ -278,7 +245,7 @@ class GrowthAreaSelector extends StatelessWidget {
                                       } else {
                                         localSelection = [area.id];
                                         onSelectionChanged(localSelection);
-                                        Navigator.pop(context);
+                                        Navigator.pop(ctx);
                                       }
                                     });
                                   },
@@ -291,7 +258,6 @@ class GrowthAreaSelector extends StatelessWidget {
                       ],
                     ),
                   ),
-                  // Confirm button (for multi-select)
                   if (multiSelect)
                     Padding(
                       padding: const EdgeInsets.all(16),
@@ -300,14 +266,14 @@ class GrowthAreaSelector extends StatelessWidget {
                         child: ElevatedButton(
                           onPressed: () {
                             onSelectionChanged(localSelection);
-                            Navigator.pop(context);
+                            Navigator.pop(ctx);
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            foregroundColor: Colors.white,
+                            backgroundColor: innerColors.primary,
+                            foregroundColor: innerColors.onPrimary,
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(AppRadius.md),
                             ),
                           ),
                           child: Text(
@@ -329,7 +295,6 @@ class GrowthAreaSelector extends StatelessWidget {
   }
 }
 
-/// Chip showing a selected factor
 class _AreaChip extends StatelessWidget {
   final Factor area;
   final VoidCallback onRemove;
@@ -338,13 +303,13 @@ class _AreaChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = _getTypeColor(area.type);
+    final color = _typeColor(context, area.type);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: color.withAlpha(20),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppRadius.full),
         border: Border.all(color: color.withAlpha(80)),
       ),
       child: Row(
@@ -371,7 +336,6 @@ class _AreaChip extends StatelessWidget {
   }
 }
 
-/// Individual factor option in the picker
 class _AreaOption extends StatelessWidget {
   final Factor? area;
   final String? goalName;
@@ -387,15 +351,8 @@ class _AreaOption extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final surfaceLight = isDark
-        ? AppColors.surfaceLight
-        : LightColors.surfaceLight;
-    final textPrimary = isDark
-        ? AppColors.textPrimary
-        : LightColors.textPrimary;
+    final colors = context.colors;
 
-    // "None" option
     if (area == null) {
       return GestureDetector(
         onTap: onTap,
@@ -403,10 +360,12 @@ class _AreaOption extends StatelessWidget {
           margin: const EdgeInsets.only(bottom: 8),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: isSelected ? AppColors.primary.withAlpha(20) : surfaceLight,
-            borderRadius: BorderRadius.circular(12),
+            color: isSelected
+                ? colors.primary.withAlpha(20)
+                : colors.surfaceLight,
+            borderRadius: BorderRadius.circular(AppRadius.md),
             border: Border.all(
-              color: isSelected ? AppColors.primary : Colors.transparent,
+              color: isSelected ? colors.primary : Colors.transparent,
               width: isSelected ? 2 : 0,
             ),
           ),
@@ -416,12 +375,12 @@ class _AreaOption extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: AppColors.textMuted.withAlpha(20),
-                  borderRadius: BorderRadius.circular(10),
+                  color: colors.textMuted.withAlpha(20),
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
                 ),
                 child: Icon(
                   Icons.block_rounded,
-                  color: AppColors.textMuted,
+                  color: colors.textMuted,
                   size: 24,
                 ),
               ),
@@ -434,14 +393,14 @@ class _AreaOption extends StatelessWidget {
                       'No Link',
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
-                        color: textPrimary,
+                        color: colors.textPrimary,
                       ),
                     ),
                     Text(
                       'Work won\'t be tracked in any tree',
                       style: TextStyle(
                         fontSize: 12,
-                        color: AppColors.textSecondary,
+                        color: colors.textSecondary,
                       ),
                     ),
                   ],
@@ -450,7 +409,7 @@ class _AreaOption extends StatelessWidget {
               if (isSelected)
                 Icon(
                   Icons.check_circle_rounded,
-                  color: AppColors.primary,
+                  color: colors.primary,
                   size: 24,
                 ),
             ],
@@ -459,10 +418,10 @@ class _AreaOption extends StatelessWidget {
       );
     }
 
-    final color = _getTypeColor(area!.type);
+    final color = _typeColor(context, area!.type);
     final gapText = 'Gap: ${area!.gap} levels';
     final healthText = area!.isActiveFocus
-        ? '${area!.healthPercent.toInt()}% health'
+        ? '${area!.effectiveHealthPercent.toInt()}% health'
         : 'Dormant';
 
     return GestureDetector(
@@ -471,8 +430,8 @@ class _AreaOption extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isSelected ? color.withAlpha(20) : surfaceLight,
-          borderRadius: BorderRadius.circular(12),
+          color: isSelected ? color.withAlpha(20) : colors.surfaceLight,
+          borderRadius: BorderRadius.circular(AppRadius.md),
           border: Border.all(
             color: isSelected ? color : Colors.transparent,
             width: isSelected ? 2 : 0,
@@ -480,13 +439,12 @@ class _AreaOption extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // Tree emoji and level
             Container(
               width: 44,
               height: 44,
               decoration: BoxDecoration(
                 color: color.withAlpha(15),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(AppRadius.sm),
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -504,7 +462,6 @@ class _AreaOption extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-            // Area info
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -516,11 +473,10 @@ class _AreaOption extends StatelessWidget {
                           area!.name,
                           style: TextStyle(
                             fontWeight: FontWeight.w600,
-                            color: textPrimary,
+                            color: colors.textPrimary,
                           ),
                         ),
                       ),
-                      // Focus indicator
                       if (area!.isActiveFocus)
                         Container(
                           padding: const EdgeInsets.symmetric(
@@ -528,16 +484,27 @@ class _AreaOption extends StatelessWidget {
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: AppColors.warning.withAlpha(30),
-                            borderRadius: BorderRadius.circular(8),
+                            color: colors.warning.withAlpha(30),
+                            borderRadius: BorderRadius.circular(AppRadius.sm),
                           ),
-                          child: Text(
-                            '🔥 Focus',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.warning,
-                            ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.local_fire_department_rounded,
+                                size: 11,
+                                color: colors.warning,
+                              ),
+                              const SizedBox(width: 3),
+                              Text(
+                                'Focus',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: colors.warning,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                     ],
@@ -547,20 +514,19 @@ class _AreaOption extends StatelessWidget {
                     children: [
                       _InfoTag(text: area!.typeName, color: color),
                       const SizedBox(width: 6),
-                      _InfoTag(text: gapText, color: AppColors.textSecondary),
+                      _InfoTag(text: gapText, color: colors.textSecondary),
                       const SizedBox(width: 6),
                       _InfoTag(
                         text: healthText,
                         color: area!.isActiveFocus
-                            ? AppColors.success
-                            : AppColors.textMuted,
+                            ? colors.success
+                            : colors.textMuted,
                       ),
                     ],
                   ),
                 ],
               ),
             ),
-            // Selection indicator
             if (isSelected)
               Icon(Icons.check_circle_rounded, color: color, size: 24),
           ],
@@ -570,7 +536,6 @@ class _AreaOption extends StatelessWidget {
   }
 }
 
-/// Small info tag
 class _InfoTag extends StatelessWidget {
   final String text;
   final Color color;
@@ -583,19 +548,19 @@ class _InfoTag extends StatelessWidget {
   }
 }
 
-/// Get color based on factor type
-Color _getTypeColor(FactorType type) {
+Color _typeColor(BuildContext context, FactorType type) {
+  final colors = context.colors;
   switch (type) {
     case FactorType.knowledge:
-      return AppColors.info;
+      return colors.info;
     case FactorType.skill:
-      return AppColors.success;
+      return colors.success;
     case FactorType.attribute:
-      return AppColors.warning;
+      return colors.warning;
     case FactorType.process:
-      return AppColors.primary;
+      return colors.primary;
     case FactorType.resource:
-      return AppColors.danger;
+      return colors.accent;
   }
 }
 
@@ -624,12 +589,12 @@ class GrowthAreaBadge extends StatelessWidget {
             spacing: 4,
             runSpacing: 4,
             children: areas.map((area) {
-              final color = _getTypeColor(area.type);
+              final color = _typeColor(context, area.type);
               return Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
                   color: color.withAlpha(20),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,

@@ -48,20 +48,20 @@ class UserStats extends HiveObject {
   @HiveField(12)
   DateTime? lastReflectionAt;
 
-  @HiveField(13)
+  @HiveField(13, defaultValue: ReflectionReminderFrequency.daily)
   ReflectionReminderFrequency reminderFrequency;
 
   // Task completion statistics
-  @HiveField(14)
+  @HiveField(14, defaultValue: 0)
   int totalTasksCompleted;
 
-  @HiveField(15)
+  @HiveField(15, defaultValue: 0)
   int priorityTasksCompleted;
 
-  @HiveField(16)
+  @HiveField(16, defaultValue: 0)
   int backlogTasksCompleted;
 
-  @HiveField(17)
+  @HiveField(17, defaultValue: 0)
   int tasksCompletedToday;
 
   @HiveField(18)
@@ -151,7 +151,7 @@ class UserStats extends HiveObject {
     actionsToday++;
 
     _updateStreak();
-    save();
+    _saveIfAttached();
   }
 
   /// Record task completion for statistics
@@ -167,7 +167,7 @@ class UserStats extends HiveObject {
       backlogTasksCompleted++;
     }
 
-    save();
+    _saveIfAttached();
   }
 
   /// Check and reset daily task completion counter if new day
@@ -191,7 +191,7 @@ class UserStats extends HiveObject {
   bool spendCoins(int amount) {
     if (coins >= amount) {
       coins -= amount;
-      save();
+      _saveIfAttached();
       return true;
     }
     return false;
@@ -202,7 +202,7 @@ class UserStats extends HiveObject {
     if (coins >= 30 && freezeTokens < 3) {
       coins -= 30;
       freezeTokens++;
-      save();
+      _saveIfAttached();
       return true;
     }
     return false;
@@ -212,7 +212,7 @@ class UserStats extends HiveObject {
   bool useFreezeToken() {
     if (freezeTokens > 0) {
       freezeTokens--;
-      save();
+      _saveIfAttached();
       return true;
     }
     return false;
@@ -275,7 +275,7 @@ class UserStats extends HiveObject {
   void unlockBadge(String badgeId) {
     if (!unlockedBadgeIds.contains(badgeId)) {
       unlockedBadgeIds.add(badgeId);
-      save();
+      _saveIfAttached();
     }
   }
 
@@ -284,7 +284,7 @@ class UserStats extends HiveObject {
   /// Record that a reflection was completed
   void recordReflection() {
     lastReflectionAt = DateTime.now();
-    save();
+    _saveIfAttached();
   }
 
   /// Check if reflection is overdue based on reminder frequency
@@ -317,7 +317,11 @@ class UserStats extends HiveObject {
   /// Set reminder frequency
   void setReminderFrequency(ReflectionReminderFrequency frequency) {
     reminderFrequency = frequency;
-    save();
+    _saveIfAttached();
+  }
+
+  void _saveIfAttached() {
+    if (isInBox) save();
   }
 }
 

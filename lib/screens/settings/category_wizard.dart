@@ -13,8 +13,11 @@ class CategoryWizard extends StatefulWidget {
 
   const CategoryWizard({super.key, this.category});
 
-  static Future<void> show(BuildContext context, {CategoryModel? category}) {
-    return showModalBottomSheet(
+  static Future<CategoryModel?> show(
+    BuildContext context, {
+    CategoryModel? category,
+  }) {
+    return showModalBottomSheet<CategoryModel>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -32,56 +35,6 @@ class _CategoryWizardState extends State<CategoryWizard> {
   Color _selectedColor = const Color(0xFF2196F3); // Blue default
 
   bool get isEditing => widget.category != null;
-
-  // Available icons
-  static const List<IconData> _availableIcons = [
-    Icons.favorite_rounded,
-    Icons.fitness_center_rounded,
-    Icons.restaurant_rounded,
-    Icons.bed_rounded,
-    Icons.work_rounded,
-    Icons.school_rounded,
-    Icons.monetization_on_rounded,
-    Icons.people_rounded,
-    Icons.brush_rounded,
-    Icons.music_note_rounded,
-    Icons.sports_esports_rounded,
-    Icons.directions_run_rounded,
-    Icons.local_cafe_rounded,
-    Icons.book_rounded,
-    Icons.code_rounded,
-    Icons.language_rounded,
-    Icons.psychology_rounded,
-    Icons.self_improvement_rounded,
-    Icons.eco_rounded,
-    Icons.home_rounded,
-    Icons.pets_rounded,
-    Icons.travel_explore_rounded,
-    Icons.camera_alt_rounded,
-    Icons.star_rounded,
-    Icons.task_alt_rounded,
-    Icons.lightbulb_rounded,
-    Icons.timer_rounded,
-    Icons.celebration_rounded,
-    Icons.emoji_events_rounded,
-    Icons.wb_sunny_rounded,
-  ];
-
-  // Available colors
-  static const List<Color> _availableColors = [
-    Color(0xFFE91E63), // Pink
-    Color(0xFFF44336), // Red
-    Color(0xFFFF9800), // Orange
-    Color(0xFFFFEB3B), // Yellow
-    Color(0xFF4CAF50), // Green
-    Color(0xFF009688), // Teal
-    Color(0xFF2196F3), // Blue
-    Color(0xFF3F51B5), // Indigo
-    Color(0xFF9C27B0), // Purple
-    Color(0xFF795548), // Brown
-    Color(0xFF607D8B), // Blue Grey
-    Color(0xFF00BCD4), // Cyan
-  ];
 
   @override
   void initState() {
@@ -109,37 +62,37 @@ class _CategoryWizardState extends State<CategoryWizard> {
     }
 
     final appState = context.read<AppState>();
+    final CategoryModel result;
 
     if (isEditing) {
-      final updated = widget.category!.copyWith(
+      result = widget.category!.copyWith(
         name: name,
         icon: _selectedIcon,
         color: _selectedColor,
       );
-      await appState.updateCategory(updated);
+      await appState.updateCategory(result);
     } else {
-      final category = CategoryModel.create(
+      result = CategoryModel.create(
         id: const Uuid().v4(),
         name: name,
         icon: _selectedIcon,
         color: _selectedColor,
+        sortOrder: appState.categories.length,
       );
-      await appState.addCategory(category);
+      await appState.addCategory(result);
     }
 
-    if (mounted) Navigator.pop(context);
+    if (mounted) Navigator.pop(context, result);
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? AppColors.surface : LightColors.surface;
-    final textPrimary = isDark
-        ? AppColors.textPrimary
-        : LightColors.textPrimary;
-    final textSecondary = isDark
-        ? AppColors.textSecondary
-        : LightColors.textSecondary;
+    final colors = context.colors;
+    final bgColor = colors.surface;
+    final textPrimary = colors.textPrimary;
+    final textSecondary = colors.textSecondary;
+    final icons = DefaultCategories.availableIcons;
+    final palette = DefaultCategories.availableColors;
 
     return Container(
       padding: EdgeInsets.only(
@@ -203,9 +156,7 @@ class _CategoryWizardState extends State<CategoryWizard> {
                 hintText: 'Category name',
                 hintStyle: TextStyle(color: textSecondary),
                 filled: true,
-                fillColor: isDark
-                    ? AppColors.surfaceLight
-                    : LightColors.surfaceLight,
+                fillColor: colors.surfaceLight,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
@@ -233,9 +184,9 @@ class _CategoryWizardState extends State<CategoryWizard> {
                   mainAxisSpacing: 8,
                   crossAxisSpacing: 8,
                 ),
-                itemCount: _availableIcons.length,
+                itemCount: icons.length,
                 itemBuilder: (context, index) {
-                  final icon = _availableIcons[index];
+                  final icon = icons[index];
                   final isSelected = icon == _selectedIcon;
                   return GestureDetector(
                     onTap: () => setState(() => _selectedIcon = icon),
@@ -243,9 +194,7 @@ class _CategoryWizardState extends State<CategoryWizard> {
                       decoration: BoxDecoration(
                         color: isSelected
                             ? _selectedColor.withAlpha(30)
-                            : (isDark
-                                  ? AppColors.surfaceLight
-                                  : LightColors.surfaceLight),
+                            : colors.surfaceLight,
                         borderRadius: BorderRadius.circular(10),
                         border: isSelected
                             ? Border.all(color: _selectedColor, width: 2)
@@ -276,7 +225,7 @@ class _CategoryWizardState extends State<CategoryWizard> {
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: _availableColors.map((color) {
+              children: palette.map((color) {
                 final isSelected = color.toARGB32() == _selectedColor.toARGB32();
                 return GestureDetector(
                   onTap: () => setState(() => _selectedColor = color),

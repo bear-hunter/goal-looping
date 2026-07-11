@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 import '../../core/theme/theme.dart';
 import '../../models/task.dart';
 import '../../providers/app_state.dart';
+import '../../widgets/category_picker.dart';
 
 /// Task collection screen - Quickly capture tasks with optional categorization
 /// Japanese minimalist aesthetic: focused, efficient, minimal friction
@@ -23,8 +24,8 @@ class _CollectTaskScreenState extends State<CollectTaskScreen> {
 
   EisenhowerQuadrant _selectedQuadrant =
       EisenhowerQuadrant.focus; // Default to Focus
-  List<String> _selectedFactorIds = [];
-  String _selectedCategory = 'General';
+  final List<String> _selectedFactorIds = [];
+  String? _selectedCategoryId;
 
   @override
   void initState() {
@@ -71,7 +72,7 @@ class _CollectTaskScreenState extends State<CollectTaskScreen> {
                 child: Text(
                   'Add',
                   style: TextStyle(
-                    color: AppColors.primary,
+                    color: colors.primary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -101,7 +102,7 @@ class _CollectTaskScreenState extends State<CollectTaskScreen> {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(AppRadius.md),
-                      borderSide: const BorderSide(color: AppColors.primary),
+                      borderSide: BorderSide(color: colors.primary),
                     ),
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 14,
@@ -126,7 +127,7 @@ class _CollectTaskScreenState extends State<CollectTaskScreen> {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(AppRadius.md),
-                      borderSide: const BorderSide(color: AppColors.primary),
+                      borderSide: BorderSide(color: colors.primary),
                     ),
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 14,
@@ -167,7 +168,7 @@ class _CollectTaskScreenState extends State<CollectTaskScreen> {
                       ),
                       Text(
                         '→ Major consequences = Urgent',
-                        style: TextStyle(color: AppColors.danger, fontSize: 11),
+                        style: TextStyle(color: colors.danger, fontSize: 11),
                       ),
                       const SizedBox(height: 6),
                       Text(
@@ -180,10 +181,7 @@ class _CollectTaskScreenState extends State<CollectTaskScreen> {
                       ),
                       Text(
                         '→ Derails goals = Important',
-                        style: TextStyle(
-                          color: AppColors.primary,
-                          fontSize: 11,
-                        ),
+                        style: TextStyle(color: colors.primary, fontSize: 11),
                       ),
                     ],
                   ),
@@ -219,7 +217,7 @@ class _CollectTaskScreenState extends State<CollectTaskScreen> {
                       colors: colors,
                       label: 'Focus',
                       icon: Icons.local_fire_department_rounded,
-                      color: AppColors.danger,
+                      color: colors.danger,
                       isSelected: _selectedQuadrant == EisenhowerQuadrant.focus,
                       onTap: () => setState(
                         () => _selectedQuadrant = EisenhowerQuadrant.focus,
@@ -229,7 +227,7 @@ class _CollectTaskScreenState extends State<CollectTaskScreen> {
                       colors: colors,
                       label: 'Schedule',
                       icon: Icons.calendar_today_rounded,
-                      color: AppColors.primary,
+                      color: colors.primary,
                       isSelected:
                           _selectedQuadrant == EisenhowerQuadrant.schedule,
                       onTap: () => setState(
@@ -240,7 +238,7 @@ class _CollectTaskScreenState extends State<CollectTaskScreen> {
                       colors: colors,
                       label: 'Branch',
                       icon: Icons.call_split_rounded,
-                      color: AppColors.warning,
+                      color: colors.warning,
                       isSelected:
                           _selectedQuadrant == EisenhowerQuadrant.branch,
                       onTap: () => setState(
@@ -300,12 +298,12 @@ class _CollectTaskScreenState extends State<CollectTaskScreen> {
                             ),
                             decoration: BoxDecoration(
                               color: isSelected
-                                  ? AppColors.primary.withAlpha(30)
+                                  ? colors.primary.withAlpha(30)
                                   : colors.surfaceLight,
                               borderRadius: BorderRadius.circular(AppRadius.md),
                               border: Border.all(
                                 color: isSelected
-                                    ? AppColors.primary.withAlpha(100)
+                                    ? colors.primary.withAlpha(100)
                                     : colors.glassBorder,
                               ),
                             ),
@@ -313,7 +311,7 @@ class _CollectTaskScreenState extends State<CollectTaskScreen> {
                               factor.name,
                               style: TextStyle(
                                 color: isSelected
-                                    ? AppColors.primary
+                                    ? colors.primary
                                     : colors.textSecondary,
                                 fontSize: 12,
                                 fontWeight: isSelected
@@ -340,53 +338,9 @@ class _CollectTaskScreenState extends State<CollectTaskScreen> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                SizedBox(
-                  height: 36,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: state.taskCategories.length,
-                    itemBuilder: (context, index) {
-                      final category = state.taskCategories[index];
-                      final isSelected = _selectedCategory == category;
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: GestureDetector(
-                          onTap: () {
-                            setState(() => _selectedCategory = category);
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? AppColors.primary.withAlpha(30)
-                                  : colors.surfaceLight,
-                              borderRadius: BorderRadius.circular(AppRadius.md),
-                              border: Border.all(
-                                color: isSelected
-                                    ? AppColors.primary.withAlpha(100)
-                                    : colors.glassBorder,
-                              ),
-                            ),
-                            child: Text(
-                              category,
-                              style: TextStyle(
-                                color: isSelected
-                                    ? AppColors.primary
-                                    : colors.textSecondary,
-                                fontSize: 12,
-                                fontWeight: isSelected
-                                    ? FontWeight.w600
-                                    : FontWeight.normal,
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
+                CategoryPicker(
+                  selectedCategoryId: _selectedCategoryId,
+                  onChanged: (id) => setState(() => _selectedCategoryId = id),
                 ).animate().fadeIn(duration: 200.ms, delay: 250.ms),
 
                 const SizedBox(height: 32),
@@ -399,7 +353,7 @@ class _CollectTaskScreenState extends State<CollectTaskScreen> {
                     icon: const Icon(Icons.add_rounded),
                     label: const Text('Add Task'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
+                      backgroundColor: colors.primary,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
                   ),
@@ -428,7 +382,7 @@ class _CollectTaskScreenState extends State<CollectTaskScreen> {
       description: _descriptionController.text.trim(),
       quadrant: _selectedQuadrant,
       linkedFactorIds: _selectedFactorIds,
-      category: _selectedCategory,
+      categoryId: _selectedCategoryId,
       scheduledDate: DateTime.now(),
     );
 

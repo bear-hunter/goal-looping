@@ -6,13 +6,8 @@ import '../core/theme/theme.dart';
 /// Celebratory animation for task completion
 /// Shows particle explosion + XP orb that flies toward a target
 class CompletionAnimation extends StatefulWidget {
-  /// Key of the XP bar widget to fly the orb toward
   final GlobalKey? xpBarKey;
-
-  /// Amount of XP to display
   final int xpAmount;
-
-  /// Called when animation completes
   final VoidCallback? onComplete;
 
   const CompletionAnimation({
@@ -34,6 +29,7 @@ class _CompletionAnimationState extends State<CompletionAnimation>
   final List<_Particle> _particles = [];
   Offset? _orbStart;
   Offset? _orbEnd;
+  bool _particlesSeeded = false;
 
   @override
   void initState() {
@@ -49,28 +45,6 @@ class _CompletionAnimationState extends State<CompletionAnimation>
       vsync: this,
     );
 
-    // Generate particles
-    final random = math.Random();
-    for (int i = 0; i < 12; i++) {
-      _particles.add(
-        _Particle(
-          angle: (2 * math.pi * i) / 12 + random.nextDouble() * 0.3,
-          distance: 40 + random.nextDouble() * 30,
-          size: 4 + random.nextDouble() * 4,
-          color: [
-            AppColors.success,
-            AppColors.primary,
-            AppColors.warning,
-            Colors.white,
-          ][random.nextInt(4)],
-        ),
-      );
-    }
-
-    // Start particle animation
-    _particleController.forward();
-
-    // Delay orb flight slightly
     Future.delayed(const Duration(milliseconds: 200), () {
       if (mounted) {
         _calculateOrbPath();
@@ -81,8 +55,39 @@ class _CompletionAnimationState extends State<CompletionAnimation>
     });
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_particlesSeeded) {
+      _seedParticles();
+      _particlesSeeded = true;
+      _particleController.forward();
+    }
+  }
+
+  void _seedParticles() {
+    final colors = context.colors;
+    final palette = CategoryPalette.of(context);
+    final swatches = [
+      colors.success,
+      colors.primary,
+      colors.accent,
+      palette[5], // gold
+    ];
+    final random = math.Random();
+    for (int i = 0; i < 12; i++) {
+      _particles.add(
+        _Particle(
+          angle: (2 * math.pi * i) / 12 + random.nextDouble() * 0.3,
+          distance: 40 + random.nextDouble() * 30,
+          size: 4 + random.nextDouble() * 4,
+          color: swatches[random.nextInt(swatches.length)],
+        ),
+      );
+    }
+  }
+
   void _calculateOrbPath() {
-    // Get the center of this widget as start
     final renderBox = context.findRenderObject() as RenderBox?;
     if (renderBox == null) return;
 
@@ -90,7 +95,6 @@ class _CompletionAnimationState extends State<CompletionAnimation>
       Offset(renderBox.size.width / 2, renderBox.size.height / 2),
     );
 
-    // Get the XP bar position as end
     if (widget.xpBarKey?.currentContext != null) {
       final xpBox =
           widget.xpBarKey!.currentContext!.findRenderObject() as RenderBox?;
@@ -101,7 +105,6 @@ class _CompletionAnimationState extends State<CompletionAnimation>
       }
     }
 
-    // Fallback to top of screen if no XP bar
     _orbEnd ??= const Offset(100, 50);
   }
 
@@ -114,10 +117,10 @@ class _CompletionAnimationState extends State<CompletionAnimation>
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        // Particles
         ...List.generate(_particles.length, (i) {
           final particle = _particles[i];
           return AnimatedBuilder(
@@ -154,15 +157,14 @@ class _CompletionAnimationState extends State<CompletionAnimation>
           );
         }),
 
-        // XP Orb
         if (_orbStart != null && _orbEnd != null)
           AnimatedBuilder(
             animation: _orbController,
             builder: (context, child) {
-              final progress = Curves.easeInOut.transform(_orbController.value);
+              final progress = Curves.easeInOut.transform(
+                _orbController.value,
+              );
               final currentPos = Offset.lerp(_orbStart!, _orbEnd!, progress)!;
-
-              // Arc the path upward
               final arcHeight = -60.0 * (1 - (2 * progress - 1).abs());
 
               return Positioned(
@@ -177,14 +179,14 @@ class _CompletionAnimationState extends State<CompletionAnimation>
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                               colors: [
-                                AppColors.warning,
-                                AppColors.warning.withAlpha(200),
+                                colors.warning,
+                                colors.warning.withAlpha(200),
                               ],
                             ),
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: AppColors.warning.withAlpha(128),
+                                color: colors.warning.withAlpha(128),
                                 blurRadius: 12,
                                 spreadRadius: 2,
                               ),
@@ -193,10 +195,10 @@ class _CompletionAnimationState extends State<CompletionAnimation>
                           child: Center(
                             child: Text(
                               '+${widget.xpAmount}',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.white,
+                                color: colors.onPrimary,
                               ),
                             ),
                           ),
@@ -234,7 +236,6 @@ class _Particle {
 class CompletionOverlay {
   static OverlayEntry? _currentEntry;
 
-  /// Show completion animation at the given global position
   static void show(
     BuildContext context, {
     required Offset position,

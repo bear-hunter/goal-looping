@@ -54,7 +54,7 @@ class SpacedRepetitionScreen extends StatelessWidget {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.warning.withAlpha(30),
+                        color: colors.warning.withAlpha(30),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
@@ -62,7 +62,7 @@ class SpacedRepetitionScreen extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
-                          color: AppColors.warning,
+                          color: colors.warning,
                         ),
                       ),
                     )
@@ -500,26 +500,29 @@ class SpacedRepetitionScreen extends StatelessWidget {
   ) {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Subject?'),
-        content: Text(
-          'This will also delete all topics in "${subject.name}". This cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+      builder: (ctx) {
+        final colors = ctx.colors;
+        return AlertDialog(
+          title: const Text('Delete Subject?'),
+          content: Text(
+            'This will also delete all topics in "${subject.name}". This cannot be undone.',
           ),
-          TextButton(
-            onPressed: () {
-              context.read<AppState>().deleteSubject(subject.id);
-              Navigator.pop(ctx);
-            },
-            style: TextButton.styleFrom(foregroundColor: AppColors.danger),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                context.read<AppState>().deleteSubject(subject.id);
+                Navigator.pop(ctx);
+              },
+              style: TextButton.styleFrom(foregroundColor: colors.danger),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -661,7 +664,7 @@ class _SubjectCardState extends State<_SubjectCard> {
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: AppColors.warning.withAlpha(25),
+                          color: colors.warning.withAlpha(25),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Text(
@@ -669,7 +672,7 @@ class _SubjectCardState extends State<_SubjectCard> {
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
-                            color: AppColors.warning,
+                            color: colors.warning,
                           ),
                         ),
                       ),
@@ -747,9 +750,10 @@ class _SubjectCardState extends State<_SubjectCard> {
   }
 
   void _showSubjectOptions(BuildContext context) {
+    final colors = context.colors;
     showModalBottomSheet(
       context: context,
-      backgroundColor: context.colors.surface,
+      backgroundColor: colors.surface,
       builder: (ctx) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -763,10 +767,10 @@ class _SubjectCardState extends State<_SubjectCard> {
               },
             ),
             ListTile(
-              leading: Icon(Icons.delete_outline, color: AppColors.danger),
+              leading: Icon(Icons.delete_outline, color: colors.danger),
               title: Text(
                 'Delete Subject',
-                style: TextStyle(color: AppColors.danger),
+                style: TextStyle(color: colors.danger),
               ),
               onTap: () {
                 Navigator.pop(ctx);
@@ -832,8 +836,8 @@ class _TopicRow extends StatelessWidget {
                   color: isNew
                       ? colors.textMuted
                       : isDue
-                      ? AppColors.warning
-                      : AppColors.success,
+                      ? colors.warning
+                      : colors.success,
                 ),
               ),
             const SizedBox(width: 12),
@@ -866,8 +870,8 @@ class _TopicRow extends StatelessWidget {
                     (isNew
                             ? colors.textMuted
                             : isDue
-                            ? AppColors.warning
-                            : AppColors.success)
+                            ? colors.warning
+                            : colors.success)
                         .withAlpha(20),
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -879,8 +883,8 @@ class _TopicRow extends StatelessWidget {
                   color: isNew
                       ? colors.textSecondary
                       : isDue
-                      ? AppColors.warning
-                      : AppColors.success,
+                      ? colors.warning
+                      : colors.success,
                 ),
               ),
             ),
@@ -1016,10 +1020,10 @@ class _TopicRow extends StatelessWidget {
                 },
               ),
             ListTile(
-              leading: Icon(Icons.delete_outline, color: AppColors.danger),
+              leading: Icon(Icons.delete_outline, color: colors.danger),
               title: Text(
                 'Delete Topic',
-                style: TextStyle(color: AppColors.danger),
+                style: TextStyle(color: colors.danger),
               ),
               onTap: () {
                 Navigator.pop(ctx);

@@ -1,12 +1,5 @@
-/// Migration service for transitioning from Hive to Drift (SQLite)
-/// 
-/// Strategy: Parallel operation with gradual migration
-/// - Both databases run simultaneously during transition
-/// - New data written to both Hive (legacy) and Drift (new)
-/// - Background migration of existing Hive data to Drift
-/// - Feature flag to switch reads from Hive to Drift per entity
-/// 
-/// This ensures zero data loss and allows rollback if issues arise
+// Gradual Hive-to-Drift migration service. Both stores operate in parallel
+// during the transition so reads can switch per entity and still roll back.
 
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
@@ -15,17 +8,7 @@ import 'package:drift/drift.dart';
 
 import '../storage_service.dart';
 import 'app_database.dart';
-import '../../models/goal.dart';
-import '../../models/factor.dart';
 import '../../models/task.dart';
-import '../../models/subtask.dart';
-import '../../models/habit.dart';
-import '../../models/reflection.dart';
-import '../../models/experiment.dart';
-import '../../models/focus_log.dart';
-import '../../models/reflection_group.dart';
-import '../../models/category_model.dart';
-import '../../models/recurring_task.dart';
 
 /// Migration status for tracking progress
 enum MigrationStatus {

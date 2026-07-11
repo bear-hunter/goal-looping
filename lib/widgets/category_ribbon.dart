@@ -59,6 +59,7 @@ class CategoryRibbonCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: Material(
@@ -68,9 +69,9 @@ class CategoryRibbonCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppRadius.md),
           child: Container(
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: colors.surface,
               borderRadius: BorderRadius.circular(AppRadius.md),
-              border: Border.all(color: AppColors.glassBorder),
+              border: Border.all(color: colors.glassBorder),
               boxShadow: boxShadow ?? AppShadows.card,
             ),
             child: ClipRRect(

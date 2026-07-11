@@ -4,9 +4,12 @@ import 'package:provider/provider.dart';
 
 import '../../core/theme/theme.dart';
 import '../../providers/app_state.dart';
+import '../../services/notification_service.dart';
+import '../../models/barrier_tag.dart';
 import '../../models/habit.dart';
 import '../../models/habit_enums.dart';
 import '../../widgets/growth_area_selector.dart';
+import '../../widgets/log_barrier_sheet.dart';
 
 /// Habit Detail Screen with tabbed interface
 class HabitDetailScreen extends StatefulWidget {
@@ -36,14 +39,15 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
   String? _selectedCategoryId;
   PriorityLevel _selectedPriority = PriorityLevel.none;
   List<int> _selectedDays = [];
+  List<TimeOfDay> _reminderTimes = [];
   List<String> _linkedFactorIds = [];
-  bool _isEditMode = false;
+  String? _initializedEditHabitId;
   bool _hasChanges = false;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _nameController = TextEditingController();
     _descriptionController = TextEditingController();
     _triggerResponseController = TextEditingController();
@@ -59,27 +63,73 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
   }
 
   void _initEditState(Habit habit) {
-    if (!_isEditMode) {
+    if (_initializedEditHabitId != habit.id) {
       _nameController.text = habit.name;
       _descriptionController.text = habit.description ?? '';
       _triggerResponseController.text = habit.triggerResponse ?? '';
       _selectedCategoryId = habit.categoryId;
       _selectedPriority = habit.effectivePriorityLevel;
       _selectedDays = List<int>.from(habit.scheduledDays);
+      _reminderTimes = (habit.reminderTimes ?? const <String>[])
+          .map(_parseTimeOfDay)
+          .whereType<TimeOfDay>()
+          .toList();
       // Initialize linked factor IDs from new field or migrate from old field
       _linkedFactorIds = habit.linkedFactorIds != null
           ? List<String>.from(habit.linkedFactorIds!)
           : (habit.factorId != null ? [habit.factorId!] : []);
+      _initializedEditHabitId = habit.id;
     }
   }
 
+  TimeOfDay? _parseTimeOfDay(String value) {
+    final parts = value.split(':');
+    if (parts.length != 2) return null;
+    final hour = int.tryParse(parts[0]);
+    final minute = int.tryParse(parts[1]);
+    if (hour == null ||
+        minute == null ||
+        hour < 0 ||
+        hour > 23 ||
+        minute < 0 ||
+        minute > 59) {
+      return null;
+    }
+    return TimeOfDay(hour: hour, minute: minute);
+  }
+
+  Future<void> _addReminderTime() async {
+    if (!NotificationService.isSupported) return;
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _reminderTimes.isEmpty
+          ? TimeOfDay.now()
+          : _reminderTimes.last,
+    );
+    if (picked == null ||
+        _reminderTimes.any(
+          (time) => time.hour == picked.hour && time.minute == picked.minute,
+        )) {
+      return;
+    }
+    setState(() {
+      _reminderTimes.add(picked);
+      _reminderTimes.sort(
+        (a, b) => (a.hour * 60 + a.minute).compareTo(b.hour * 60 + b.minute),
+      );
+      _hasChanges = true;
+    });
+  }
+
+  bool _supportsDeviceReminderSchedule(Habit habit) =>
+      (habit.effectiveFrequencyType == HabitFrequencyType.everyday ||
+          habit.effectiveFrequencyType == HabitFrequencyType.specificDays) &&
+      habit.endDate == null;
+
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? AppColors.background : LightColors.background;
-    final textPrimary = isDark
-        ? AppColors.textPrimary
-        : LightColors.textPrimary;
+    final colors = context.colors;
+    final bgColor = colors.background;
 
     final appState = context.watch<AppState>();
     final habit = appState.habits.firstWhere(
@@ -98,7 +148,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
             pinned: true,
             backgroundColor: category != null
                 ? Color(category.colorValue)
-                : AppColors.primary,
+                : colors.primary,
             leading: IconButton(
               icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
               onPressed: () => Navigator.pop(context),
@@ -124,10 +174,10 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
                     colors: [
                       (category != null
                           ? Color(category.colorValue)
-                          : AppColors.primary),
+                          : colors.primary),
                       (category != null
                               ? Color(category.colorValue)
-                              : AppColors.primary)
+                              : colors.primary)
                           .withAlpha(200),
                     ],
                   ),
@@ -163,6 +213,8 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
               tabs: const [
                 Tab(text: 'Calendar'),
                 Tab(text: 'Statistics'),
+                Tab(text: 'Defense'),
+                Tab(text: 'Edit'),
               ],
             ),
           ),
@@ -170,8 +222,10 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
         body: TabBarView(
           controller: _tabController,
           children: [
-            _buildCalendarTab(habit, isDark, textPrimary),
-            _buildStatisticsTab(habit, isDark, textPrimary),
+            _buildCalendarTab(habit),
+            _buildStatisticsTab(habit),
+            _buildDefenseTab(habit),
+            _buildEditTab(habit),
           ],
         ),
       ),
@@ -179,27 +233,28 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
   }
 
   // ========== CALENDAR TAB ==========
-  Widget _buildCalendarTab(Habit habit, bool isDark, Color textPrimary) {
+  Widget _buildCalendarTab(Habit habit) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
           // Month navigation
-          _buildMonthHeader(isDark, textPrimary),
+          _buildMonthHeader(),
           const SizedBox(height: 8),
 
           // Calendar grid
-          _buildCalendarGrid(habit, isDark, textPrimary),
+          _buildCalendarGrid(habit),
           const SizedBox(height: 24),
 
           // Recent completions
-          _buildRecentLogs(habit, isDark, textPrimary),
+          _buildRecentLogs(habit),
         ],
       ),
     ).animate().fadeIn(duration: 200.ms);
   }
 
-  Widget _buildMonthHeader(bool isDark, Color textPrimary) {
+  Widget _buildMonthHeader() {
+    final textPrimary = context.colors.textPrimary;
     final months = [
       'January',
       'February',
@@ -247,7 +302,9 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
     );
   }
 
-  Widget _buildCalendarGrid(Habit habit, bool isDark, Color textPrimary) {
+  Widget _buildCalendarGrid(Habit habit) {
+    final colors = context.colors;
+    final textPrimary = colors.textPrimary;
     final firstDay = DateTime(_calendarMonth.year, _calendarMonth.month, 1);
     final lastDay = DateTime(_calendarMonth.year, _calendarMonth.month + 1, 0);
     final startWeekday = firstDay.weekday; // 1=Mon, 7=Sun
@@ -295,20 +352,20 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
 
       if (habit.scoringEnabled && score != null) {
         if (score >= 70) {
-          cellColor = Colors.green;
+          cellColor = colors.success;
           showCheckmark = true;
         } else if (score >= 40) {
-          cellColor = Colors.orange;
+          cellColor = colors.warning;
         } else {
-          cellColor = Colors.red;
+          cellColor = colors.danger;
         }
-        textColor = Colors.white;
+        textColor = colors.onPrimary;
       } else if (isCompleted) {
-        cellColor = AppColors.primary;
-        textColor = Colors.white;
+        cellColor = colors.primary;
+        textColor = colors.onPrimary;
         showCheckmark = true;
       } else if (isToday) {
-        cellColor = AppColors.primary.withAlpha(30);
+        cellColor = colors.primary.withAlpha(30);
       } else if (isFuture) {
         textColor = textPrimary.withAlpha(80);
       }
@@ -323,7 +380,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
               color: cellColor,
               borderRadius: BorderRadius.circular(8),
               border: isToday
-                  ? Border.all(color: AppColors.primary, width: 2)
+                  ? Border.all(color: colors.primary, width: 2)
                   : null,
               boxShadow: showCheckmark
                   ? [
@@ -405,14 +462,14 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
     DateTime date,
     AppState appState,
   ) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.colors;
     final currentLog = habit.getLogFor(date);
     double sliderValue = (currentLog?.score ?? 50).toDouble();
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: isDark ? AppColors.surface : LightColors.surface,
+      backgroundColor: colors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -433,9 +490,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: isDark
-                      ? AppColors.textPrimary
-                      : LightColors.textPrimary,
+                  color: colors.textPrimary,
                 ),
               ),
               const SizedBox(height: 24),
@@ -443,12 +498,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
               // Score slider
               Text(
                 'Score: ${sliderValue.round()}%',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: isDark
-                      ? AppColors.textSecondary
-                      : LightColors.textSecondary,
-                ),
+                style: TextStyle(fontSize: 16, color: colors.textSecondary),
               ),
               const SizedBox(height: 8),
               Slider(
@@ -456,7 +506,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
                 min: 0,
                 max: 100,
                 divisions: 10,
-                activeColor: _getScoreColor(sliderValue.round()),
+                activeColor: _getScoreColor(sliderValue.round(), colors),
                 onChanged: (value) {
                   setDialogState(() => sliderValue = value);
                 },
@@ -477,18 +527,20 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
                       ),
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? _getScoreColor(score)
+                            ? _getScoreColor(score, colors)
                             : Colors.transparent,
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: _getScoreColor(score)),
+                        border: Border.all(
+                          color: _getScoreColor(score, colors),
+                        ),
                       ),
                       child: Text(
                         '$score%',
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
                           color: isSelected
-                              ? Colors.white
-                              : _getScoreColor(score),
+                              ? colors.onPrimary
+                              : _getScoreColor(score, colors),
                         ),
                       ),
                     ),
@@ -513,8 +565,8 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
                         setState(() {});
                       },
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.red,
-                        side: const BorderSide(color: Colors.red),
+                        foregroundColor: colors.danger,
+                        side: BorderSide(color: colors.danger),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
                       child: const Text('Clear'),
@@ -535,8 +587,11 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
                         setState(() {});
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _getScoreColor(sliderValue.round()),
-                        foregroundColor: Colors.white,
+                        backgroundColor: _getScoreColor(
+                          sliderValue.round(),
+                          colors,
+                        ),
+                        foregroundColor: colors.onPrimary,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
                       child: const Text('Save'),
@@ -551,10 +606,10 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
     );
   }
 
-  Color _getScoreColor(int score) {
-    if (score >= 70) return Colors.green;
-    if (score >= 40) return Colors.orange;
-    return Colors.red;
+  Color _getScoreColor(int score, AppColorsTheme colors) {
+    if (score >= 70) return colors.success;
+    if (score >= 40) return colors.warning;
+    return colors.danger;
   }
 
   String _formatDateShort(DateTime date) {
@@ -575,7 +630,9 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
     return '${months[date.month - 1]} ${date.day}';
   }
 
-  Widget _buildRecentLogs(Habit habit, bool isDark, Color textPrimary) {
+  Widget _buildRecentLogs(Habit habit) {
+    final colors = context.colors;
+    final textPrimary = colors.textPrimary;
     final recentLogs = habit.logs.where((log) => log.completed).toList()
       ..sort((a, b) => b.date.compareTo(a.date));
 
@@ -583,17 +640,13 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
       return Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: isDark ? AppColors.surfaceLight : LightColors.surfaceLight,
+          color: colors.surfaceLight,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Center(
           child: Text(
             'No completions yet. Tap a date to log!',
-            style: TextStyle(
-              color: isDark
-                  ? AppColors.textSecondary
-                  : LightColors.textSecondary,
-            ),
+            style: TextStyle(color: colors.textSecondary),
           ),
         ),
       );
@@ -614,7 +667,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
                 dense: true,
                 leading: Icon(
                   Icons.check_circle_rounded,
-                  color: AppColors.primary,
+                  color: colors.primary,
                 ),
                 title: Text(
                   _formatDate(log.date),
@@ -628,7 +681,8 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
   }
 
   // ========== STATISTICS TAB ==========
-  Widget _buildStatisticsTab(Habit habit, bool isDark, Color textPrimary) {
+  Widget _buildStatisticsTab(Habit habit) {
+    final colors = context.colors;
     final totalCompletions = habit.logs.where((l) => l.completed).length;
     final completionRate = _calculateCompletionRate(habit);
 
@@ -637,7 +691,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
       child: Column(
         children: [
           // Score gauge
-          _buildScoreGauge(completionRate, isDark, textPrimary),
+          _buildScoreGauge(completionRate),
           const SizedBox(height: 24),
 
           // Stats grid
@@ -653,50 +707,44 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
                 'Current Streak',
                 '${habit.currentStreak}',
                 Icons.local_fire_department_rounded,
-                Colors.orange,
-                isDark,
-                textPrimary,
+                colors.warning,
               ),
               _buildStatCard(
                 'Best Streak',
                 '${habit.bestStreak}',
                 Icons.emoji_events_rounded,
-                Colors.amber,
-                isDark,
-                textPrimary,
+                colors.warning,
               ),
               _buildStatCard(
                 'Total',
                 '$totalCompletions',
                 Icons.check_circle_rounded,
-                AppColors.primary,
-                isDark,
-                textPrimary,
+                colors.primary,
               ),
               _buildStatCard(
                 'Rate',
                 '${(completionRate * 100).round()}%',
                 Icons.trending_up_rounded,
-                Colors.green,
-                isDark,
-                textPrimary,
+                colors.success,
               ),
             ],
           ),
           const SizedBox(height: 24),
 
           // Weekly distribution
-          _buildWeeklyDistribution(habit, isDark, textPrimary),
+          _buildWeeklyDistribution(habit),
         ],
       ),
     ).animate().fadeIn(duration: 200.ms);
   }
 
-  Widget _buildScoreGauge(double rate, bool isDark, Color textPrimary) {
+  Widget _buildScoreGauge(double rate) {
+    final colors = context.colors;
+    final textPrimary = colors.textPrimary;
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceLight : LightColors.surfaceLight,
+        color: colors.surfaceLight,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -710,8 +758,8 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
                   child: CircularProgressIndicator(
                     value: rate,
                     strokeWidth: 12,
-                    backgroundColor: AppColors.glassBorder,
-                    valueColor: AlwaysStoppedAnimation(AppColors.primary),
+                    backgroundColor: colors.glassBorder,
+                    valueColor: AlwaysStoppedAnimation(colors.primary),
                   ),
                 ),
                 Center(
@@ -728,14 +776,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
             ),
           ),
           const SizedBox(height: 12),
-          Text(
-            'Habit Score',
-            style: TextStyle(
-              color: isDark
-                  ? AppColors.textSecondary
-                  : LightColors.textSecondary,
-            ),
-          ),
+          Text('Habit Score', style: TextStyle(color: colors.textSecondary)),
         ],
       ),
     );
@@ -746,13 +787,13 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
     String value,
     IconData icon,
     Color color,
-    bool isDark,
-    Color textPrimary,
   ) {
+    final colors = context.colors;
+    final textPrimary = colors.textPrimary;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceLight : LightColors.surfaceLight,
+        color: colors.surfaceLight,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -770,19 +811,16 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
           ),
           Text(
             label,
-            style: TextStyle(
-              fontSize: 12,
-              color: isDark
-                  ? AppColors.textSecondary
-                  : LightColors.textSecondary,
-            ),
+            style: TextStyle(fontSize: 12, color: colors.textSecondary),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildWeeklyDistribution(Habit habit, bool isDark, Color textPrimary) {
+  Widget _buildWeeklyDistribution(Habit habit) {
+    final colors = context.colors;
+    final textPrimary = colors.textPrimary;
     final dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     final dayCounts = List.filled(7, 0);
 
@@ -797,7 +835,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceLight : LightColors.surfaceLight,
+        color: colors.surfaceLight,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -818,7 +856,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
                     width: 24,
                     height: 60,
                     decoration: BoxDecoration(
-                      color: AppColors.glassBorder,
+                      color: colors.glassBorder,
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Align(
@@ -829,7 +867,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
                             ? (dayCounts[i] / maxCount * 60)
                             : 0,
                         decoration: BoxDecoration(
-                          color: AppColors.primary,
+                          color: colors.primary,
                           borderRadius: BorderRadius.circular(4),
                         ),
                       ),
@@ -838,12 +876,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
                   const SizedBox(height: 4),
                   Text(
                     dayNames[i],
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: isDark
-                          ? AppColors.textSecondary
-                          : LightColors.textSecondary,
-                    ),
+                    style: TextStyle(fontSize: 11, color: colors.textSecondary),
                   ),
                 ],
               ),
@@ -876,26 +909,20 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
   }
 
   // ========== DEFENSE TAB ==========
-  Widget _buildDefenseTab(Habit habit, bool isDark, Color textPrimary) {
-    final textSecondary = isDark
-        ? AppColors.textSecondary
-        : LightColors.textSecondary;
-    final accentColor = AppColors.primary;
+  Widget _buildDefenseTab(Habit habit) {
+    final colors = context.colors;
+    final textPrimary = colors.textPrimary;
+    final textSecondary = colors.textSecondary;
+    final accentColor = colors.primary;
 
-    // Get barrier logs from habit logs
-    final logsWithBarriers =
-        habit.logs
-            .where(
-              (log) => log.barrierTag != null && log.barrierTag!.isNotEmpty,
-            )
-            .toList()
-          ..sort((a, b) => b.date.compareTo(a.date));
+    // Barriers logged against this habit (newest first).
+    final barriers = context.read<AppState>().barriersForHabit(habit.id);
 
-    // Count barriers by type
+    // Count barriers by tag key.
     final barrierCounts = <String, int>{};
-    for (final log in logsWithBarriers) {
-      final tag = log.barrierTag!;
-      barrierCounts[tag] = (barrierCounts[tag] ?? 0) + 1;
+    for (final b in barriers) {
+      final key = b.tag ?? 'other';
+      barrierCounts[key] = (barrierCounts[key] ?? 0) + 1;
     }
     final sortedBarriers = barrierCounts.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
@@ -910,7 +937,6 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
             'Scripted Response',
             Icons.psychology_rounded,
             accentColor,
-            isDark,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -953,9 +979,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
                   ),
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
-                  onPressed: () {
-                    _tabController.animateTo(3); // Go to Edit tab
-                  },
+                  onPressed: () => _showEditTriggerResponseDialog(habit),
                   icon: Icon(
                     habit.triggerResponse != null
                         ? Icons.edit_rounded
@@ -978,8 +1002,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
           _buildDefenseCard(
             'Barrier Analysis',
             Icons.analytics_rounded,
-            Colors.orange,
-            isDark,
+            colors.warning,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1000,9 +1023,10 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
                       .take(5)
                       .map(
                         (entry) => _buildBarrierRow(
+                          context,
                           entry.key,
                           entry.value,
-                          logsWithBarriers.length,
+                          barriers.length,
                           textPrimary,
                           textSecondary,
                         ),
@@ -1017,12 +1041,11 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
           _buildDefenseCard(
             'Barrier History',
             Icons.history_rounded,
-            Colors.blue,
-            isDark,
+            colors.info,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (logsWithBarriers.isEmpty)
+                if (barriers.isEmpty)
                   _buildEmptyState(
                     'No barrier history',
                     'Barrier logs will appear here when you log them',
@@ -1030,20 +1053,21 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
                     textSecondary,
                   )
                 else ...[
-                  ...logsWithBarriers
+                  ...barriers
                       .take(10)
                       .map(
-                        (log) => _buildBarrierLogEntry(
-                          log,
+                        (b) => _buildBarrierLogEntry(
+                          context,
+                          b,
                           textPrimary,
                           textSecondary,
                         ),
                       ),
-                  if (logsWithBarriers.length > 10)
+                  if (barriers.length > 10)
                     Padding(
                       padding: const EdgeInsets.only(top: 8),
                       child: Text(
-                        '+ ${logsWithBarriers.length - 10} more entries',
+                        '+ ${barriers.length - 10} more entries',
                         style: TextStyle(color: textSecondary, fontSize: 12),
                       ),
                     ),
@@ -1057,15 +1081,14 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
           _buildDefenseCard(
             'Quick Actions',
             Icons.flash_on_rounded,
-            Colors.amber,
-            isDark,
+            colors.warning,
             child: Column(
               children: [
                 _buildQuickActionButton(
                   'Log a Barrier Now',
                   Icons.warning_rounded,
-                  Colors.orange,
-                  () => _showLogBarrierDialog(habit),
+                  colors.warning,
+                  () => LogBarrierSheet.show(context, presetHabitId: habit.id),
                 ),
                 const SizedBox(height: 8),
                 _buildQuickActionButton(
@@ -1085,16 +1108,12 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
   Widget _buildDefenseCard(
     String title,
     IconData icon,
-    Color color,
-    bool isDark, {
+    Color color, {
     required Widget child,
   }) {
-    final surfaceColor = isDark
-        ? AppColors.surfaceLight
-        : LightColors.surfaceLight;
-    final textPrimary = isDark
-        ? AppColors.textPrimary
-        : LightColors.textPrimary;
+    final colors = context.colors;
+    final surfaceColor = colors.surfaceLight;
+    final textPrimary = colors.textPrimary;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -1158,13 +1177,17 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
   }
 
   Widget _buildBarrierRow(
-    String barrier,
+    BuildContext context,
+    String barrierKey,
     int count,
     int total,
     Color textPrimary,
     Color textSecondary,
   ) {
-    final percentage = (count / total * 100).round();
+    final colors = context.colors;
+    final info = BarrierTags.byKeyOrOther(barrierKey);
+    final color = BarrierTags.resolveColor(context, barrierKey);
+    final percentage = total == 0 ? 0 : (count / total * 100).round();
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Column(
@@ -1173,7 +1196,16 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(barrier, style: TextStyle(color: textPrimary, fontSize: 14)),
+              Row(
+                children: [
+                  Icon(info.icon, size: 14, color: color),
+                  const SizedBox(width: 6),
+                  Text(
+                    info.label,
+                    style: TextStyle(color: textPrimary, fontSize: 14),
+                  ),
+                ],
+              ),
               Text(
                 '$count ($percentage%)',
                 style: TextStyle(color: textSecondary, fontSize: 12),
@@ -1182,9 +1214,9 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
           ),
           const SizedBox(height: 4),
           LinearProgressIndicator(
-            value: count / total,
-            backgroundColor: Colors.grey.withAlpha(50),
-            valueColor: AlwaysStoppedAnimation(_getBarrierColor(barrier)),
+            value: total == 0 ? 0 : count / total,
+            backgroundColor: colors.textMuted.withAlpha(50),
+            valueColor: AlwaysStoppedAnimation(color),
             minHeight: 6,
             borderRadius: BorderRadius.circular(3),
           ),
@@ -1193,71 +1225,98 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
     );
   }
 
-  Color _getBarrierColor(String barrier) {
-    switch (barrier.toLowerCase()) {
-      case 'tired':
-        return Colors.purple;
-      case 'no time':
-        return Colors.blue;
-      case 'stressed':
-        return Colors.red;
-      case 'distracted':
-        return Colors.orange;
-      case 'unmotivated':
-        return Colors.grey;
-      case 'sick':
-        return Colors.teal;
-      case 'social pressure':
-        return Colors.pink;
-      case 'forgot':
-        return Colors.amber;
-      default:
-        return Colors.blueGrey;
-    }
-  }
-
   Widget _buildBarrierLogEntry(
-    HabitLog log,
+    BuildContext context,
+    BarrierEntry barrier,
     Color textPrimary,
     Color textSecondary,
   ) {
-    final dateStr = _formatDateRelative(log.date);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-              color: _getBarrierColor(log.barrierTag ?? ''),
-              shape: BoxShape.circle,
+    final colors = context.colors;
+    final info = BarrierTags.byKeyOrOther(barrier.tag);
+    final color = BarrierTags.resolveColor(context, barrier.tag);
+    final dateStr = _formatDateRelative(barrier.occurredAt);
+    final note = barrier.note;
+    return InkWell(
+      onTap: () => LogBarrierSheet.show(context, existing: barrier),
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: color.withAlpha(30),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(info.icon, size: 14, color: color),
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  log.barrierTag ?? 'Unknown',
-                  style: TextStyle(color: textPrimary, fontSize: 14),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        info.label,
+                        style: TextStyle(color: textPrimary, fontSize: 14),
+                      ),
+                      if (barrier.moodRating != null) ...[
+                        const SizedBox(width: 6),
+                        Text(
+                          _moodEmoji(barrier.moodRating!),
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                      ],
+                    ],
+                  ),
+                  Text(
+                    dateStr,
+                    style: TextStyle(color: textSecondary, fontSize: 11),
+                  ),
+                ],
+              ),
+            ),
+            if (barrier.wasHandled)
+              Padding(
+                padding: const EdgeInsets.only(right: 4),
+                child: Icon(
+                  Icons.check_circle_rounded,
+                  size: 16,
+                  color: colors.success,
                 ),
-                Text(
-                  dateStr,
-                  style: TextStyle(color: textSecondary, fontSize: 11),
+              ),
+            if (note != null && note.isNotEmpty)
+              Tooltip(
+                message: note,
+                child: Icon(
+                  Icons.notes_rounded,
+                  size: 16,
+                  color: textSecondary,
                 ),
-              ],
-            ),
-          ),
-          if (log.note != null && log.note!.isNotEmpty)
-            Tooltip(
-              message: log.note!,
-              child: Icon(Icons.notes_rounded, size: 16, color: textSecondary),
-            ),
-        ],
+              ),
+          ],
+        ),
       ),
     );
+  }
+
+  String _moodEmoji(int mood) {
+    switch (mood) {
+      case 1:
+        return '😢';
+      case 2:
+        return '😕';
+      case 3:
+        return '😐';
+      case 4:
+        return '🙂';
+      case 5:
+        return '😄';
+      default:
+        return '😐';
+    }
   }
 
   String _formatDateRelative(DateTime date) {
@@ -1289,137 +1348,59 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
     );
   }
 
-  void _showLogBarrierDialog(Habit habit) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textPrimary = isDark
-        ? AppColors.textPrimary
-        : LightColors.textPrimary;
-    String? selectedBarrier;
-    final noteController = TextEditingController();
-
-    showModalBottomSheet(
+  void _showEditTriggerResponseDialog(Habit habit) {
+    final controller = TextEditingController(text: habit.triggerResponse ?? '');
+    showDialog(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: isDark ? AppColors.surface : LightColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setModalState) => Padding(
-          padding: EdgeInsets.fromLTRB(
-            20,
-            20,
-            20,
-            MediaQuery.of(context).viewInsets.bottom + 20,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Log a Barrier',
-                style: TextStyle(
-                  color: textPrimary,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Scripted Response'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'An "If-Then" plan to overcome obstacles automatically.\n'
+              'Example: "If I feel tired → I will do just 5 minutes"',
+              style: TextStyle(fontSize: 12),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              maxLines: 3,
+              decoration: InputDecoration(
+                hintText: 'If ... then I will ...',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              const SizedBox(height: 16),
-              Text(
-                'What got in the way?',
-                style: TextStyle(color: textPrimary.withAlpha(180)),
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: BarrierTags.common.map((tag) {
-                  final isSelected = selectedBarrier == tag;
-                  return ChoiceChip(
-                    label: Text(tag),
-                    selected: isSelected,
-                    onSelected: (selected) {
-                      setModalState(
-                        () => selectedBarrier = selected ? tag : null,
-                      );
-                    },
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: noteController,
-                decoration: InputDecoration(
-                  hintText: 'Add a note (optional)',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                maxLines: 2,
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: selectedBarrier == null
-                      ? null
-                      : () {
-                          _logBarrier(
-                            habit,
-                            selectedBarrier!,
-                            noteController.text,
-                          );
-                          Navigator.pop(ctx);
-                        },
-                  child: const Text('Log Barrier'),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
-      ),
-    );
-  }
-
-  void _logBarrier(Habit habit, String barrier, String note) {
-    final today = DateTime.now();
-    final todayStart = DateTime(today.year, today.month, today.day);
-
-    // Find or create today's log
-    var todayLog = habit.logs.firstWhere(
-      (log) =>
-          log.date.year == todayStart.year &&
-          log.date.month == todayStart.month &&
-          log.date.day == todayStart.day,
-      orElse: () {
-        final newLog = HabitLog(date: todayStart);
-        habit.logs.add(newLog);
-        return newLog;
-      },
-    );
-
-    todayLog.barrierTag = barrier;
-    if (note.isNotEmpty) {
-      todayLog.note = note;
-    }
-
-    context.read<AppState>().updateHabit(habit);
-    setState(() {});
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Barrier logged: $barrier'),
-        backgroundColor: Colors.orange,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final text = controller.text.trim();
+              habit.triggerResponse = text.isEmpty ? null : text;
+              context.read<AppState>().updateHabit(habit);
+              Navigator.pop(ctx);
+              setState(() {});
+            },
+            child: const Text('Save'),
+          ),
+        ],
       ),
     );
   }
 
   void _showScriptedResponseDialog(Habit habit) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textPrimary = isDark
-        ? AppColors.textPrimary
-        : LightColors.textPrimary;
-    final accentColor = AppColors.primary;
+    final colors = context.colors;
+    final textPrimary = colors.textPrimary;
+    final accentColor = colors.primary;
 
     showDialog(
       context: context,
@@ -1491,7 +1472,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
             TextButton(
               onPressed: () {
                 Navigator.pop(ctx);
-                _tabController.animateTo(3); // Go to Edit tab
+                _showEditTriggerResponseDialog(habit);
               },
               child: const Text('Add One Now'),
             ),
@@ -1507,14 +1488,12 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
   }
 
   // ========== EDIT TAB ==========
-  Widget _buildEditTab(Habit habit, bool isDark, Color textPrimary) {
+  Widget _buildEditTab(Habit habit) {
     _initEditState(habit);
-    final textSecondary = isDark
-        ? AppColors.textSecondary
-        : LightColors.textSecondary;
-    final surfaceColor = isDark
-        ? AppColors.surfaceLight
-        : LightColors.surfaceLight;
+    final colors = context.colors;
+    final textPrimary = colors.textPrimary;
+    final textSecondary = colors.textSecondary;
+    final surfaceColor = colors.surfaceLight;
     final categories = context.watch<AppState>().categories;
 
     return SingleChildScrollView(
@@ -1523,252 +1502,252 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Name field
-          _buildEditSection(
-            'Habit Name',
-            [
-              TextField(
-                controller: _nameController,
-                style: TextStyle(color: textPrimary),
-                decoration: InputDecoration(
-                  hintText: 'Enter habit name',
-                  hintStyle: TextStyle(color: textSecondary),
-                  filled: true,
-                  fillColor: surfaceColor,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide.none,
-                  ),
+          _buildEditSection('Habit Name', [
+            TextField(
+              controller: _nameController,
+              style: TextStyle(color: textPrimary),
+              decoration: InputDecoration(
+                hintText: 'Enter habit name',
+                hintStyle: TextStyle(color: textSecondary),
+                filled: true,
+                fillColor: surfaceColor,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide.none,
                 ),
-                onChanged: (_) => setState(() => _hasChanges = true),
               ),
-            ],
-            isDark,
-            textPrimary,
-          ),
+              onChanged: (_) => setState(() => _hasChanges = true),
+            ),
+          ]),
           const SizedBox(height: 16),
 
           // Type & Evaluation (read-only as they affect core behavior)
-          _buildEditSection(
-            'Type & Evaluation',
-            [
-              _buildInfoRow(
-                'Type',
-                habit.type.toString().split('.').last,
-                textPrimary,
-              ),
-              _buildInfoRow(
-                'Evaluation',
-                habit.effectiveEvaluationType.label,
-                textPrimary,
-              ),
-              _buildInfoRow(
-                'Frequency',
-                habit.effectiveFrequencyType.label,
-                textPrimary,
-              ),
-            ],
-            isDark,
-            textPrimary,
-          ),
+          _buildEditSection('Type & Evaluation', [
+            _buildInfoRow(
+              'Type',
+              habit.type.toString().split('.').last,
+              textPrimary,
+            ),
+            _buildInfoRow(
+              'Evaluation',
+              habit.effectiveEvaluationType.label,
+              textPrimary,
+            ),
+            _buildInfoRow(
+              'Frequency',
+              habit.effectiveFrequencyType.label,
+              textPrimary,
+            ),
+          ]),
           const SizedBox(height: 16),
 
           // Priority Selection
-          _buildEditSection(
-            'Priority',
-            [
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: PriorityLevel.values.map((priority) {
-                  final isSelected = _selectedPriority == priority;
-                  return ChoiceChip(
-                    label: Text(priority.label),
-                    selected: isSelected,
-                    selectedColor: _getPriorityColor(priority).withAlpha(100),
-                    onSelected: (selected) {
-                      setState(() {
-                        _selectedPriority = priority;
-                        _hasChanges = true;
-                        _isEditMode = true;
-                      });
-                    },
-                    avatar: Icon(
-                      Icons.flag_rounded,
-                      size: 16,
-                      color: isSelected
-                          ? _getPriorityColor(priority)
-                          : textSecondary,
-                    ),
-                  );
-                }).toList(),
-              ),
-            ],
-            isDark,
-            textPrimary,
-          ),
+          _buildEditSection('Priority', [
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: PriorityLevel.values.map((priority) {
+                final isSelected = _selectedPriority == priority;
+                return ChoiceChip(
+                  label: Text(priority.label),
+                  selected: isSelected,
+                  selectedColor: _getPriorityColor(
+                    priority,
+                    context,
+                  ).withAlpha(100),
+                  onSelected: (selected) {
+                    setState(() {
+                      _selectedPriority = priority;
+                      _hasChanges = true;
+                    });
+                  },
+                  avatar: Icon(
+                    Icons.flag_rounded,
+                    size: 16,
+                    color: isSelected
+                        ? _getPriorityColor(priority, context)
+                        : textSecondary,
+                  ),
+                );
+              }).toList(),
+            ),
+          ]),
           const SizedBox(height: 16),
 
           // Category Selection
-          _buildEditSection(
-            'Category',
-            [
-              SizedBox(
-                height: 40,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: categories.length,
-                  itemBuilder: (context, index) {
-                    final category = categories[index];
-                    final isSelected = _selectedCategoryId == category.id;
-                    final color = Color(category.colorValue);
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: ChoiceChip(
-                        label: Text(category.name),
-                        selected: isSelected,
-                        selectedColor: color.withAlpha(100),
-                        avatar: Icon(
-                          category.icon,
-                          size: 16,
-                          color: isSelected ? color : textSecondary,
-                        ),
-                        onSelected: (selected) {
-                          setState(() {
-                            _selectedCategoryId = selected ? category.id : null;
-                            _hasChanges = true;
-                            _isEditMode = true;
-                          });
-                        },
+          _buildEditSection('Category', [
+            SizedBox(
+              height: 40,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: categories.length,
+                itemBuilder: (context, index) {
+                  final category = categories[index];
+                  final isSelected = _selectedCategoryId == category.id;
+                  final color = Color(category.colorValue);
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ChoiceChip(
+                      label: Text(category.name),
+                      selected: isSelected,
+                      selectedColor: color.withAlpha(100),
+                      avatar: Icon(
+                        category.icon,
+                        size: 16,
+                        color: isSelected ? color : textSecondary,
                       ),
-                    );
-                  },
-                ),
-              ),
-            ],
-            isDark,
-            textPrimary,
-          ),
-          const SizedBox(height: 16),
-
-          // Scheduled Days
-          _buildEditSection(
-            'Scheduled Days',
-            [
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (var i = 1; i <= 7; i++)
-                    _DayChip(
-                      day: i,
-                      isSelected: _selectedDays.contains(i),
-                      onTap: () {
+                      onSelected: (selected) {
                         setState(() {
-                          if (_selectedDays.contains(i)) {
-                            _selectedDays.remove(i);
-                          } else {
-                            _selectedDays.add(i);
-                          }
-                          _selectedDays.sort();
+                          _selectedCategoryId = selected ? category.id : null;
                           _hasChanges = true;
-                          _isEditMode = true;
                         });
                       },
                     ),
-                ],
-              ),
-            ],
-            isDark,
-            textPrimary,
-          ),
-          const SizedBox(height: 16),
-
-          // Growth Area Selector (Dissected Trees)
-          _buildEditSection(
-            'Link to Dissected Tree',
-            [
-              Consumer<AppState>(
-                builder: (context, state, _) {
-                  return GrowthAreaSelector(
-                    selectedAreaIds: _linkedFactorIds,
-                    onSelectionChanged: (ids) {
-                      setState(() {
-                        _linkedFactorIds = ids;
-                        _hasChanges = true;
-                        _isEditMode = true;
-                      });
-                    },
-                    label: 'Link to Dissected Tree (Optional)',
-                    multiSelect: true,
                   );
                 },
               ),
+            ),
+          ]),
+          const SizedBox(height: 16),
+
+          // Scheduled Days
+          _buildEditSection('Scheduled Days', [
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (var i = 1; i <= 7; i++)
+                  _DayChip(
+                    day: i,
+                    isSelected: _selectedDays.contains(i),
+                    onTap: () {
+                      setState(() {
+                        if (_selectedDays.contains(i)) {
+                          if (_selectedDays.length > 1) {
+                            _selectedDays.remove(i);
+                          }
+                        } else {
+                          _selectedDays.add(i);
+                        }
+                        _selectedDays.sort();
+                        _hasChanges = true;
+                      });
+                    },
+                  ),
+              ],
+            ),
+          ]),
+          const SizedBox(height: 16),
+
+          _buildEditSection('Reminders', [
+            if (!NotificationService.isSupported)
+              Text(
+                'Device reminders are unavailable in this Web build.',
+                style: TextStyle(color: textSecondary, fontSize: 13),
+              )
+            else if (!_supportsDeviceReminderSchedule(habit))
+              Text(
+                habit.endDate != null
+                    ? 'Device reminders currently require a schedule without an end date.'
+                    : 'Device reminders currently support Every day or Specific days schedules.',
+                style: TextStyle(color: textSecondary, fontSize: 13),
+              )
+            else ...[
+              if (_reminderTimes.isNotEmpty)
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _reminderTimes
+                      .map(
+                        (time) => InputChip(
+                          label: Text(time.format(context)),
+                          onDeleted: () => setState(() {
+                            _reminderTimes.remove(time);
+                            _hasChanges = true;
+                          }),
+                        ),
+                      )
+                      .toList(),
+                ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: _addReminderTime,
+                icon: const Icon(Icons.add_alarm_rounded),
+                label: const Text('Add reminder'),
+              ),
             ],
-            isDark,
-            textPrimary,
-          ),
+          ]),
+          const SizedBox(height: 16),
+
+          // Growth Area Selector (Dissected Trees)
+          _buildEditSection('Link to Dissected Tree', [
+            Consumer<AppState>(
+              builder: (context, state, _) {
+                return GrowthAreaSelector(
+                  selectedAreaIds: _linkedFactorIds,
+                  onSelectionChanged: (ids) {
+                    setState(() {
+                      _linkedFactorIds = ids;
+                      _hasChanges = true;
+                    });
+                  },
+                  label: 'Link to Dissected Tree (Optional)',
+                  multiSelect: true,
+                );
+              },
+            ),
+          ]),
           const SizedBox(height: 16),
 
           // Description
-          _buildEditSection(
-            'Description',
-            [
-              TextField(
-                controller: _descriptionController,
-                style: TextStyle(color: textPrimary),
-                maxLines: 3,
-                decoration: InputDecoration(
-                  hintText: 'Add a description (optional)',
-                  hintStyle: TextStyle(color: textSecondary),
-                  filled: true,
-                  fillColor: surfaceColor,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide.none,
-                  ),
+          _buildEditSection('Description', [
+            TextField(
+              controller: _descriptionController,
+              style: TextStyle(color: textPrimary),
+              maxLines: 3,
+              decoration: InputDecoration(
+                hintText: 'Add a description (optional)',
+                hintStyle: TextStyle(color: textSecondary),
+                filled: true,
+                fillColor: surfaceColor,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide.none,
                 ),
-                onChanged: (_) => setState(() => _hasChanges = true),
               ),
-            ],
-            isDark,
-            textPrimary,
-          ),
+              onChanged: (_) => setState(() => _hasChanges = true),
+            ),
+          ]),
           const SizedBox(height: 16),
 
           // Scripted Response (If-Then Plan)
-          _buildEditSection(
-            'Defense Plan (If-Then)',
-            [
-              Text(
-                'When facing obstacles, what will you do?',
-                style: TextStyle(color: textSecondary, fontSize: 12),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _triggerResponseController,
-                style: TextStyle(color: textPrimary),
-                maxLines: 2,
-                decoration: InputDecoration(
-                  hintText:
-                      'e.g., "If I feel tired → I will do just 5 minutes"',
-                  hintStyle: TextStyle(color: textSecondary),
-                  filled: true,
-                  fillColor: surfaceColor,
-                  prefixIcon: Icon(
-                    Icons.psychology_rounded,
-                    color: AppColors.primary,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide.none,
-                  ),
+          _buildEditSection('Defense Plan (If-Then)', [
+            Text(
+              'When facing obstacles, what will you do?',
+              style: TextStyle(color: textSecondary, fontSize: 12),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _triggerResponseController,
+              style: TextStyle(color: textPrimary),
+              maxLines: 2,
+              decoration: InputDecoration(
+                hintText: 'e.g., "If I feel tired → I will do just 5 minutes"',
+                hintStyle: TextStyle(color: textSecondary),
+                filled: true,
+                fillColor: surfaceColor,
+                prefixIcon: Icon(
+                  Icons.psychology_rounded,
+                  color: colors.primary,
                 ),
-                onChanged: (_) => setState(() => _hasChanges = true),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide.none,
+                ),
               ),
-            ],
-            isDark,
-            textPrimary,
-          ),
+              onChanged: (_) => setState(() => _hasChanges = true),
+            ),
+          ]),
           const SizedBox(height: 24),
 
           // Save Button (only show if changes made)
@@ -1780,7 +1759,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
                 icon: const Icon(Icons.save_rounded),
                 label: const Text('Save Changes'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
+                  backgroundColor: colors.primary,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
@@ -1815,17 +1794,17 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
             width: double.infinity,
             child: OutlinedButton.icon(
               onPressed: () => _deleteHabit(habit),
-              icon: const Icon(Icons.delete_rounded, color: Colors.red),
-              label: const Text(
+              icon: Icon(Icons.delete_rounded, color: colors.danger),
+              label: Text(
                 'Delete Habit',
-                style: TextStyle(color: Colors.red),
+                style: TextStyle(color: colors.danger),
               ),
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
-                side: const BorderSide(color: Colors.red),
+                side: BorderSide(color: colors.danger),
               ),
             ),
           ),
@@ -1842,6 +1821,13 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
       );
       return;
     }
+    if (habit.effectiveFrequencyType == HabitFrequencyType.specificDays &&
+        _selectedDays.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Select at least one scheduled day.')),
+      );
+      return;
+    }
 
     // Update habit properties
     habit.name = name;
@@ -1854,14 +1840,22 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
     habit.categoryId = _selectedCategoryId;
     habit.priorityLevel = _selectedPriority;
     habit.scheduledDays = _selectedDays;
-    habit.linkedFactorIds = _linkedFactorIds.isNotEmpty ? _linkedFactorIds : null;
+    habit.reminderTimes = _reminderTimes
+        .map(
+          (time) =>
+              '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}',
+        )
+        .toList();
+    habit.factorId = null;
+    habit.linkedFactorIds = _linkedFactorIds.isNotEmpty
+        ? _linkedFactorIds
+        : null;
 
     final appState = context.read<AppState>();
     await appState.updateHabit(habit);
 
     setState(() {
       _hasChanges = false;
-      _isEditMode = false;
     });
 
     if (mounted) {
@@ -1871,29 +1865,26 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
     }
   }
 
-  Color _getPriorityColor(PriorityLevel priority) {
+  Color _getPriorityColor(PriorityLevel priority, BuildContext context) {
     switch (priority) {
       case PriorityLevel.none:
-        return Colors.grey;
+        return context.colors.textMuted;
       case PriorityLevel.low:
-        return Colors.blue;
+        return context.colors.info;
       case PriorityLevel.medium:
-        return Colors.orange;
+        return context.colors.warning;
       case PriorityLevel.high:
-        return Colors.red;
+        return context.colors.danger;
     }
   }
 
-  Widget _buildEditSection(
-    String title,
-    List<Widget> children,
-    bool isDark,
-    Color textPrimary,
-  ) {
+  Widget _buildEditSection(String title, List<Widget> children) {
+    final colors = context.colors;
+    final textPrimary = colors.textPrimary;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceLight : LightColors.surfaceLight,
+        color: colors.surfaceLight,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -1974,7 +1965,10 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            child: Text(
+              'Delete',
+              style: TextStyle(color: context.colors.danger),
+            ),
           ),
         ],
       ),
@@ -2015,7 +2009,7 @@ class _DayChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.colors;
 
     return GestureDetector(
       onTap: onTap,
@@ -2025,14 +2019,12 @@ class _DayChip extends StatelessWidget {
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-            color: isSelected
-                ? AppColors.primary
-                : (isDark ? AppColors.surfaceLight : LightColors.surfaceLight),
+            color: isSelected ? colors.primary : colors.surfaceLight,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
               color: isSelected
-                  ? AppColors.primary
-                  : Colors.grey.withAlpha(100),
+                  ? colors.primary
+                  : colors.textMuted.withAlpha(100),
               width: isSelected ? 2 : 1,
             ),
           ),
@@ -2041,11 +2033,7 @@ class _DayChip extends StatelessWidget {
               _dayNames[day],
               style: TextStyle(
                 fontWeight: FontWeight.w600,
-                color: isSelected
-                    ? Colors.white
-                    : (isDark
-                          ? AppColors.textPrimary
-                          : LightColors.textPrimary),
+                color: isSelected ? Colors.white : colors.textPrimary,
               ),
             ),
           ),

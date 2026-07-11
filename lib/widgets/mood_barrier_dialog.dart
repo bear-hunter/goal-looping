@@ -2,13 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 import '../core/theme/theme.dart';
-import '../models/habit.dart';
+import '../models/barrier_tag.dart';
 
-/// Dialog for mood rating and barrier logging (Proddy-style)
+/// Bottom sheet for capturing mood and a barrier tag in-context (e.g. right
+/// after a habit is marked failed on the Today screen).
+///
+/// Presentation-only: it never writes data. [onSubmit] receives the chosen
+/// mood (1-5, nullable) and a barrier tag *key* (see [BarrierTags], nullable);
+/// the caller decides what to persist. Tapping "Skip" submits `(null, null)`.
 class MoodBarrierDialog extends StatefulWidget {
   final bool habitCompleted;
   final String habitName;
-  final Function(int? mood, String? barrier) onSubmit;
+  final void Function(int? mood, String? barrierKey) onSubmit;
 
   const MoodBarrierDialog({
     super.key,
@@ -20,12 +25,11 @@ class MoodBarrierDialog extends StatefulWidget {
   @override
   State<MoodBarrierDialog> createState() => _MoodBarrierDialogState();
 
-  /// Show the dialog and return mood + barrier
   static Future<void> show(
     BuildContext context, {
     required bool habitCompleted,
     required String habitName,
-    required Function(int? mood, String? barrier) onSubmit,
+    required void Function(int? mood, String? barrierKey) onSubmit,
   }) {
     return showModalBottomSheet(
       context: context,
@@ -34,8 +38,8 @@ class MoodBarrierDialog extends StatefulWidget {
       builder: (ctx) => MoodBarrierDialog(
         habitCompleted: habitCompleted,
         habitName: habitName,
-        onSubmit: (mood, barrier) {
-          onSubmit(mood, barrier);
+        onSubmit: (mood, barrierKey) {
+          onSubmit(mood, barrierKey);
           Navigator.pop(ctx);
         },
       ),
@@ -45,57 +49,81 @@ class MoodBarrierDialog extends StatefulWidget {
 
 class _MoodBarrierDialogState extends State<MoodBarrierDialog> {
   int? _selectedMood;
-  String? _selectedBarrier;
+  String? _selectedBarrierKey;
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Container(
-      padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(context).viewInsets.bottom + 20),
+      padding: EdgeInsets.fromLTRB(
+        20,
+        20,
+        20,
+        MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: colors.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Handle bar
           Center(
             child: Container(
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: AppColors.glassBorder,
+                color: colors.glassBorder,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
           ),
           const SizedBox(height: 16),
 
-          // Title
-          Text(
-            widget.habitCompleted 
-                ? '${widget.habitName} ✓' 
-                : '${widget.habitName} ✗',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: widget.habitCompleted ? AppColors.success : AppColors.danger,
-            ),
-          ).animate().fadeIn(duration: 200.ms),
-          
+          Row(
+            children: [
+              Icon(
+                widget.habitCompleted
+                    ? Icons.check_circle_rounded
+                    : Icons.cancel_rounded,
+                color: widget.habitCompleted ? colors.success : colors.danger,
+                size: 22,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  widget.habitName,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: widget.habitCompleted
+                        ? colors.success
+                        : colors.danger,
+                  ),
+                ),
+              ),
+            ],
+          ).animate().fadeIn(duration: AppMotion.micro),
+
           const SizedBox(height: 8),
           Text(
-            widget.habitCompleted 
-                ? 'How are you feeling?' 
+            widget.habitCompleted
+                ? 'How are you feeling?'
                 : 'What got in the way?',
-            style: TextStyle(color: AppColors.textSecondary),
+            style: TextStyle(color: colors.textSecondary),
           ),
 
           const SizedBox(height: 20),
 
-          // Mood selector (always shown)
-          Text('Mood', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textMuted)),
+          Text(
+            'Mood',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: colors.textMuted,
+            ),
+          ),
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -109,23 +137,35 @@ class _MoodBarrierDialogState extends State<MoodBarrierDialog> {
             }),
           ),
 
-          // Barrier tags (shown for missed habits or optionally for completed)
           const SizedBox(height: 20),
-          Text('Barrier (optional)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textMuted)),
+          Text(
+            'Barrier (optional)',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: colors.textMuted,
+            ),
+          ),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: BarrierTags.common.map((tag) => _BarrierChip(
-              tag: tag,
-              isSelected: _selectedBarrier == tag,
-              onTap: () => setState(() => _selectedBarrier = _selectedBarrier == tag ? null : tag),
-            )).toList(),
+            children: BarrierTags.all
+                .map(
+                  (info) => _BarrierChip(
+                    info: info,
+                    isSelected: _selectedBarrierKey == info.key,
+                    onTap: () => setState(
+                      () => _selectedBarrierKey =
+                          _selectedBarrierKey == info.key ? null : info.key,
+                    ),
+                  ),
+                )
+                .toList(),
           ),
 
           const SizedBox(height: 24),
 
-          // Action buttons
           Row(
             children: [
               Expanded(
@@ -138,7 +178,8 @@ class _MoodBarrierDialogState extends State<MoodBarrierDialog> {
               Expanded(
                 flex: 2,
                 child: ElevatedButton(
-                  onPressed: () => widget.onSubmit(_selectedMood, _selectedBarrier),
+                  onPressed: () =>
+                      widget.onSubmit(_selectedMood, _selectedBarrierKey),
                   child: const Text('Save'),
                 ),
               ),
@@ -155,32 +196,45 @@ class _MoodButton extends StatelessWidget {
   final bool isSelected;
   final VoidCallback onTap;
 
-  const _MoodButton({required this.mood, required this.isSelected, required this.onTap});
+  const _MoodButton({
+    required this.mood,
+    required this.isSelected,
+    required this.onTap,
+  });
 
   String get _emoji {
     switch (mood) {
-      case 1: return '😢';
-      case 2: return '😕';
-      case 3: return '😐';
-      case 4: return '🙂';
-      case 5: return '😄';
-      default: return '😐';
+      case 1:
+        return '😢';
+      case 2:
+        return '😕';
+      case 3:
+        return '😐';
+      case 4:
+        return '🙂';
+      case 5:
+        return '😄';
+      default:
+        return '😐';
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+        duration: AppMotion.standard,
         width: 50,
         height: 50,
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary.withAlpha(30) : AppColors.surfaceLight,
-          borderRadius: BorderRadius.circular(12),
+          color: isSelected
+              ? colors.primary.withAlpha(30)
+              : colors.surfaceLight,
+          borderRadius: BorderRadius.circular(AppRadius.md),
           border: Border.all(
-            color: isSelected ? AppColors.primary : AppColors.glassBorder,
+            color: isSelected ? colors.primary : colors.glassBorder,
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -193,34 +247,52 @@ class _MoodButton extends StatelessWidget {
 }
 
 class _BarrierChip extends StatelessWidget {
-  final String tag;
+  final BarrierTagInfo info;
   final bool isSelected;
   final VoidCallback onTap;
 
-  const _BarrierChip({required this.tag, required this.isSelected, required this.onTap});
+  const _BarrierChip({
+    required this.info,
+    required this.isSelected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+        duration: AppMotion.standard,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.warning.withAlpha(30) : AppColors.surfaceLight,
-          borderRadius: BorderRadius.circular(20),
+          color: isSelected
+              ? colors.warning.withAlpha(30)
+              : colors.surfaceLight,
+          borderRadius: BorderRadius.circular(AppRadius.full),
           border: Border.all(
-            color: isSelected ? AppColors.warning : AppColors.glassBorder,
+            color: isSelected ? colors.warning : colors.glassBorder,
             width: isSelected ? 2 : 1,
           ),
         ),
-        child: Text(
-          tag,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            color: isSelected ? AppColors.warning : AppColors.textSecondary,
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              info.icon,
+              size: 15,
+              color: isSelected ? colors.warning : colors.textSecondary,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              info.label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                color: isSelected ? colors.warning : colors.textSecondary,
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -6,7 +6,7 @@ part of 'experiment.dart';
 // TypeAdapterGenerator
 // **************************************************************************
 
-class ExperimentAdapter extends TypeAdapter<Experiment> {
+class GeneratedExperimentAdapter extends TypeAdapter<Experiment> {
   @override
   final int typeId = 7;
 
@@ -62,7 +62,7 @@ class ExperimentAdapter extends TypeAdapter<Experiment> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is ExperimentAdapter &&
+      other is GeneratedExperimentAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

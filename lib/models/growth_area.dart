@@ -50,10 +50,10 @@ class GrowthArea extends HiveObject {
   DateTime lastUpdated;
 
   // Phase 2: Level Criteria (User Agency)
-  @HiveField(8)
+  @HiveField(8, defaultValue: '')
   String targetDescription; // "What does Level 10 look like?"
 
-  @HiveField(9)
+  @HiveField(9, defaultValue: '')
   String currentDescription; // "Why am I at my current level?"
 
   // Phase 2: Effort Tracking
@@ -61,24 +61,24 @@ class GrowthArea extends HiveObject {
   List<String> linkedHabitIds; // All habits linked to this GrowthArea
 
   // Phase 5: Focus System
-  @HiveField(11)
+  @HiveField(11, defaultValue: false)
   bool isActiveFocus; // Is this one of the user's 2 focus areas?
 
   @HiveField(12)
   DateTime? lastWorkedOn; // For decay calculation (active only)
 
-  @HiveField(13)
+  @HiveField(13, defaultValue: 100.0)
   double healthPercent; // 0-100, only decays when active
 
   // Phase 6: Tree Design
-  @HiveField(14)
+  @HiveField(14, defaultValue: 'oak')
   String treeDesignId; // Which tree design to use
 
   // Phase 7: Marginal Gains Framework - Uncertainty Flagging
-  @HiveField(15)
+  @HiveField(15, defaultValue: 3)
   int confidenceLevel; // 1-5: How confident are you about this Factor? (1=uncertain, 5=certain)
 
-  @HiveField(16)
+  @HiveField(16, defaultValue: false)
   bool needsResearch; // True if knowledge gap identified (Step 5 of framework)
 
   GrowthArea({
@@ -106,7 +106,7 @@ class GrowthArea extends HiveObject {
   int get gap => targetLevel - currentLevel;
 
   /// Get a percentage of progress (current / target)
-  double get progressPercent => 
+  double get progressPercent =>
       targetLevel > 0 ? (currentLevel / targetLevel).clamp(0.0, 1.0) : 0.0;
 
   /// Check if this area needs focus (biggest gap)
@@ -125,9 +125,10 @@ class GrowthArea extends HiveObject {
   /// Health status for tree visualization
   String get healthStatus {
     if (!isActiveFocus) return 'dormant'; // 💤
-    if (healthPercent >= 75) return 'flourishing';
-    if (healthPercent >= 50) return 'healthy';
-    if (healthPercent >= 25) return 'wilting';
+    final health = effectiveHealthPercent;
+    if (health >= 75) return 'flourishing';
+    if (health >= 50) return 'healthy';
+    if (health >= 25) return 'wilting';
     return 'dead';
   }
 
@@ -136,43 +137,55 @@ class GrowthArea extends HiveObject {
     if (!isActiveFocus) return '💤';
     if (healthStatus == 'dead') return '💀';
     switch (growthStage) {
-      case 0: return '🌱';
-      case 1: return '🌿';
-      case 2: return '🌲';
-      case 3: return '🌳';
-      case 4: return '🌳';
-      case 5: return '👑';
-      default: return '🌱';
+      case 0:
+        return '🌱';
+      case 1:
+        return '🌿';
+      case 2:
+        return '🌲';
+      case 3:
+        return '🌳';
+      case 4:
+        return '🌳';
+      case 5:
+        return '👑';
+      default:
+        return '🌱';
     }
   }
 
   /// Days since last work
   int get daysSinceWork {
-    if (lastWorkedOn == null) return 0;
-    return DateTime.now().difference(lastWorkedOn!).inDays;
+    return daysSinceWorkAt(DateTime.now());
   }
 
-  /// Calculate decayed health (call daily for active areas)
-  double calculateDecayedHealth() {
+  int daysSinceWorkAt(DateTime now) {
+    if (lastWorkedOn == null || now.isBefore(lastWorkedOn!)) return 0;
+    return now.difference(lastWorkedOn!).inDays;
+  }
+
+  double get effectiveHealthPercent => calculateDecayedHealth();
+
+  /// Calculate decayed health without mutating the stored baseline.
+  double calculateDecayedHealth({DateTime? at}) {
     if (!isActiveFocus) return healthPercent;
     if (lastWorkedOn == null) return healthPercent;
-    
-    final decay = daysSinceWork * 10.0;
+
+    final decay = daysSinceWorkAt(at ?? DateTime.now()) * 10.0;
     return (healthPercent - decay).clamp(0.0, 100.0);
   }
 
   /// Log work done on this area
-  void logWork() {
-    lastWorkedOn = DateTime.now();
-    healthPercent = (healthPercent + 20.0).clamp(0.0, 100.0);
-    save();
+  void logWork({DateTime? at}) {
+    final now = at ?? DateTime.now();
+    healthPercent = (calculateDecayedHealth(at: now) + 20.0).clamp(0.0, 100.0);
+    lastWorkedOn = now;
   }
 
   /// Resurrect a dead area (costs coins)
   void resurrect() {
     healthPercent = 50.0;
     lastWorkedOn = DateTime.now();
-    save();
   }
 
   /// Get human-readable type name

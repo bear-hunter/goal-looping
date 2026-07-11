@@ -38,7 +38,7 @@ class ReflectionAdapter extends TypeAdapter<Reflection> {
       triggers: fields[18] as String?,
       whyBehavior: fields[19] as String?,
       crossLifePatterns: fields[20] as String?,
-      isManualEntry: fields[21] as bool,
+      isManualEntry: fields[21] == null ? false : fields[21] as bool,
     );
   }
 

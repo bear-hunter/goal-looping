@@ -14,12 +14,13 @@ class ReflectionArchiveScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Consumer<AppState>(
       builder: (context, state, _) {
         final archivedGroups = state.archivedReflectionGroups;
 
         return Scaffold(
-          backgroundColor: AppColors.background,
+          backgroundColor: colors.background,
           appBar: AppBar(
             title: const Text('Archived Reflections'),
             backgroundColor: Colors.transparent,
@@ -53,20 +54,21 @@ class ReflectionArchiveScreen extends StatelessWidget {
 class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.archive_outlined, size: 64, color: AppColors.textMuted),
+          Icon(Icons.archive_outlined, size: 64, color: colors.textMuted),
           const SizedBox(height: 16),
           Text(
             'No Archived Reflections',
-            style: TextStyle(color: AppColors.textMuted, fontSize: 16),
+            style: TextStyle(color: colors.textMuted, fontSize: 16),
           ),
           const SizedBox(height: 8),
           Text(
             'Finished cycles will appear here',
-            style: TextStyle(color: AppColors.textMuted.withAlpha(150), fontSize: 13),
+            style: TextStyle(color: colors.textMuted.withAlpha(150), fontSize: 13),
           ),
         ],
       ),
@@ -89,6 +91,7 @@ class _ArchivedGroupCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return GlassCard(
       margin: const EdgeInsets.only(bottom: 16),
       child: Column(
@@ -100,7 +103,7 @@ class _ArchivedGroupCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppColors.textMuted.withAlpha(30),
+                  color: colors.textMuted.withAlpha(30),
                   shape: BoxShape.circle,
                 ),
                 child: const Text('📦', style: TextStyle(fontSize: 18)),
@@ -115,12 +118,12 @@ class _ArchivedGroupCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
+                        color: colors.textPrimary,
                       ),
                     ),
                     Text(
                       '${group.cycleCount} cycles • Archived ${_formatDate(group.archivedAt!)}',
-                      style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                      style: TextStyle(fontSize: 12, color: colors.textMuted),
                     ),
                   ],
                 ),
@@ -146,20 +149,20 @@ class _ArchivedGroupCard extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
-                      color: AppColors.surfaceLight,
+                      color: colors.surfaceLight,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.glassBorder),
+                      border: Border.all(color: colors.glassBorder),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
                           'Cycle ${i + 1}',
-                          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                          style: TextStyle(fontSize: 12, color: colors.textSecondary),
                         ),
                         if (i < reflections.length - 1) ...[
                           const SizedBox(width: 4),
-                          Icon(Icons.arrow_forward_rounded, size: 12, color: AppColors.textMuted),
+                          Icon(Icons.arrow_forward_rounded, size: 12, color: colors.textMuted),
                         ],
                       ],
                     ),
@@ -180,21 +183,21 @@ class _ArchivedGroupCard extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withAlpha(20),
+                      color: colors.primary.withAlpha(20),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.primary.withAlpha(50)),
+                      border: Border.all(color: colors.primary.withAlpha(50)),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.restore_rounded, size: 18, color: AppColors.primary),
+                        Icon(Icons.restore_rounded, size: 18, color: colors.primary),
                         const SizedBox(width: 8),
                         Text(
                           'Restore Cycle',
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
-                            color: AppColors.primary,
+                            color: colors.primary,
                           ),
                         ),
                       ],

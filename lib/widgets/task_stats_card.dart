@@ -12,36 +12,25 @@ class TaskStatsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final surfaceLight = isDark
-        ? AppColors.surfaceLight
-        : LightColors.surfaceLight;
-    final glassBorder = isDark
-        ? AppColors.glassBorder
-        : LightColors.glassBorder;
-    final textPrimary = isDark
-        ? AppColors.textPrimary
-        : LightColors.textPrimary;
-    final textMuted = isDark ? AppColors.textMuted : LightColors.textMuted;
+    final colors = context.colors;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: surfaceLight,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: glassBorder),
+        color: colors.surfaceLight,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: colors.glassBorder),
         boxShadow: AppShadows.card,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
           Row(
             children: [
               Icon(
                 Icons.check_circle_outline_rounded,
-                color: AppColors.success,
+                color: colors.success,
                 size: 20,
               ),
               const SizedBox(width: 8),
@@ -50,65 +39,56 @@ class TaskStatsCard extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: textPrimary,
+                  color: colors.textPrimary,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 16),
 
-          // Stats Grid
           Row(
             children: [
-              // Today's completions
               Expanded(
                 child: _StatItem(
                   value: '${stats.tasksCompletedToday}',
                   label: 'Today',
                   icon: Icons.today_rounded,
-                  color: AppColors.primary,
-                  textPrimary: textPrimary,
-                  textMuted: textMuted,
+                  color: colors.primary,
                 ),
               ),
-              Container(width: 1, height: 40, color: glassBorder),
-              // Total completions
+              Container(width: 1, height: 40, color: colors.glassBorder),
               Expanded(
                 child: _StatItem(
                   value: '${stats.totalTasksCompleted}',
                   label: 'Total',
                   icon: Icons.done_all_rounded,
-                  color: AppColors.success,
-                  textPrimary: textPrimary,
-                  textMuted: textMuted,
+                  color: colors.success,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 12),
 
-          // Priority vs Backlog breakdown
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: isDark ? AppColors.surface : LightColors.surface,
-              borderRadius: BorderRadius.circular(12),
+              color: colors.surface,
+              borderRadius: BorderRadius.circular(AppRadius.md),
             ),
             child: Row(
               children: [
-                // Priority tasks
                 Expanded(
                   child: Row(
                     children: [
                       Container(
                         padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
-                          color: AppColors.warning.withAlpha(30),
-                          borderRadius: BorderRadius.circular(8),
+                          color: colors.warning.withAlpha(30),
+                          borderRadius: BorderRadius.circular(AppRadius.sm),
                         ),
                         child: Icon(
                           Icons.star_rounded,
-                          color: AppColors.warning,
+                          color: colors.warning,
                           size: 16,
                         ),
                       ),
@@ -121,31 +101,33 @@ class TaskStatsCard extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
-                              color: textPrimary,
+                              color: colors.textPrimary,
                             ),
                           ),
                           Text(
                             'Priority',
-                            style: TextStyle(fontSize: 11, color: textMuted),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: colors.textMuted,
+                            ),
                           ),
                         ],
                       ),
                     ],
                   ),
                 ),
-                // Backlog tasks
                 Expanded(
                   child: Row(
                     children: [
                       Container(
                         padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
-                          color: textMuted.withAlpha(30),
-                          borderRadius: BorderRadius.circular(8),
+                          color: colors.textMuted.withAlpha(30),
+                          borderRadius: BorderRadius.circular(AppRadius.sm),
                         ),
                         child: Icon(
                           Icons.list_rounded,
-                          color: textMuted,
+                          color: colors.textMuted,
                           size: 16,
                         ),
                       ),
@@ -158,12 +140,15 @@ class TaskStatsCard extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
-                              color: textPrimary,
+                              color: colors.textPrimary,
                             ),
                           ),
                           Text(
                             'Backlog',
-                            style: TextStyle(fontSize: 11, color: textMuted),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: colors.textMuted,
+                            ),
                           ),
                         ],
                       ),
@@ -175,7 +160,7 @@ class TaskStatsCard extends StatelessWidget {
           ),
         ],
       ),
-    ).animate().fadeIn(duration: 300.ms);
+    ).animate().fadeIn(duration: AppMotion.expressive);
   }
 }
 
@@ -184,20 +169,17 @@ class _StatItem extends StatelessWidget {
   final String label;
   final IconData icon;
   final Color color;
-  final Color textPrimary;
-  final Color textMuted;
 
   const _StatItem({
     required this.value,
     required this.label,
     required this.icon,
     required this.color,
-    required this.textPrimary,
-    required this.textMuted,
   });
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Column(
       children: [
         Icon(icon, color: color, size: 24),
@@ -207,10 +189,13 @@ class _StatItem extends StatelessWidget {
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: textPrimary,
+            color: colors.textPrimary,
           ),
         ),
-        Text(label, style: TextStyle(fontSize: 11, color: textMuted)),
+        Text(
+          label,
+          style: TextStyle(fontSize: 11, color: colors.textMuted),
+        ),
       ],
     );
   }

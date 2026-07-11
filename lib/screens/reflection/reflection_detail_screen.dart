@@ -41,10 +41,11 @@ class _ReflectionDetailScreenState extends State<ReflectionDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Consumer<AppState>(
       builder: (context, state, _) {
         final reflection = state.getReflectionById(widget.reflectionId);
-        
+
         if (reflection == null) {
           return Scaffold(
             appBar: AppBar(title: const Text('Reflection')),
@@ -74,7 +75,7 @@ class _ReflectionDetailScreenState extends State<ReflectionDetailScreen> {
         }
 
         return Scaffold(
-          backgroundColor: AppColors.background,
+          backgroundColor: colors.background,
           appBar: AppBar(
             title: ListenableBuilder(
               listenable: _pageController,
@@ -86,7 +87,7 @@ class _ReflectionDetailScreenState extends State<ReflectionDetailScreen> {
                       const Text('Reflection Chain', style: TextStyle(fontSize: 16)),
                       Text(
                         'Cycle ${page + 1} of ${bookReflections.length}',
-                        style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                        style: TextStyle(fontSize: 12, color: colors.textMuted),
                       ),
                     ],
                   );
@@ -134,11 +135,12 @@ class _ReflectionDetailScreenState extends State<ReflectionDetailScreen> {
   }
 
   void _handleExportPdf(BuildContext context, AppState state, List<Reflection> reflections) async {
+    final colors = context.colors;
     if (reflections.isEmpty) return;
-    
+
     final reflection = reflections.first;
     final group = reflection.groupId != null ? state.getReflectionGroup(reflection.groupId!) : null;
-    
+
     // Create a dummy group if none exists for a single reflection
     final effectiveGroup = group ?? ReflectionGroup(
       id: 'single',
@@ -150,7 +152,7 @@ class _ReflectionDetailScreenState extends State<ReflectionDetailScreen> {
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Export failed: $e'), backgroundColor: AppColors.danger),
+          SnackBar(content: Text('Export failed: $e'), backgroundColor: colors.danger),
         );
       }
     }
@@ -202,61 +204,68 @@ class _ReflectionDetailScreenState extends State<ReflectionDetailScreen> {
   void _handleArchive(BuildContext context, AppState state, Reflection reflection) {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        title: Text('Finish & Archive?', style: TextStyle(color: AppColors.textPrimary)),
-        content: Text(
-          'This will archive the reflection. You can restore it later from the archive.',
-          style: TextStyle(color: AppColors.textSecondary),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+      builder: (ctx) {
+        final colors = ctx.colors;
+        return AlertDialog(
+          backgroundColor: colors.surface,
+          title: Text('Finish & Archive?', style: TextStyle(color: colors.textPrimary)),
+          content: Text(
+            'This will archive the reflection. You can restore it later from the archive.',
+            style: TextStyle(color: colors.textSecondary),
           ),
-          TextButton(
-            onPressed: () async {
-              await state.archiveReflection(reflection.id);
-              if (!ctx.mounted) return;
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(ctx).showSnackBar(
-                SnackBar(
-                  content: const Text('Archived successfully!'),
-                  backgroundColor: AppColors.success,
-                ),
-              );
-              Navigator.pop(ctx); // Go back after archiving
-            },
-            child: Text('Archive', style: TextStyle(color: AppColors.primary)),
-          ),
-        ],
-      ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                await state.archiveReflection(reflection.id);
+                if (!ctx.mounted) return;
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(ctx).showSnackBar(
+                  SnackBar(
+                    content: const Text('Archived successfully!'),
+                    backgroundColor: colors.success,
+                  ),
+                );
+                Navigator.pop(ctx); // Go back after archiving
+              },
+              child: Text('Archive', style: TextStyle(color: colors.primary)),
+            ),
+          ],
+        );
+      },
     );
   }
 
   void _confirmDelete(BuildContext context, AppState state, String id) {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        title: Text('Delete Reflection?', style: TextStyle(color: AppColors.textPrimary)),
-        content: Text('This cannot be undone.', style: TextStyle(color: AppColors.textSecondary)),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancel')),
-          TextButton(
-            onPressed: () {
-              state.deleteReflection(id);
-              Navigator.pop(ctx);
-              Navigator.pop(context);
-            },
-            child: Text('Delete', style: TextStyle(color: AppColors.danger)),
-          ),
-        ],
-      ),
+      builder: (ctx) {
+        final colors = ctx.colors;
+        return AlertDialog(
+          backgroundColor: colors.surface,
+          title: Text('Delete Reflection?', style: TextStyle(color: colors.textPrimary)),
+          content: Text('This cannot be undone.', style: TextStyle(color: colors.textSecondary)),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancel')),
+            TextButton(
+              onPressed: () {
+                state.deleteReflection(id);
+                Navigator.pop(ctx);
+                Navigator.pop(context);
+              },
+              child: Text('Delete', style: TextStyle(color: colors.danger)),
+            ),
+          ],
+        );
+      },
     );
   }
 
   void _resurrectExperiment(BuildContext context, AppState state, Experiment exp) {
+    final colors = context.colors;
     // Clone experiment as new pending experiment
     final newExp = Experiment(
       id: StorageService.generateId(),
@@ -267,7 +276,7 @@ class _ReflectionDetailScreenState extends State<ReflectionDetailScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Experiment resurrected!'),
-        backgroundColor: AppColors.success,
+        backgroundColor: colors.success,
       ),
     );
   }
@@ -291,6 +300,7 @@ class _ReflectionPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final experiments = state.getExperimentsForReflection(reflection.id);
     final linkedFactors = reflection.linkedFactorIds
         .map((id) => state.factors.where((f) => f.id == id).firstOrNull)
@@ -305,11 +315,11 @@ class _ReflectionPage extends StatelessWidget {
           // Date & Completion
           Row(
             children: [
-              Icon(Icons.calendar_today_rounded, color: AppColors.textMuted, size: 16),
+              Icon(Icons.calendar_today_rounded, color: colors.textMuted, size: 16),
               const SizedBox(width: 8),
               Text(
                 _formatDate(reflection.createdAt),
-                style: TextStyle(color: AppColors.textMuted),
+                style: TextStyle(color: colors.textMuted),
               ),
               const Spacer(),
               _CompletionBadge(percent: reflection.completionPercent),
@@ -336,7 +346,7 @@ class _ReflectionPage extends StatelessWidget {
             title: 'Experience',
             subtitle: 'What happened?',
             content: reflection.experience,
-            color: AppColors.primary,
+            color: colors.primary,
           ),
 
           // Step 2: Reflection
@@ -345,7 +355,7 @@ class _ReflectionPage extends StatelessWidget {
             title: 'Reflection',
             subtitle: 'How did you feel?',
             content: reflection.reflection,
-            color: AppColors.info,
+            color: colors.info,
           ),
 
           // Step 3: Abstraction
@@ -354,7 +364,7 @@ class _ReflectionPage extends StatelessWidget {
             title: 'Abstraction',
             subtitle: 'Patterns identified',
             content: reflection.abstraction,
-            color: AppColors.warning,
+            color: colors.warning,
           ),
 
           // Step 4: Experiments
@@ -365,14 +375,14 @@ class _ReflectionPage extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    _StepNumber(step: 4, color: AppColors.success),
+                    _StepNumber(step: 4, color: colors.success),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Experiments', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-                          Text('Actions to try', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                          Text('Experiments', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: colors.textPrimary)),
+                          Text('Actions to try', style: TextStyle(fontSize: 12, color: colors.textMuted)),
                         ],
                       ),
                     ),
@@ -382,7 +392,7 @@ class _ReflectionPage extends StatelessWidget {
                 if (experiments.isEmpty)
                   GlassCard(
                     child: Center(
-                      child: Text('No experiments extracted', style: TextStyle(color: AppColors.textMuted)),
+                      child: Text('No experiments extracted', style: TextStyle(color: colors.textMuted)),
                     ),
                   )
                 else
@@ -405,18 +415,18 @@ class _ReflectionPage extends StatelessWidget {
           if (reflection.rawMarkdown != null && reflection.rawMarkdown!.isNotEmpty) ...[
             const SizedBox(height: 16),
             ExpansionTile(
-              title: Text('Raw Markdown', style: TextStyle(color: AppColors.textSecondary)),
+              title: Text('Raw Markdown', style: TextStyle(color: colors.textSecondary)),
               tilePadding: EdgeInsets.zero,
               children: [
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppColors.surfaceLight,
+                    color: colors.surfaceLight,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     reflection.rawMarkdown!,
-                    style: TextStyle(fontFamily: 'monospace', fontSize: 12, color: AppColors.textSecondary),
+                    style: TextStyle(fontFamily: 'monospace', fontSize: 12, color: colors.textSecondary),
                   ),
                 ),
               ],
@@ -460,9 +470,10 @@ class _SectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Text(
       label.toUpperCase(),
-      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textMuted, letterSpacing: 1.2),
+      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: colors.textMuted, letterSpacing: 1.2),
     );
   }
 }
@@ -473,7 +484,8 @@ class _CompletionBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = percent >= 1.0 ? AppColors.success : (percent >= 0.5 ? AppColors.warning : AppColors.textMuted);
+    final colors = context.colors;
+    final color = percent >= 1.0 ? colors.success : (percent >= 0.5 ? colors.warning : colors.textMuted);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
@@ -526,6 +538,7 @@ class _KolbSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
       child: Column(
@@ -538,8 +551,8 @@ class _KolbSection extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-                  Text(subtitle, style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                  Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: colors.textPrimary)),
+                  Text(subtitle, style: TextStyle(fontSize: 12, color: colors.textMuted)),
                 ],
               ),
             ],
@@ -547,8 +560,8 @@ class _KolbSection extends StatelessWidget {
           const SizedBox(height: 12),
           GlassCard(
             child: content.isEmpty
-                ? Center(child: Text('Not filled', style: TextStyle(color: AppColors.textMuted)))
-                : Text(content, style: TextStyle(color: AppColors.textSecondary, height: 1.5)),
+                ? Center(child: Text('Not filled', style: TextStyle(color: colors.textMuted)))
+                : Text(content, style: TextStyle(color: colors.textSecondary, height: 1.5)),
           ),
         ],
       ),
@@ -573,6 +586,7 @@ class _ExperimentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return GlassCard(
       margin: const EdgeInsets.only(bottom: 8),
       child: Column(
@@ -581,7 +595,7 @@ class _ExperimentCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Text(experiment.description, style: TextStyle(color: AppColors.textPrimary)),
+                child: Text(experiment.description, style: TextStyle(color: colors.textPrimary)),
               ),
               const SizedBox(width: 8),
               _StatusBadge(status: experiment.status),
@@ -593,14 +607,14 @@ class _ExperimentCard extends StatelessWidget {
               children: [
                 _ActionButton(
                   label: 'Top 2',
-                  color: AppColors.primary,
+                  color: colors.primary,
                   enabled: canPromote,
                   onTap: onPromoteToTop2,
                 ),
                 const SizedBox(width: 8),
                 _ActionButton(
                   label: 'Backlog',
-                  color: AppColors.textMuted,
+                  color: colors.textMuted,
                   onTap: onPromoteToBacklog,
                 ),
               ],
@@ -610,8 +624,8 @@ class _ExperimentCard extends StatelessWidget {
             const SizedBox(height: 8),
             TextButton.icon(
               onPressed: onResurrect,
-              icon: Icon(Icons.replay_rounded, size: 16, color: AppColors.info),
-              label: Text('Resurrect', style: TextStyle(color: AppColors.info)),
+              icon: Icon(Icons.replay_rounded, size: 16, color: colors.info),
+              label: Text('Resurrect', style: TextStyle(color: colors.info)),
               style: TextButton.styleFrom(padding: EdgeInsets.zero),
             ),
           ],
@@ -627,14 +641,15 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final (label, color) = switch (status) {
-      ExperimentStatus.pending => ('Pending', AppColors.warning),
-      ExperimentStatus.inProgress => ('In Progress', AppColors.info),
-      ExperimentStatus.completed => ('Done', AppColors.success),
-      ExperimentStatus.cycled => ('Cycled', AppColors.primary),
-      ExperimentStatus.archived => ('Archived', AppColors.textMuted),
+      ExperimentStatus.pending => ('Pending', colors.warning),
+      ExperimentStatus.inProgress => ('In Progress', colors.info),
+      ExperimentStatus.completed => ('Done', colors.success),
+      ExperimentStatus.cycled => ('Cycled', colors.primary),
+      ExperimentStatus.archived => ('Archived', colors.textMuted),
     };
-    
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
@@ -656,16 +671,17 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return GestureDetector(
       onTap: enabled ? onTap : null,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: (enabled ? color : AppColors.surfaceLight).withAlpha(30),
+          color: (enabled ? color : colors.surfaceLight).withAlpha(30),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: (enabled ? color : AppColors.glassBorder).withAlpha(80)),
+          border: Border.all(color: (enabled ? color : colors.glassBorder).withAlpha(80)),
         ),
-        child: Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: enabled ? color : AppColors.textMuted)),
+        child: Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: enabled ? color : colors.textMuted)),
       ),
     );
   }
@@ -686,6 +702,7 @@ class _CyclingActionsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -694,7 +711,7 @@ class _CyclingActionsSection extends StatelessWidget {
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w600,
-            color: AppColors.textMuted,
+            color: colors.textMuted,
             letterSpacing: 1.2,
           ),
         ),
@@ -706,7 +723,7 @@ class _CyclingActionsSection extends StatelessWidget {
                 icon: Icons.replay_rounded,
                 label: 'Cycle Again',
                 subtitle: 'Continue the chain',
-                color: AppColors.primary,
+                color: colors.primary,
                 onTap: onCycleAgain,
               ),
             ),
@@ -716,7 +733,7 @@ class _CyclingActionsSection extends StatelessWidget {
                 icon: Icons.archive_rounded,
                 label: 'Finish & Archive',
                 subtitle: 'Complete this chain',
-                color: AppColors.success,
+                color: colors.success,
                 onTap: onFinishArchive,
                 enabled: onFinishArchive != null,
               ),
@@ -747,8 +764,9 @@ class _CycleActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final effectiveColor = enabled ? color : AppColors.textMuted;
-    
+    final colors = context.colors;
+    final effectiveColor = enabled ? color : colors.textMuted;
+
     return GestureDetector(
       onTap: enabled ? onTap : null,
       child: Container(
@@ -773,7 +791,7 @@ class _CycleActionButton extends StatelessWidget {
             const SizedBox(height: 2),
             Text(
               subtitle,
-              style: TextStyle(fontSize: 10, color: AppColors.textMuted),
+              style: TextStyle(fontSize: 10, color: colors.textMuted),
               textAlign: TextAlign.center,
             ),
           ],

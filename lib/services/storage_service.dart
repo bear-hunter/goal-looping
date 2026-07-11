@@ -96,6 +96,7 @@ class StorageService {
     tryRegister(ReflectionReminderFrequencyAdapter());
     tryRegister(UserStatsAdapter());
     tryRegister(AchievementAdapter());
+    tryRegister(DurationAdapter());
     tryRegister(FocusLogAdapter());
     // Register ReflectionGroup adapter
     tryRegister(ReflectionGroupAdapter());
@@ -324,6 +325,8 @@ class StorageService {
       ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
   }
 
+  static Subtask? getSubtask(String id) => _subtasksBox.get(id);
+
   static Future<void> saveSubtask(Subtask subtask) async {
     await _subtasksBox.put(subtask.id, subtask);
   }
@@ -532,27 +535,36 @@ class StorageService {
     await _settingsBox.put('onboardingComplete', value);
   }
 
-  static List<String> getTaskCategories() {
-    if (!Hive.isBoxOpen(settingsBox)) return [];
-    return List<String>.from(
-      _settingsBox.get(
-        'taskCategories',
-        defaultValue: <String>[
-          'General',
-          'Assignment',
-          'Activity',
-          'Quiz',
-          'Exam',
-          'Project',
-          'Deadline',
-          'Chore',
-        ],
-      ),
-    );
+  /// Whether the one-time legacy-category → CategoryModel migration has run.
+  static bool get categoriesMigrationDone {
+    if (!Hive.isBoxOpen(settingsBox)) return false;
+    return _settingsBox.get('categoriesMigrationV1Done', defaultValue: false)
+        as bool;
   }
 
-  static Future<void> saveTaskCategories(List<String> categories) async {
-    await _settingsBox.put('taskCategories', categories);
+  static Future<void> setCategoriesMigrationDone(bool value) async {
+    await _settingsBox.put('categoriesMigrationV1Done', value);
+  }
+
+  /// Clear only settings represented in a backup, preserving local display
+  /// preferences such as the selected theme.
+  static Future<void> resetBackupSettings() async {
+    await _settingsBox.deleteAll([
+      'timeAvailability',
+      'onboardingComplete',
+      'categoriesMigrationV1Done',
+      'taskCategories',
+    ]);
+  }
+
+  /// Legacy reader for the pre-CategoryModel string categories. Retained only
+  /// for the one-time category migration; returns an empty list when the
+  /// legacy `taskCategories` key was never written by an older build.
+  static List<String> getLegacyTaskCategories() {
+    if (!Hive.isBoxOpen(settingsBox)) return [];
+    final raw = _settingsBox.get('taskCategories');
+    if (raw is! List) return [];
+    return raw.map((e) => e.toString()).toList();
   }
 
   // ========== USER STATS (Gamification) ==========
@@ -602,6 +614,10 @@ class StorageService {
     await _achievementsBox.put(achievement.id, achievement);
   }
 
+  static Future<void> deleteAchievement(String id) async {
+    await _achievementsBox.delete(id);
+  }
+
   // --- Focus Session Logs ---
   static Future<void> saveFocusLog(FocusLog log) async {
     final box = await _ensureBoxOpen<FocusLog>(focusLogsBox);
@@ -611,6 +627,11 @@ class StorageService {
   static List<FocusLog> getAllFocusLogs() {
     if (!Hive.isBoxOpen(focusLogsBox)) return [];
     return Hive.box<FocusLog>(focusLogsBox).values.toList();
+  }
+
+  static Future<void> deleteFocusLog(String id) async {
+    final box = await _ensureBoxOpen<FocusLog>(focusLogsBox);
+    await box.delete(id);
   }
 
   // ========== CATEGORIES (Phase 3) ==========

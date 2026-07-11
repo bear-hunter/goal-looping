@@ -6,8 +6,8 @@ import 'package:uuid/uuid.dart';
 import '../../core/theme/theme.dart';
 import '../../providers/app_state.dart';
 import '../../models/task.dart';
-import '../../models/category_model.dart';
 import '../../models/habit_enums.dart';
+import '../../widgets/category_picker.dart';
 import '../../widgets/growth_area_selector.dart';
 
 /// Bottom sheet for quick task creation
@@ -39,6 +39,7 @@ class AddTaskSheet extends StatefulWidget {
 class _AddTaskSheetState extends State<AddTaskSheet> {
   final _titleController = TextEditingController();
   final _noteController = TextEditingController();
+  final _checklistInputController = TextEditingController();
   late DateTime _selectedDate;
   String? _selectedCategoryId;
   PriorityLevel _priority = PriorityLevel.none;
@@ -58,7 +59,17 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
   void dispose() {
     _titleController.dispose();
     _noteController.dispose();
+    _checklistInputController.dispose();
     super.dispose();
+  }
+
+  void _commitChecklistDraft() {
+    final value = _checklistInputController.text.trim();
+    if (value.isEmpty) return;
+    setState(() {
+      _checklistItems.add(value);
+      _checklistInputController.clear();
+    });
   }
 
   Future<void> _createTask() async {
@@ -70,6 +81,23 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
       return;
     }
 
+    final appState = context.read<AppState>();
+    if (_priority == PriorityLevel.high && !appState.canAddPriorityTask) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'You already have two active High-priority tasks. Complete or lower one first.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    if (_hasChecklist) _commitChecklistDraft();
+    final scheduledTime = _scheduledTime != null
+        ? '${_scheduledTime!.hour.toString().padLeft(2, '0')}:${_scheduledTime!.minute.toString().padLeft(2, '0')}'
+        : null;
+
     final task = Task(
       id: const Uuid().v4(),
       title: title,
@@ -78,9 +106,8 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
       isPriority: _priority == PriorityLevel.high,
       categoryId: _selectedCategoryId,
       scheduledDate: _selectedDate,
-      scheduledTime: _scheduledTime != null
-          ? '${_scheduledTime!.hour.toString().padLeft(2, '0')}:${_scheduledTime!.minute.toString().padLeft(2, '0')}'
-          : null,
+      scheduledTime: scheduledTime,
+      reminderTimes: scheduledTime == null ? const [] : [scheduledTime],
       priorityLevel: _priority,
       isPending: _isPending,
       note: _noteController.text.trim().isNotEmpty
@@ -92,8 +119,18 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
       linkedFactorIds: _linkedFactorIds,
     );
 
-    final appState = context.read<AppState>();
-    await appState.addTask(task);
+    try {
+      await appState.addTask(task);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not create the task. Please try again.'),
+          ),
+        );
+      }
+      return;
+    }
 
     if (mounted) {
       widget.onTaskAdded?.call();
@@ -125,16 +162,10 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textPrimary = isDark
-        ? AppColors.textPrimary
-        : LightColors.textPrimary;
-    final textSecondary = isDark
-        ? AppColors.textSecondary
-        : LightColors.textSecondary;
-    final bgColor = isDark ? AppColors.surface : LightColors.surface;
-
-    final categories = context.watch<AppState>().categories;
+    final colors = context.colors;
+    final textPrimary = colors.textPrimary;
+    final textSecondary = colors.textSecondary;
+    final bgColor = colors.surface;
 
     return Container(
       padding: EdgeInsets.only(
@@ -187,9 +218,7 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                   color: textSecondary,
                 ),
                 filled: true,
-                fillColor: (isDark
-                    ? AppColors.surfaceLight
-                    : LightColors.surfaceLight),
+                fillColor: colors.surfaceLight,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
@@ -209,28 +238,9 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
               ),
             ),
             const SizedBox(height: 8),
-            SizedBox(
-              height: 40,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: categories.length,
-                itemBuilder: (context, index) {
-                  final category = categories[index];
-                  final isSelected = _selectedCategoryId == category.id;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: _CategoryChip(
-                      category: category,
-                      isSelected: isSelected,
-                      onTap: () {
-                        setState(() {
-                          _selectedCategoryId = isSelected ? null : category.id;
-                        });
-                      },
-                    ),
-                  );
-                },
-              ),
+            CategoryPicker(
+              selectedCategoryId: _selectedCategoryId,
+              onChanged: (id) => setState(() => _selectedCategoryId = id),
             ),
             const SizedBox(height: 16),
 
@@ -267,7 +277,7 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                   child: _OptionTile(
                     icon: Icons.flag_rounded,
                     label: _priority.label,
-                    iconColor: _getPriorityColor(_priority),
+                    iconColor: _getPriorityColor(context, _priority),
                     onTap: _showPriorityPicker,
                     isActive: _priority != PriorityLevel.none,
                   ),
@@ -306,9 +316,7 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                 hintStyle: TextStyle(color: textSecondary),
                 prefixIcon: Icon(Icons.notes_rounded, color: textSecondary),
                 filled: true,
-                fillColor: (isDark
-                    ? AppColors.surfaceLight
-                    : LightColors.surfaceLight),
+                fillColor: colors.surfaceLight,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
@@ -321,9 +329,7 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: isDark
-                    ? AppColors.surfaceLight
-                    : LightColors.surfaceLight,
+                color: colors.surfaceLight,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
@@ -339,7 +345,7 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                   Switch(
                     value: _hasChecklist,
                     onChanged: (v) => setState(() => _hasChecklist = v),
-                    activeTrackColor: AppColors.primary,
+                    activeTrackColor: colors.primary,
                   ),
                 ],
               ),
@@ -360,9 +366,7 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                             vertical: 8,
                           ),
                           decoration: BoxDecoration(
-                            color: isDark
-                                ? AppColors.surfaceLight
-                                : LightColors.surfaceLight,
+                            color: colors.surfaceLight,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
@@ -385,14 +389,13 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                 ),
               ),
               TextField(
+                controller: _checklistInputController,
                 style: TextStyle(color: textPrimary),
                 decoration: InputDecoration(
                   hintText: 'Add item...',
                   hintStyle: TextStyle(color: textSecondary),
                   filled: true,
-                  fillColor: isDark
-                      ? AppColors.surfaceLight
-                      : LightColors.surfaceLight,
+                  fillColor: colors.surfaceLight,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
                     borderSide: BorderSide.none,
@@ -401,13 +404,12 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
                     horizontal: 12,
                     vertical: 10,
                   ),
-                  suffixIcon: Icon(Icons.add_rounded, color: AppColors.primary),
+                  suffixIcon: IconButton(
+                    onPressed: _commitChecklistDraft,
+                    icon: Icon(Icons.add_rounded, color: colors.primary),
+                  ),
                 ),
-                onSubmitted: (value) {
-                  if (value.trim().isNotEmpty) {
-                    setState(() => _checklistItems.add(value.trim()));
-                  }
-                },
+                onSubmitted: (_) => _commitChecklistDraft(),
               ),
             ],
             const SizedBox(height: 24),
@@ -418,7 +420,7 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
               child: ElevatedButton(
                 onPressed: _createTask,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
+                  backgroundColor: colors.primary,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
@@ -464,25 +466,25 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
     return '${months[date.month - 1]} ${date.day}';
   }
 
-  Color _getPriorityColor(PriorityLevel priority) {
+  Color _getPriorityColor(BuildContext context, PriorityLevel priority) {
+    final colors = context.colors;
     switch (priority) {
       case PriorityLevel.high:
-        return Colors.red;
+        return colors.danger;
       case PriorityLevel.medium:
-        return Colors.orange;
+        return colors.warning;
       case PriorityLevel.low:
-        return Colors.blue;
+        return colors.info;
       case PriorityLevel.none:
-        return Colors.grey;
+        return colors.textMuted;
     }
   }
 
   void _showPriorityPicker() {
+    final colors = context.colors;
     showModalBottomSheet(
       context: context,
-      backgroundColor: Theme.of(context).brightness == Brightness.dark
-          ? AppColors.surface
-          : LightColors.surface,
+      backgroundColor: colors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -501,67 +503,16 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
               (priority) => ListTile(
                 leading: Icon(
                   Icons.flag_rounded,
-                  color: _getPriorityColor(priority),
+                  color: _getPriorityColor(context, priority),
                 ),
                 title: Text(priority.label),
                 trailing: _priority == priority
-                    ? const Icon(Icons.check_rounded, color: AppColors.primary)
+                    ? Icon(Icons.check_rounded, color: colors.primary)
                     : null,
                 onTap: () {
                   setState(() => _priority = priority);
                   Navigator.pop(context);
                 },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Category selection chip
-class _CategoryChip extends StatelessWidget {
-  final CategoryModel category;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _CategoryChip({
-    required this.category,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final color = Color(category.colorValue);
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? color.withAlpha(50) : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected ? color : Colors.grey.withAlpha(100),
-            width: isSelected ? 2 : 1,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              category.icon,
-              size: 16,
-              color: isSelected ? color : Colors.grey,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              category.name,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                color: isSelected ? color : Colors.grey,
               ),
             ),
           ],
@@ -589,25 +540,19 @@ class _OptionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textPrimary = isDark
-        ? AppColors.textPrimary
-        : LightColors.textPrimary;
-    final textSecondary = isDark
-        ? AppColors.textSecondary
-        : LightColors.textSecondary;
+    final colors = context.colors;
+    final textPrimary = colors.textPrimary;
+    final textSecondary = colors.textSecondary;
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         decoration: BoxDecoration(
-          color: isActive
-              ? AppColors.primary.withAlpha(20)
-              : (isDark ? AppColors.surfaceLight : LightColors.surfaceLight),
+          color: isActive ? colors.primary.withAlpha(20) : colors.surfaceLight,
           borderRadius: BorderRadius.circular(10),
           border: isActive
-              ? Border.all(color: AppColors.primary.withAlpha(100), width: 1)
+              ? Border.all(color: colors.primary.withAlpha(100), width: 1)
               : null,
         ),
         child: Row(
@@ -615,8 +560,7 @@ class _OptionTile extends StatelessWidget {
             Icon(
               icon,
               size: 20,
-              color:
-                  iconColor ?? (isActive ? AppColors.primary : textSecondary),
+              color: iconColor ?? (isActive ? colors.primary : textSecondary),
             ),
             const SizedBox(width: 8),
             Text(

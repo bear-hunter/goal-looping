@@ -1,12 +1,4 @@
-/// Paginated data provider for efficient data loading at scale
-/// 
-/// Designed for 100M+ records with:
-/// - Cursor-based pagination (no offset issues at scale)
-/// - Smart prefetching for smooth scrolling
-/// - In-memory caching with LRU eviction
-/// - Efficient batch operations
-/// 
-/// Usage: Replace direct StorageService calls with PaginatedDataProvider methods
+// Paginated data provider with prefetching and LRU caches.
 
 import 'dart:async';
 import 'dart:collection';
@@ -35,7 +27,7 @@ class PaginatedResult<T> {
 }
 
 /// LRU cache with configurable max size
-class LRUCache<K, V> {
+class LRUCache<K, V extends Object> {
   final int maxSize;
   final LinkedHashMap<K, V> _cache = LinkedHashMap();
   

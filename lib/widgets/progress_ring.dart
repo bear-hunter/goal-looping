@@ -23,6 +23,7 @@ class ProgressRing extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return SizedBox(
       width: size,
       height: size,
@@ -34,8 +35,8 @@ class ProgressRing extends StatelessWidget {
             painter: _ProgressRingPainter(
               progress: progress.clamp(0.0, 1.0),
               strokeWidth: strokeWidth,
-              progressColor: progressColor ?? AppColors.primary,
-              backgroundColor: backgroundColor ?? AppColors.surfaceLight,
+              progressColor: progressColor ?? colors.primary,
+              backgroundColor: backgroundColor ?? colors.surfaceVariant,
             ),
           ),
           if (child != null) child!,
@@ -116,24 +117,26 @@ class GapIndicator extends StatelessWidget {
   int get gap => targetLevel - currentLevel;
   double get progress => targetLevel > 0 ? currentLevel / targetLevel : 0;
 
-  Color get gapColor {
-    if (gap <= 1) return AppColors.success;
-    if (gap <= 3) return AppColors.warning;
-    return AppColors.danger;
+  Color _gapColor(BuildContext context) {
+    final colors = context.colors;
+    if (gap <= 1) return colors.success;
+    if (gap <= 3) return colors.warning;
+    return colors.danger;
   }
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return ProgressRing(
       progress: progress,
       size: size,
-      progressColor: gapColor,
+      progressColor: _gapColor(context),
       child: Text(
         '$currentLevel/$targetLevel',
         style: TextStyle(
           fontSize: size * 0.22,
-          fontWeight: FontWeight.bold,
-          color: AppColors.textPrimary,
+          fontWeight: FontWeight.w700,
+          color: colors.textPrimary,
         ),
       ),
     );
@@ -151,14 +154,17 @@ class StreakIndicator extends StatelessWidget {
     this.size = 50,
   });
 
-  Color get flameColor {
-    if (streak >= 30) return AppColors.danger;
-    if (streak >= 7) return AppColors.warning;
-    return AppColors.primary;
+  Color _flameColor(BuildContext context) {
+    final colors = context.colors;
+    if (streak >= 30) return colors.danger;
+    if (streak >= 7) return colors.accent;
+    return colors.primary;
   }
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+    final tint = _flameColor(context);
     return Container(
       width: size,
       height: size,
@@ -166,8 +172,8 @@ class StreakIndicator extends StatelessWidget {
         shape: BoxShape.circle,
         gradient: RadialGradient(
           colors: [
-            flameColor.withValues(alpha: 0.3),
-            flameColor.withValues(alpha: 0.1),
+            tint.withValues(alpha: 0.3),
+            tint.withValues(alpha: 0.1),
           ],
         ),
       ),
@@ -176,15 +182,15 @@ class StreakIndicator extends StatelessWidget {
         children: [
           Icon(
             Icons.local_fire_department_rounded,
-            color: flameColor,
+            color: tint,
             size: size * 0.4,
           ),
           Text(
             '$streak',
             style: TextStyle(
               fontSize: size * 0.24,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w700,
+              color: colors.textPrimary,
             ),
           ),
         ],

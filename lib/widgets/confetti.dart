@@ -29,18 +29,6 @@ class _ConfettiCelebrationState extends State<ConfettiCelebration>
   final List<_ConfettiParticle> _particles = [];
   final Random _random = Random();
 
-  // Celebration colors
-  static final List<Color> _colors = [
-    AppColors.primary,
-    AppColors.success,
-    AppColors.warning,
-    AppColors.info,
-    const Color(0xFFFF6B6B), // Coral
-    const Color(0xFFA855F7), // Purple
-    const Color(0xFFFBBF24), // Gold
-    const Color(0xFF22D3EE), // Cyan
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -56,7 +44,9 @@ class _ConfettiCelebrationState extends State<ConfettiCelebration>
     });
 
     if (widget.isPlaying) {
-      _startConfetti();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _startConfetti();
+      });
     }
   }
 
@@ -68,20 +58,36 @@ class _ConfettiCelebrationState extends State<ConfettiCelebration>
     }
   }
 
+  List<Color> _delightPalette(BuildContext context) {
+    final colors = context.colors;
+    final palette = CategoryPalette.of(context);
+    return [
+      colors.primary,
+      colors.success,
+      colors.accent,
+      palette[2], // wisteria
+      palette[5], // gold
+      palette[6], // sage
+    ];
+  }
+
   void _startConfetti() {
+    final colors = _delightPalette(context);
     _particles.clear();
     for (int i = 0; i < widget.particleCount; i++) {
-      _particles.add(_ConfettiParticle(
-        color: _colors[_random.nextInt(_colors.length)],
-        x: _random.nextDouble(),
-        y: -_random.nextDouble() * 0.3, // Start above screen
-        speedX: (_random.nextDouble() - 0.5) * 2,
-        speedY: _random.nextDouble() * 2 + 1,
-        rotation: _random.nextDouble() * 360,
-        rotationSpeed: (_random.nextDouble() - 0.5) * 720,
-        size: _random.nextDouble() * 8 + 4,
-        shape: _random.nextInt(3), // 0=circle, 1=square, 2=rectangle
-      ));
+      _particles.add(
+        _ConfettiParticle(
+          color: colors[_random.nextInt(colors.length)],
+          x: _random.nextDouble(),
+          y: -_random.nextDouble() * 0.3,
+          speedX: (_random.nextDouble() - 0.5) * 2,
+          speedY: _random.nextDouble() * 2 + 1,
+          rotation: _random.nextDouble() * 360,
+          rotationSpeed: (_random.nextDouble() - 0.5) * 720,
+          size: _random.nextDouble() * 8 + 4,
+          shape: _random.nextInt(3),
+        ),
+      );
     }
     _controller.forward(from: 0);
   }
@@ -147,15 +153,15 @@ class _ConfettiPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     for (final particle in particles) {
       final paint = Paint()
-        ..color = particle.color.withAlpha((255 * (1 - progress * 0.8)).toInt())
+        ..color = particle.color
+            .withAlpha((255 * (1 - progress * 0.8)).toInt())
         ..style = PaintingStyle.fill;
 
-      // Calculate position with physics
       final x = size.width * (particle.x + particle.speedX * progress * 0.3);
       final y = size.height * (particle.y + particle.speedY * progress);
-      final rotation = (particle.rotation + particle.rotationSpeed * progress) * pi / 180;
+      final rotation =
+          (particle.rotation + particle.rotationSpeed * progress) * pi / 180;
 
-      // Skip particles that are off screen
       if (y > size.height * 1.1) continue;
 
       canvas.save();
@@ -163,18 +169,26 @@ class _ConfettiPainter extends CustomPainter {
       canvas.rotate(rotation);
 
       switch (particle.shape) {
-        case 0: // Circle
+        case 0:
           canvas.drawCircle(Offset.zero, particle.size / 2, paint);
           break;
-        case 1: // Square
+        case 1:
           canvas.drawRect(
-            Rect.fromCenter(center: Offset.zero, width: particle.size, height: particle.size),
+            Rect.fromCenter(
+              center: Offset.zero,
+              width: particle.size,
+              height: particle.size,
+            ),
             paint,
           );
           break;
-        case 2: // Rectangle (confetti strip)
+        case 2:
           canvas.drawRect(
-            Rect.fromCenter(center: Offset.zero, width: particle.size, height: particle.size * 2.5),
+            Rect.fromCenter(
+              center: Offset.zero,
+              width: particle.size,
+              height: particle.size * 2.5,
+            ),
             paint,
           );
           break;
@@ -193,11 +207,7 @@ class ConfettiOverlay extends StatefulWidget {
   final Widget child;
   final GlobalKey<ConfettiOverlayState>? confettiKey;
 
-  const ConfettiOverlay({
-    super.key,
-    required this.child,
-    this.confettiKey,
-  });
+  const ConfettiOverlay({super.key, required this.child, this.confettiKey});
 
   @override
   State<ConfettiOverlay> createState() => ConfettiOverlayState();
